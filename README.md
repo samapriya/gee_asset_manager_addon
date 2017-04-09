@@ -187,7 +187,7 @@ geeadd.py mover --assetpath "users/johndoe/myfolder/myponycollection" --destinat
 ```
 
 ### Convert to Fusion Table
-Once validated with gdal and google fusion table it can be used to convert any geoObject to google fusion table. Forked and contributed by Gennadii[here](https://github.com/gena/ogr2ft). The scripts can be used only with a specific google account
+Once validated with gdal and google fusion table it can be used to convert any geoObject to google fusion table. Forked and contributed by Gennadii [here](https://github.com/gena/ogr2ft). The scripts can be used only with a specific google account
 ```
 usage: geeadd.py convert2ft [-h] --i I --o O [--add_missing]
 
