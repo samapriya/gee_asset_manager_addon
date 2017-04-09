@@ -1,0 +1,2 @@
+2017-04-08 22:30:31,733 :: oauth2client.transport :: INFO :: Attempting refresh to obtain initial access_token
+2017-04-08 22:30:31,733 :: oauth2client.client :: INFO :: Refreshing access_token
