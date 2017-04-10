@@ -40,9 +40,7 @@ setup(
         'google-api-python-client',
         'pyshp',
         'progressbar2',
-        'shapely',
         'pprint',
-        'gdal'
     ],
     entry_points={
         'console_scripts': [
