@@ -29,6 +29,9 @@ installed is being able to execute geeadd as any command line tool. I
 recommend installation within virtual environment. To install run
 ```
 python setup.py develop
+
+In a linux distribution
+sudo python setup.py develop or sudo python setup.py install
 ```
 
 
