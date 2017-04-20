@@ -22,6 +22,10 @@ We assume Earth Engine Python API is installed and EE authorised as desribed [he
 git clone https://github.com/samapriya/gee_asset_manager_addon
 cd gee_asset_manager_addon && pip install .
 ```
+To make sure that all python libraries needed are installed or upgraded run
+```
+pip install -r requirements
+```
 
 Installation is an optional step; the application can be also run
 directly by executing geeadd.py script. The advantage of having it
