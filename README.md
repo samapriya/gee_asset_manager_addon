@@ -258,7 +258,7 @@ optional arguments:
 geeadd.py tasks
 ```
 	
-### [Task Report](#task-report)
+### Task Report
 Sometimes it is important to generate a report based on all tasks that is running or has finished. Generated report includes taskId, data time, task status and type
 ```
 usage: geeadd.py report [-h] [--r R] [--e E]
