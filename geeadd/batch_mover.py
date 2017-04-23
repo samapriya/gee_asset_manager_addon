@@ -12,8 +12,15 @@ import ee
 
 def mover(assetpath,destinationpath):
 	for line in subprocess.check_output("earthengine ls "+assetpath).split('\n'):
-                src= line
-                dest=line.replace(assetpath,destinationpath)
-                com=(str('earthengine mv ')+str(src)+' '+str(dest))
-                process = subprocess.call(com)
-        print("Assets Move Completed")
+                try:
+                    src= line
+                    dest=line.replace(assetpath,destinationpath)
+                    com=(str('earthengine mv ')+str(src)+' '+str(dest))
+                    process = subprocess.call(com)
+                except Exception:
+                        print(com)
+                        with open(errorlogmove.csv,'a') as csvfile:
+                                writer=csv.writer(csvfile,delimiter=',')
+                                writer.writerow([com])
+                                csvfile.close()
+                print("Assets Move Completed")

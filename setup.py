@@ -6,7 +6,7 @@ def readme():
 
 setup(
     name='geeadd',
-    version='0.1.1',
+    version='0.1.2',
     packages=find_packages(),
     package_data={'geeadd': ['logconfig.json']},
     url='https://github.com/samapriya/gee_asset_manager_addon',
@@ -27,21 +27,6 @@ setup(
     author='Samapriya Roy',
     author_email='samapriya.roy@gmail.com',
     description='Google Earth Engine Batch Assets Manager with Addons',
-    long_description=readme(),
-    install_requires=[
-        'retrying',
-        'requests',
-        'earthengine-api',
-        'requests_toolbelt',
-        'bs4',
-        'pytest',
-        'future',
-        'earthengine_api',
-        'google-api-python-client',
-        'pyshp',
-        'progressbar2',
-        'pprint',
-    ],
     entry_points={
         'console_scripts': [
             'geeadd=geeadd.geeadd:main',

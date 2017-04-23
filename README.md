@@ -11,20 +11,20 @@ Google Earth Engine Batch Asset Manager with Addons is an extension of the one d
     * [Upload a directory with images and associate properties with each image:](#upload-a-directory-with-images-and-associate-properties-with-each-image)
 	* [Upload a directory with images with specific NoData value to a selected destination:](#upload-a-directory-with-images-with-specific-nodata-value-to-a-selected-destination)
 	* [Task Query](#task-query)
-	* [Asset Mover](#asset-mover)
+	* [Assets Move](#assets-move)
+	* [Assets Copy](#assets-copy)
 	* [Convert to Fusion Table](#convert-to-fusion-table)
 	* [Cleanup Utility](#cleanup-utility)
+	* [Tasks Query](#tasks-query)
+	* [Task Report](#task-report)
+	* [Set Collection Property](#set-collection-property)
 	* [Cancel all tasks](#cancel-all-tasks)
 
 ## Installation
 We assume Earth Engine Python API is installed and EE authorised as desribed [here](https://developers.google.com/earth-engine/python_install). To install:
 ```
 git clone https://github.com/samapriya/gee_asset_manager_addon
-cd gee_asset_manager_addon && pip install .
-```
-To make sure that all python libraries needed are installed or upgraded run
-```
-pip install -r requirements
+cd gee_asset_manager && pip install .
 ```
 
 Installation is an optional step; the application can be also run
@@ -32,10 +32,7 @@ directly by executing geeadd.py script. The advantage of having it
 installed is being able to execute geeadd as any command line tool. I
 recommend installation within virtual environment. To install run
 ```
-python setup.py develop
-
-In a linux distribution
-sudo python setup.py develop or sudo python setup.py install
+pip setup.py develop
 ```
 
 
@@ -44,25 +41,30 @@ sudo python setup.py develop or sudo python setup.py install
 As usual, to print help:
 ```
 usage: geeadd.py [-h]
-                 {delete,taskquery,mover,convert2ft,cleanout,upload,cancel}
+                 {delete,taskquery,mover,copy,convert2ft,cleanout,tasks,report,collprop,upload,cancel}
                  ...
 
 Google Earth Engine Batch Asset Manager with Addons
 
 positional arguments:
-  {delete,taskquery,mover,convert2ft,cleanout,upload,cancel}
+  {delete,taskquery,mover,copy,convert2ft,cleanout,tasks,report,collprop,upload,cancel}
     delete              Deletes collection and all items inside. Supports
                         Unix-like wildcards.
-    taskquery           Queries currently running, enqued and uploaded assets
-    mover               Moves all assets from one folder to other
+    taskquery           Queries currently running, enqued,failed ingestions
+                        and uploaded assets
+    mover               Moves all assets from one collection to another
+    copy                Copies all assets from one collection to another:
+                        Including copying from other users if you have read
+                        permission to their assets
     convert2ft          Uploads a given feature collection to Google Fusion
                         Table.
     cleanout            Clear folders with datasets from earlier downloaded
+    tasks               Queries currently running, enqued,failed
+    report              Create a report of all tasks and exports to a CSV file
+    collprop            Sets Overall Properties for Image Collection
     upload              Batch Asset Uploader.
     cancel              Cancel all running tasks
 
-optional arguments:
-  -h, --help            show this help message and exit
 ```
 
 To obtain help for a specific functionality, simply call it with _help_
@@ -179,7 +181,7 @@ optional arguments:
 geeadd.py taskquery "users/johndoe/myfolder/myponycollection"						
 ```
 
-### Asset Mover
+### Assets Move
 This script allows us to recursively move assets from one collection to the other.
 ```
 usage: geeadd.py mover [-h] [--assetpath ASSETPATH] [--finalpath FINALPATH]
@@ -193,8 +195,20 @@ optional arguments:
 geeadd.py mover --assetpath "users/johndoe/myfolder/myponycollection" --destination "users/johndoe/myfolder/myotherponycollection"					
 ```
 
+### Assets Copy
+This script allows us to recursively copy assets from one collection to the other. If you have read acess to assets from another user this will also allow you to copy assets from their collections.
+```
+usage: geeadd.py copy [-h] [--initial INITIAL] [--final FINAL]
+
+optional arguments:
+  -h, --help         show this help message and exit
+  --initial INITIAL  Existing path of assets
+  --final FINAL      New path for assets
+geeadd.py mover --initial "users/johndoe/myfolder/myponycollection" --final "users/johndoe/myfolder/myotherponycollection"					
+```
+
 ### Convert to Fusion Table
-Once validated with gdal and google fusion table it can be used to convert any geoObject to google fusion table. Forked and contributed by Gennadii [here](https://github.com/gena/ogr2ft). The scripts can be used only with a specific google account
+Once validated with gdal and google fusion table it can be used to convert any geoObject to google fusion table. Forked and contributed by Gennadii[here](https://github.com/gena/ogr2ft). The scripts can be used only with a specific google account
 ```
 usage: geeadd.py convert2ft [-h] --i I --o O [--add_missing]
 
@@ -218,6 +232,42 @@ optional arguments:
                      completed
 geeadd.py cleanout --dirpath "./folder"
 ```
+
+### Set Collection Property
+This script is derived from the ee tool to set collection properties and will set overall properties for collection. 
+```
+usage: geeadd.py collprop [-h] [--coll COLL] [--p P]
+
+optional arguments:
+  -h, --help   show this help message and exit
+  --coll COLL  Path of Image Collection
+  --p P        "system:description=Description"/"system:provider_url=url"/"sys
+               tem:tags=tags"/"system:title=title
+```
+### Task Query
+This script counts all currently running and ready tasks along with failed tasks.
+```
+usage: geeadd.py tasks [-h]
+
+optional arguments:
+  -h, --help  show this help message and exit
+
+geeadd.py tasks
+```
+	
+### [Task Report](#task-report)
+Sometimes it is important to generate a report based on all tasks that is running or has finished. Generated report includes taskId, data time, task status and type
+```
+usage: geeadd.py report [-h] [--r R] [--e E]
+
+optional arguments:
+  -h, --help  show this help message and exit
+  --r R       Path & CSV filename where the report will be saved
+  --e E       Path & CSV filename where the errorlog will be saved
+
+geeadd.py report --r "report.csv" --e "errorlog.csv"
+```
+
 ### Cancel all tasks
 This is a simpler tool, can be called directly from the earthengine cli as well
 ```

@@ -2,15 +2,19 @@
 
 import argparse
 import logging
-
+import os
 import ee
+import subprocess
 
+from batch_copy import copy
 from batch_remover import delete
 from batch_uploader import upload
 from config import setup_logging
 from query import taskquery
 from batch_mover import mover
 from cleanup import cleanout
+from collectionprop import collprop
+from taskreport import genreport
 def cancel_all_running_tasks():
     logging.info('Attempting to cancel all running tasks')
     running_tasks = [task for task in ee.data.getTaskList() if task['state'] == 'RUNNING']
@@ -39,8 +43,25 @@ def taskquery_from_parser(args):
     taskquery(destination=args.destination)
 def mover_from_parser(args):
 	mover(assetpath=args.assetpath,destinationpath=args.finalpath)
+def copy_from_parser(args):
+	copy(initial=args.initial,final=args.final)
 def cleanout_from_parser(args):
     cleanout(args.dirpath)
+def tasks():
+    tasklist=subprocess.check_output("earthengine task list")
+    taskready=tasklist.count("READY")
+    taskrunning=tasklist.count("RUNNING")
+    taskfailed=tasklist.count("FAILED")
+    print("Running Tasks:",taskrunning)
+    print("Ready Tasks:",taskready)
+    print("Failed Tasks:",taskfailed)
+def tasks_from_parser(args):
+    tasks()
+def genreport_from_parser(args):
+    genreport(report=args.r,error=args.e)
+def collprop_from_parser(args):
+    collprop(imcoll=args.coll,prop=args.p)
+
 def main(args=None):
     setup_logging()
     parser = argparse.ArgumentParser(description='Google Earth Engine Batch Asset Manager with Addons')
@@ -50,14 +71,19 @@ def main(args=None):
     parser_delete.add_argument('id', help='Full path to asset for deletion. Recursively removes all folders, collections and images.')
     parser_delete.set_defaults(func=delete_collection_from_parser)
 
-    parser_taskquery=subparsers.add_parser('taskquery',help='Queries currently running, enqued and uploaded assets')
+    parser_taskquery=subparsers.add_parser('taskquery',help='Queries currently running, enqued,failed ingestions and uploaded assets')
     parser_taskquery.add_argument('--destination',help='Full path to asset where you are uploading files')
     parser_taskquery.set_defaults(func=taskquery_from_parser)
 	
-    parser_mover=subparsers.add_parser('mover',help='Moves all assets from one folder to other')
+    parser_mover=subparsers.add_parser('mover',help='Moves all assets from one collection to another')
     parser_mover.add_argument('--assetpath',help='Existing path of assets')
     parser_mover.add_argument('--finalpath',help='New path for assets')
     parser_mover.set_defaults(func=mover_from_parser)
+
+    parser_copy=subparsers.add_parser('copy',help='Copies all assets from one collection to another: Including copying from other users if you have read permission to their assets')
+    parser_copy.add_argument('--initial',help='Existing path of assets')
+    parser_copy.add_argument('--final',help='New path for assets')
+    parser_copy.set_defaults(func=copy_from_parser)
 	
     parser_ft = subparsers.add_parser('convert2ft',help='Uploads a given feature collection to Google Fusion Table.')
     parser_ft.add_argument('--i', help='input feature source (KML, SHP, SpatiLite, etc.)', required=True)
@@ -68,6 +94,19 @@ def main(args=None):
     parser_cleanout=subparsers.add_parser('cleanout',help='Clear folders with datasets from earlier downloaded')
     parser_cleanout.add_argument('--dirpath',help='Folder you want to delete after all processes have been completed')
     parser_cleanout.set_defaults(func=cleanout_from_parser)
+
+    parser_tasks=subparsers.add_parser('tasks',help='Queries currently running, enqued,failed')
+    parser_tasks.set_defaults(func=tasks_from_parser)
+
+    parser_genreport=subparsers.add_parser('report',help='Create a report of all tasks and exports to a CSV file')
+    parser_genreport.add_argument('--r',help='Path & CSV filename where the report will be saved')
+    parser_genreport.add_argument('--e',help='Path & CSV filename where the errorlog will be saved')
+    parser_genreport.set_defaults(func=genreport_from_parser)
+    
+    parser_collprop=subparsers.add_parser('collprop',help='Sets Overall Properties for Image Collection')
+    parser_collprop.add_argument('--coll',help='Path of Image Collection')
+    parser_collprop.add_argument('--p',help='"system:description=Description"/"system:provider_url=url"/"system:tags=tags"/"system:title=title')
+    parser_collprop.set_defaults(func=collprop_from_parser)
     
     parser_upload = subparsers.add_parser('upload', help='Batch Asset Uploader.')
     required_named = parser_upload.add_argument_group('Required named arguments.')
