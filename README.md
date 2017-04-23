@@ -10,7 +10,7 @@ Google Earth Engine Batch Asset Manager with Addons is an extension of the one d
     * [Delete a collection with content:](#delete-a-collection-with-content)
     * [Upload a directory with images and associate properties with each image:](#upload-a-directory-with-images-and-associate-properties-with-each-image)
 	* [Upload a directory with images with specific NoData value to a selected destination:](#upload-a-directory-with-images-with-specific-nodata-value-to-a-selected-destination)
-	* [Task Query](#task-query)
+	* [Task Query during ingestion](#task-query-during-ingestion)
 	* [Assets Move](#assets-move)
 	* [Assets Copy](#assets-copy)
 	* [Convert to Fusion Table](#convert-to-fusion-table)
@@ -171,8 +171,8 @@ geeadd upload -u johndoe@gmail.com --source path_to_directory_with_tif --dest us
 ```
 In this case we need to supply full path to the destination, which is helpful when we upload to a shared folder. In the provided example we also burn value 222 into all rasters for missing data (NoData).
 
-### Task Query
-This script can be used intermittently to look at running, failed and ready(waiting) tasks. It can also be used to query tasks when uploading assets to collection by providing collection pathway.
+### Task Query during ingestion
+This script can be used intermittently to look at running, failed and ready(waiting) tasks during ingestion. This script is a special case using query tasks only when uploading assets to collection by providing collection pathway to see how collection size increases.
 ```
 usage: geeadd.py taskquery [-h] [--destination DESTINATION]
 
