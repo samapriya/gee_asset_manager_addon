@@ -32,7 +32,10 @@ directly by executing geeadd.py script. The advantage of having it
 installed is being able to execute geeadd as any command line tool. I
 recommend installation within virtual environment. To install run
 ```
-pip setup.py develop
+python setup.py develop or python setup.py install
+
+In a linux distribution
+sudo python setup.py develop or sudo python setup.py install
 ```
 
 
