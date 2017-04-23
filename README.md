@@ -15,7 +15,7 @@ Google Earth Engine Batch Asset Manager with Addons is an extension of the one d
 	* [Assets Copy](#assets-copy)
 	* [Convert to Fusion Table](#convert-to-fusion-table)
 	* [Cleanup Utility](#cleanup-utility)
-	* [Tasks Query](#tasks-query)
+	* [Task Query](#task-query)
 	* [Task Report](#task-report)
 	* [Set Collection Property](#set-collection-property)
 	* [Cancel all tasks](#cancel-all-tasks)
