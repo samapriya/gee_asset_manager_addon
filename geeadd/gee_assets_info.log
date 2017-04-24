@@ -100,3 +100,11 @@
 2017-04-23 00:04:58,555 :: oauth2client.client :: INFO :: Refreshing access_token
 2017-04-23 00:05:44,519 :: oauth2client.transport :: INFO :: Attempting refresh to obtain initial access_token
 2017-04-23 00:05:44,519 :: oauth2client.client :: INFO :: Refreshing access_token
+2017-04-23 19:35:12,803 :: oauth2client.transport :: INFO :: Attempting refresh to obtain initial access_token
+2017-04-23 19:35:12,819 :: oauth2client.client :: INFO :: Refreshing access_token
+2017-04-24 03:03:35,444 :: oauth2client.transport :: INFO :: Attempting refresh to obtain initial access_token
+2017-04-24 03:03:35,444 :: oauth2client.client :: INFO :: Refreshing access_token
+2017-04-24 03:06:36,674 :: oauth2client.transport :: INFO :: Attempting refresh to obtain initial access_token
+2017-04-24 03:06:36,674 :: oauth2client.client :: INFO :: Refreshing access_token
+2017-04-24 03:11:07,276 :: oauth2client.transport :: INFO :: Attempting refresh to obtain initial access_token
+2017-04-24 03:11:07,292 :: oauth2client.client :: INFO :: Refreshing access_token

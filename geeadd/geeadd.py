@@ -58,7 +58,7 @@ def tasks():
 def tasks_from_parser(args):
     tasks()
 def genreport_from_parser(args):
-    genreport(report=args.r,error=args.e)
+    genreport(report=args.r)
 def collprop_from_parser(args):
     collprop(imcoll=args.coll,prop=args.p)
 
@@ -99,8 +99,7 @@ def main(args=None):
     parser_tasks.set_defaults(func=tasks_from_parser)
 
     parser_genreport=subparsers.add_parser('report',help='Create a report of all tasks and exports to a CSV file')
-    parser_genreport.add_argument('--r',help='Path & CSV filename where the report will be saved')
-    parser_genreport.add_argument('--e',help='Path & CSV filename where the errorlog will be saved')
+    parser_genreport.add_argument('--r',help='Folder Path where the reports will be saved')
     parser_genreport.set_defaults(func=genreport_from_parser)
     
     parser_collprop=subparsers.add_parser('collprop',help='Sets Overall Properties for Image Collection')
