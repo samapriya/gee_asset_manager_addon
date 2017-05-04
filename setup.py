@@ -6,7 +6,7 @@ def readme():
 
 setup(
     name='geeadd',
-    version='0.1.2',
+    version='0.1.3',
     packages=find_packages(),
     package_data={'geeadd': ['logconfig.json']},
     url='https://github.com/samapriya/gee_asset_manager_addon',
