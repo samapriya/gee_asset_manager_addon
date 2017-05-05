@@ -1,6 +1,9 @@
 # Google Earth Engine Batch Asset Manager with Addons
 Google Earth Engine Batch Asset Manager with Addons is an extension of the one developed by Lukasz [here](https://github.com/tracek/gee_asset_manager) and additional tools were added to include functionality for moving assets, conversion of objects to fusion table, cleaning folders, querying tasks. The ambition is apart from helping user with batch actions on assets along with interacting and extending capabilities of existing GEE CLI. It is developed case by case basis to include more features in the future as it becomes available or as need arises. tab.
 
+[![DOI](https://zenodo.org/badge/87708514.svg)](https://zenodo.org/badge/latestdoi/87708514)
+
+
 ![CLI](http://i.imgur.com/w2CBF6t.gif)
 
 ## Table of contents
