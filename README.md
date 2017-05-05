@@ -2,23 +2,26 @@
 Google Earth Engine Batch Asset Manager with Addons is an extension of the one developed by Lukasz [here](https://github.com/tracek/gee_asset_manager) and additional tools were added to include functionality for moving assets, conversion of objects to fusion table, cleaning folders, querying tasks. The ambition is apart from helping user with batch actions on assets along with interacting and extending capabilities of existing GEE CLI. It is developed case by case basis to include more features in the future as it becomes available or as need arises. tab.
 
 ![CLI](http://i.imgur.com/w2CBF6t.gif)
+
 ## Table of contents
 * [Installation](#installation)
 * [Getting started](#getting-started)
     * [Batch uploader](#batch-uploader)
     * [Parsing metadata](#parsing-metadata)
 * [Usage examples](#usage-examples)
-    * [Delete a collection with content:](#delete-a-collection-with-content)
+	* [EE User](#ee-user)
     * [Upload a directory with images and associate properties with each image:](#upload-a-directory-with-images-and-associate-properties-with-each-image)
 	* [Upload a directory with images with specific NoData value to a selected destination:](#upload-a-directory-with-images-with-specific-nodata-value-to-a-selected-destination)
+	* [Task Query](#task-query)
 	* [Task Query during ingestion](#task-query-during-ingestion)
+	* [Task Report](#task-report)
+    * [Delete a collection with content:](#delete-a-collection-with-content)
 	* [Assets Move](#assets-move)
 	* [Assets Copy](#assets-copy)
+	* [Assets Access](#assets-access)
+	* [Set Collection Property](#set-collection-property)
 	* [Convert to Fusion Table](#convert-to-fusion-table)
 	* [Cleanup Utility](#cleanup-utility)
-	* [Task Query](#task-query)
-	* [Task Report](#task-report)
-	* [Set Collection Property](#set-collection-property)
 	* [Cancel all tasks](#cancel-all-tasks)
 
 ## Installation
@@ -139,8 +142,61 @@ The program will report any illegal fields, it will also complain if not all of 
 
 Having metadata helps in organising your asstets, but is not mandatory - you can skip it.
 
+
 ## Usage examples
 
+### EE User
+This tool is designed to allow different users to change earth engine authentication credentials. The tool invokes the authentication call and copies the authentication key verification website to the clipboard which can then be pasted onto a browser and the generated key can be pasted back
+
+### Upload a directory with images to your myfolder/mycollection and associate properties with each image:
+```
+geeadd upload -u johndoe@gmail.com --source path_to_directory_with_tif -m path_to_metadata.csv --dest users/johndoe/myfolder/myponycollection
+```
+The script will prompt the user for Google account password. The program will also check that all properties in path_to_metadata.csv do not contain any illegal characters for GEE. Don't need metadata? Simply skip this option.
+
+### Upload a directory with images with specific NoData value to a selected destination 
+```
+geeadd upload -u johndoe@gmail.com --source path_to_directory_with_tif --dest users/johndoe/myfolder/myponycollection --nodata 222
+```
+In this case we need to supply full path to the destination, which is helpful when we upload to a shared folder. In the provided example we also burn value 222 into all rasters for missing data (NoData).
+
+### Task Query
+This script counts all currently running and ready tasks along with failed tasks.
+```
+usage: geeadd.py tasks [-h]
+
+optional arguments:
+  -h, --help  show this help message and exit
+
+geeadd.py tasks
+```
+
+### Task Query during ingestion
+This script can be used intermittently to look at running, failed and ready(waiting) tasks during ingestion. This script is a special case using query tasks only when uploading assets to collection by providing collection pathway to see how collection size increases.
+```
+usage: geeadd.py taskquery [-h] [--destination DESTINATION]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --destination DESTINATION
+                        Full path to asset where you are uploading files
+
+geeadd.py taskquery "users/johndoe/myfolder/myponycollection"						
+```
+
+	
+### Task Report
+Sometimes it is important to generate a report based on all tasks that is running or has finished. Generated report includes taskId, data time, task status and type
+```
+usage: geeadd.py report [-h] [--r R] [--e E]
+
+optional arguments:
+  -h, --help  show this help message and exit
+  --r R       Path & CSV filename where the report will be saved
+  --e E       Path & CSV filename where the errorlog will be saved
+
+geeadd.py report --r "report.csv" --e "errorlog.csv"
+```
 ### Delete a collection with content:
 
 The delete is recursive, meaning it will delete also all children assets: images, collections and folders. Use with caution!
@@ -160,32 +216,6 @@ Console output:
 
 ```
 geeadd delete users/johndoe/*weird[0-9]?name*
-```
-
-
-### Upload a directory with images to your myfolder/mycollection and associate properties with each image:
-```
-geeadd upload -u johndoe@gmail.com --source path_to_directory_with_tif -m path_to_metadata.csv --dest users/johndoe/myfolder/myponycollection
-```
-The script will prompt the user for Google account password. The program will also check that all properties in path_to_metadata.csv do not contain any illegal characters for GEE. Don't need metadata? Simply skip this option.
-
-### Upload a directory with images with specific NoData value to a selected destination 
-```
-geeadd upload -u johndoe@gmail.com --source path_to_directory_with_tif --dest users/johndoe/myfolder/myponycollection --nodata 222
-```
-In this case we need to supply full path to the destination, which is helpful when we upload to a shared folder. In the provided example we also burn value 222 into all rasters for missing data (NoData).
-
-### Task Query during ingestion
-This script can be used intermittently to look at running, failed and ready(waiting) tasks during ingestion. This script is a special case using query tasks only when uploading assets to collection by providing collection pathway to see how collection size increases.
-```
-usage: geeadd.py taskquery [-h] [--destination DESTINATION]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --destination DESTINATION
-                        Full path to asset where you are uploading files
-
-geeadd.py taskquery "users/johndoe/myfolder/myponycollection"						
 ```
 
 ### Assets Move
@@ -214,6 +244,36 @@ optional arguments:
 geeadd.py mover --initial "users/johndoe/myfolder/myponycollection" --final "users/johndoe/myfolder/myotherponycollection"					
 ```
 
+### Assets Access
+This tool allows you to set asset acess for either folder , collection or image recursively meaning you can add collection access properties for multiple assets at the same time.
+```
+usage: geeadd access [-h] --mode MODE --asset ASSET --user USER
+
+optional arguments:
+  -h, --help     show this help message and exit
+  --mode MODE    This lets you select if you want to change permission or
+                 folder/collection/image
+  --asset ASSET  This is the path to the earth engine asset whose permission
+                 you are changing folder/collection/image
+  --user USER    This is the email address to whom you want to give read or
+                 write permission Usage: "john@doe.com:R" or "john@doe.com:W"
+                 R/W refers to read or write permission
+geeadd.py access --mode folder --asset "folder/collection/image" --user "john@doe.com:R"
+```
+
+### Set Collection Property
+This script is derived from the ee tool to set collection properties and will set overall properties for collection. 
+```
+usage: geeadd.py collprop [-h] [--coll COLL] [--p P]
+
+optional arguments:
+  -h, --help   show this help message and exit
+  --coll COLL  Path of Image Collection
+  --p P        "system:description=Description"/"system:provider_url=url"/"sys
+               tem:tags=tags"/"system:title=title
+```
+
+
 ### Convert to Fusion Table
 Once validated with gdal and google fusion table it can be used to convert any geoObject to google fusion table. Forked and contributed by Gennadii [here](https://github.com/gena/ogr2ft). The scripts can be used only with a specific google account
 ```
@@ -238,41 +298,6 @@ optional arguments:
   --dirpath DIRPATH  Folder you want to delete after all processes have been
                      completed
 geeadd.py cleanout --dirpath "./folder"
-```
-
-### Set Collection Property
-This script is derived from the ee tool to set collection properties and will set overall properties for collection. 
-```
-usage: geeadd.py collprop [-h] [--coll COLL] [--p P]
-
-optional arguments:
-  -h, --help   show this help message and exit
-  --coll COLL  Path of Image Collection
-  --p P        "system:description=Description"/"system:provider_url=url"/"sys
-               tem:tags=tags"/"system:title=title
-```
-### Task Query
-This script counts all currently running and ready tasks along with failed tasks.
-```
-usage: geeadd.py tasks [-h]
-
-optional arguments:
-  -h, --help  show this help message and exit
-
-geeadd.py tasks
-```
-	
-### Task Report
-Sometimes it is important to generate a report based on all tasks that is running or has finished. Generated report includes taskId, data time, task status and type
-```
-usage: geeadd.py report [-h] [--r R] [--e E]
-
-optional arguments:
-  -h, --help  show this help message and exit
-  --r R       Path & CSV filename where the report will be saved
-  --e E       Path & CSV filename where the errorlog will be saved
-
-geeadd.py report --r "report.csv" --e "errorlog.csv"
 ```
 
 ### Cancel all tasks
