@@ -44,31 +44,34 @@ sudo python setup.py develop or sudo python setup.py install
 
 As usual, to print help:
 ```
-usage: geeadd.py [-h]
-                 {delete,taskquery,mover,copy,convert2ft,cleanout,tasks,report,collprop,upload,cancel}
-                 ...
-
 Google Earth Engine Batch Asset Manager with Addons
 
 positional arguments:
-  {delete,taskquery,mover,copy,convert2ft,cleanout,tasks,report,collprop,upload,cancel}
-    delete              Deletes collection and all items inside. Supports
-                        Unix-like wildcards.
+  {ee_user,upload,tasks,taskquery,report,delete,mover,copy,access,collprop,convert2ft,cleanout,cancel}
+    ee_user             Allows you to associate/change GEE account to system
+    upload              Batch Asset Uploader.
+    tasks               Queries currently running, enqued,failed
     taskquery           Queries currently running, enqued,failed ingestions
                         and uploaded assets
+    report              Create a report of all tasks and exports to a CSV file
+    delete              Deletes collection and all items inside. Supports
+                        Unix-like wildcards.
     mover               Moves all assets from one collection to another
     copy                Copies all assets from one collection to another:
                         Including copying from other users if you have read
                         permission to their assets
+    access              Sets Permissions for Images, Collection or all assets
+                        in EE Folder Example: python ee_permissions.py --mode
+                        "folder" --asset "users/john/doe" --user
+                        "jimmy@doe.com:R"
+    collprop            Sets Overall Properties for Image Collection
     convert2ft          Uploads a given feature collection to Google Fusion
                         Table.
     cleanout            Clear folders with datasets from earlier downloaded
-    tasks               Queries currently running, enqued,failed
-    report              Create a report of all tasks and exports to a CSV file
-    collprop            Sets Overall Properties for Image Collection
-    upload              Batch Asset Uploader.
     cancel              Cancel all running tasks
 
+optional arguments:
+  -h, --help            show this help message and exit
 ```
 
 To obtain help for a specific functionality, simply call it with _help_
