@@ -16,6 +16,8 @@ from cleanup import cleanout
 from collectionprop import collprop
 from taskreport import genreport
 from acl_changer import access
+from ee_ls import lst
+
 def cancel_all_running_tasks():
     logging.info('Attempting to cancel all running tasks')
     running_tasks = [task for task in ee.data.getTaskList() if task['state'] == 'RUNNING']
@@ -69,6 +71,8 @@ def genreport_from_parser(args):
     genreport(report=args.r)
 def collprop_from_parser(args):
     collprop(imcoll=args.coll,prop=args.p)
+def lst_from_parser(args):
+    lst(location=args.location,typ=args.type,items=args.items)
 
 def main(args=None):
     setup_logging()
@@ -89,6 +93,12 @@ def main(args=None):
                                                                      'files is failing on some systems. Might cause other issues.')
     optional_named.add_argument('--nodata', type=int, help='The value to burn into the raster as NoData (missing data)')
     parser_upload.set_defaults(func=upload_from_parser)
+
+    parser_lst = subparsers.add_parser('lst',help='List assets in a folder/collection or write as text file')
+    parser_lst.add_argument('--location', help='This it the location of your folder/collection', required=True)
+    parser_lst.add_argument('--type', help='Whether you want the list to be printed or output as text', required=True)
+    parser_lst.add_argument('--items', help="Number of items to list")
+    parser_lst.set_defaults(func=lst_from_parser)
     
     parser_tasks=subparsers.add_parser('tasks',help='Queries currently running, enqued,failed')
     parser_tasks.set_defaults(func=tasks_from_parser)
@@ -101,6 +111,7 @@ def main(args=None):
     parser_genreport.add_argument('--r',help='Folder Path where the reports will be saved')
     parser_genreport.set_defaults(func=genreport_from_parser)
 
+   
     parser_delete = subparsers.add_parser('delete', help='Deletes collection and all items inside. Supports Unix-like wildcards.')
     parser_delete.add_argument('id', help='Full path to asset for deletion. Recursively removes all folders, collections and images.')
     parser_delete.set_defaults(func=delete_collection_from_parser)
@@ -115,11 +126,11 @@ def main(args=None):
     parser_copy.add_argument('--final',help='New path for assets')
     parser_copy.set_defaults(func=copy_from_parser)
 
-    parser_ft = subparsers.add_parser('access',help='Sets Permissions for Images, Collection or all assets in EE Folder Example: python ee_permissions.py --mode "folder" --asset "users/john/doe" --user "jimmy@doe.com:R"')
-    parser_ft.add_argument('--mode', help='This lets you select if you want to change permission or folder/collection/image', required=True)
-    parser_ft.add_argument('--asset', help='This is the path to the earth engine asset whose permission you are changing folder/collection/image', required=True)
-    parser_ft.add_argument('--user', help="""This is the email address to whom you want to give read or write permission Usage: "john@doe.com:R" or "john@doe.com:W" R/W refers to read or write permission""", required=True, default=False)
-    parser_ft.set_defaults(func=access_from_parser)
+    parser_access = subparsers.add_parser('access',help='Sets Permissions for Images, Collection or all assets in EE Folder Example: python ee_permissions.py --mode "folder" --asset "users/john/doe" --user "jimmy@doe.com:R"')
+    parser_access.add_argument('--mode', help='This lets you select if you want to change permission or folder/collection/image', required=True)
+    parser_access.add_argument('--asset', help='This is the path to the earth engine asset whose permission you are changing folder/collection/image', required=True)
+    parser_access.add_argument('--user', help="""This is the email address to whom you want to give read or write permission Usage: "john@doe.com:R" or "john@doe.com:W" R/W refers to read or write permission""", required=True, default=False)
+    parser_access.set_defaults(func=access_from_parser)
 
     parser_collprop=subparsers.add_parser('collprop',help='Sets Overall Properties for Image Collection')
     parser_collprop.add_argument('--coll',help='Path of Image Collection')

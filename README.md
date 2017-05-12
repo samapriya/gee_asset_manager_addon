@@ -1,10 +1,7 @@
 # Google Earth Engine Batch Asset Manager with Addons
 Google Earth Engine Batch Asset Manager with Addons is an extension of the one developed by Lukasz [here](https://github.com/tracek/gee_asset_manager) and additional tools were added to include functionality for moving assets, conversion of objects to fusion table, cleaning folders, querying tasks. The ambition is apart from helping user with batch actions on assets along with interacting and extending capabilities of existing GEE CLI. It is developed case by case basis to include more features in the future as it becomes available or as need arises. tab.
 
-[![DOI](https://zenodo.org/badge/87708514.svg)](https://zenodo.org/badge/latestdoi/87708514)
-
-
-![CLI](http://i.imgur.com/w2CBF6t.gif)
+![CLI](http://i.imgur.com/8Cvh3XY.gif)
 
 ## Table of contents
 * [Installation](#installation)
@@ -15,6 +12,7 @@ Google Earth Engine Batch Asset Manager with Addons is an extension of the one d
 	* [EE User](#ee-user)
     * [Upload a directory with images and associate properties with each image:](#upload-a-directory-with-images-and-associate-properties-with-each-image)
 	* [Upload a directory with images with specific NoData value to a selected destination:](#upload-a-directory-with-images-with-specific-nodata-value-to-a-selected-destination)
+	* [Asset List](#asset-list)
 	* [Task Query](#task-query)
 	* [Task Query during ingestion](#task-query-during-ingestion)
 	* [Task Report](#task-report)
@@ -53,9 +51,11 @@ As usual, to print help:
 Google Earth Engine Batch Asset Manager with Addons
 
 positional arguments:
-  {ee_user,upload,tasks,taskquery,report,delete,mover,copy,access,collprop,convert2ft,cleanout,cancel}
+  {ee_user,upload,lst,tasks,taskquery,report,delete,mover,copy,access,collprop,convert2ft,cleanout,cancel}
     ee_user             Allows you to associate/change GEE account to system
     upload              Batch Asset Uploader.
+    lst                 List assets in a folder/collection or write as text
+                        file
     tasks               Queries currently running, enqued,failed
     taskquery           Queries currently running, enqued,failed ingestions
                         and uploaded assets
@@ -162,6 +162,19 @@ The script will prompt the user for Google account password. The program will al
 geeadd upload -u johndoe@gmail.com --source path_to_directory_with_tif --dest users/johndoe/myfolder/myponycollection --nodata 222
 ```
 In this case we need to supply full path to the destination, which is helpful when we upload to a shared folder. In the provided example we also burn value 222 into all rasters for missing data (NoData).
+
+### Asset List
+This tool is designed to either print or output asset lists within folders or collections using earthengine ls tool functions.
+```
+usage: geeadd lst [-h] --location LOCATION --type TYPE [--items ITEMS]
+
+optional arguments:
+  -h, --help           show this help message and exit
+  --location LOCATION  This it the location of your folder/collection
+  --type TYPE          Whether you want the list to be printed or output as
+                       text(print/report)
+  --items ITEMS        Number of items to list
+```
 
 ### Task Query
 This script counts all currently running and ready tasks along with failed tasks.
