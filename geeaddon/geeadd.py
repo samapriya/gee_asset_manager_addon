@@ -72,7 +72,7 @@ def genreport_from_parser(args):
 def collprop_from_parser(args):
     collprop(imcoll=args.coll,prop=args.p)
 def lst_from_parser(args):
-    lst(location=args.location,typ=args.type,items=args.items)
+    lst(location=args.location,typ=args.type,items=args.items,f=args.folder)
 
 def main(args=None):
     setup_logging()
@@ -98,6 +98,7 @@ def main(args=None):
     parser_lst.add_argument('--location', help='This it the location of your folder/collection', required=True)
     parser_lst.add_argument('--type', help='Whether you want the list to be printed or output as text', required=True)
     parser_lst.add_argument('--items', help="Number of items to list")
+    parser_lst.add_argument('--folder',help="Folder location for report to be exported")
     parser_lst.set_defaults(func=lst_from_parser)
     
     parser_tasks=subparsers.add_parser('tasks',help='Queries currently running, enqued,failed')
