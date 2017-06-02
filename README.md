@@ -28,7 +28,15 @@ Google Earth Engine Batch Asset Manager with Addons is an extension of the one d
 	* [Cancel all tasks](#cancel-all-tasks)
 
 ## Installation
-We assume Earth Engine Python API is installed and EE authorised as desribed [here](https://developers.google.com/earth-engine/python_install). To install:
+We assume Earth Engine Python API is installed and EE authorised as desribed [here](https://developers.google.com/earth-engine/python_install). This toolbox also uses some functionality from GDAL
+For installing GDAL in Ubuntu
+```
+sudo add-apt-repository ppa:ubuntugis/ppa && sudo apt-get update
+sudo apt-get install gdal-bin
+```
+For Windows I found this [guide](https://sandbox.idre.ucla.edu/sandbox/tutorials/installing-gdal-for-windows) from UCLA
+
+To install toolbox:
 ```
 git clone https://github.com/samapriya/gee_asset_manager_addon
 cd gee_asset_manager && pip install .
