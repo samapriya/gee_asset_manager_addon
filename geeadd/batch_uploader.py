@@ -183,10 +183,10 @@ def __get_google_auth_session(username, password):
 
     auto = login_html.headers.get('X-Auto-Login')
     follow_up = unquote(unquote(auto)).split('continue=')[-1]
-    galx = login_html.cookies['GALX']
+    #galx = login_html.cookies['GALX']
 
     payload['continue'] = follow_up
-    payload['GALX'] = galx
+    #payload['GALX'] = galx
 
     session.post(authentication_url, data=payload)
 
