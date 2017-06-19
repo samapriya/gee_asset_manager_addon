@@ -3,9 +3,9 @@ from setuptools import find_packages
 
 setup(
     name='geeadd',
-    version='0.1.5',
-    packages=find_packages(),
-    package_data={'geeadd': ['logconfig.json']},
+    version='0.1.6',
+    packages=['geeaddon'],
+    package_data={'geeaddon': ['logconfig.json']},
     url='https://github.com/samapriya/gee_asset_manager_addon',
     license='Apache 2.0',
     classifiers=(
@@ -26,7 +26,7 @@ setup(
     description='Google Earth Engine Batch Assets Manager with Addons',
     entry_points={
         'console_scripts': [
-            'geeadd=geeadd.geeadd:main',
+            'geeadd=geeaddon.geeadd:main',
         ],
     },
 )

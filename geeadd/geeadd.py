@@ -38,10 +38,7 @@ def upload_from_parser(args):
            metadata_path=args.metadata,
            multipart_upload=args.large,
            nodata_value=args.nodata)
-def ft_from_parser(args):
-    input_file=str(args.i)
-    output_ft=str(args.o)
-    os.system("ogr2ft.py -i "+input_file+" -o "+output_ft)
+
 def taskquery_from_parser(args):
     taskquery(destination=args.destination)
 def mover_from_parser(args):
@@ -65,6 +62,11 @@ def tasks_from_parser(args):
 
 def ee_authorization():
     os.system("python ee_auth.py")
+def create_from_parser(args):
+    typ=str(args.typ)
+    ee_path=str(args.path)
+    os.system("earthengine create "+typ+" "+ee_path)
+    
 def ee_user_from_parser(args):
     ee_authorization()
 def genreport_from_parser(args):
@@ -81,6 +83,11 @@ def main(args=None):
     subparsers = parser.add_subparsers()
     parser_ee_user=subparsers.add_parser('ee_user',help='Allows you to associate/change GEE account to system')
     parser_ee_user.set_defaults(func=ee_user_from_parser)
+
+    parser_create = subparsers.add_parser('create',help='Allows the user to create an asset collection or folder in Google Earth Engine')
+    parser_create.add_argument('--typ', help='Specify type: collection or folder', required=True)
+    parser_create.add_argument('--path', help='This is the path for the earth engine asset to be created full path is needsed eg: users/johndoe/collection', required=True)
+    parser_create.set_defaults(func=create_from_parser)
 
     parser_upload = subparsers.add_parser('upload', help='Batch Asset Uploader.')
     required_named = parser_upload.add_argument_group('Required named arguments.')
@@ -138,12 +145,6 @@ def main(args=None):
     parser_collprop.add_argument('--p',help='"system:description=Description"/"system:provider_url=url"/"system:tags=tags"/"system:title=title')
     parser_collprop.set_defaults(func=collprop_from_parser)
     
-    parser_ft = subparsers.add_parser('convert2ft',help='Uploads a given feature collection to Google Fusion Table.')
-    parser_ft.add_argument('--i', help='input feature source (KML, SHP, SpatiLite, etc.)', required=True)
-    parser_ft.add_argument('--o', help='output Fusion Table name', required=True)
-    parser_ft.add_argument('--add_missing', help='add missing features from the last inserted feature index', action='store_true', required=False, default=False)
-    parser_ft.set_defaults(func=ft_from_parser)
-
     parser_cleanout=subparsers.add_parser('cleanout',help='Clear folders with datasets from earlier downloaded')
     parser_cleanout.add_argument('--dirpath',help='Folder you want to delete after all processes have been completed')
     parser_cleanout.set_defaults(func=cleanout_from_parser)

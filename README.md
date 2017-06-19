@@ -1,6 +1,4 @@
 # Google Earth Engine Batch Asset Manager with Addons
-[![DOI](https://zenodo.org/badge/87708514.svg)](https://zenodo.org/badge/latestdoi/87708514)
-
 Google Earth Engine Batch Asset Manager with Addons is an extension of the one developed by Lukasz [here](https://github.com/tracek/gee_asset_manager) and additional tools were added to include functionality for moving assets, conversion of objects to fusion table, cleaning folders, querying tasks. The ambition is apart from helping user with batch actions on assets along with interacting and extending capabilities of existing GEE CLI. It is developed case by case basis to include more features in the future as it becomes available or as need arises. tab.
 
 ![CLI](http://i.imgur.com/8Cvh3XY.gif)
@@ -12,6 +10,7 @@ Google Earth Engine Batch Asset Manager with Addons is an extension of the one d
     * [Parsing metadata](#parsing-metadata)
 * [Usage examples](#usage-examples)
 	* [EE User](#ee-user)
+	* [Create](#create)
     * [Upload a directory with images and associate properties with each image:](#upload-a-directory-with-images-and-associate-properties-with-each-image)
 	* [Upload a directory with images with specific NoData value to a selected destination:](#upload-a-directory-with-images-with-specific-nodata-value-to-a-selected-destination)
 	* [Asset List](#asset-list)
@@ -23,20 +22,11 @@ Google Earth Engine Batch Asset Manager with Addons is an extension of the one d
 	* [Assets Copy](#assets-copy)
 	* [Assets Access](#assets-access)
 	* [Set Collection Property](#set-collection-property)
-	* [Convert to Fusion Table](#convert-to-fusion-table)
 	* [Cleanup Utility](#cleanup-utility)
 	* [Cancel all tasks](#cancel-all-tasks)
 
 ## Installation
-We assume Earth Engine Python API is installed and EE authorised as desribed [here](https://developers.google.com/earth-engine/python_install). This toolbox also uses some functionality from GDAL
-For installing GDAL in Ubuntu
-```
-sudo add-apt-repository ppa:ubuntugis/ppa && sudo apt-get update
-sudo apt-get install gdal-bin
-```
-For Windows I found this [guide](https://sandbox.idre.ucla.edu/sandbox/tutorials/installing-gdal-for-windows) from UCLA
-
-To install toolbox:
+We assume Earth Engine Python API is installed and EE authorised as desribed [here](https://developers.google.com/earth-engine/python_install). To install:
 ```
 git clone https://github.com/samapriya/gee_asset_manager_addon
 cd gee_asset_manager && pip install .
@@ -58,11 +48,17 @@ sudo python setup.py develop or sudo python setup.py install
 
 As usual, to print help:
 ```
+usage: geeadd.py [-h]
+                 {ee_user,create,upload,lst,tasks,taskquery,report,delete,mover,copy,access,collprop,cleanout,cancel}
+                 ...
+
 Google Earth Engine Batch Asset Manager with Addons
 
 positional arguments:
-  {ee_user,upload,lst,tasks,taskquery,report,delete,mover,copy,access,collprop,convert2ft,cleanout,cancel}
+  {ee_user,create,upload,lst,tasks,taskquery,report,delete,mover,copy,access,collprop,cleanout,cancel}
     ee_user             Allows you to associate/change GEE account to system
+    create              Allows the user to create an asset collection or
+                        folder in Google Earth Engine
     upload              Batch Asset Uploader.
     lst                 List assets in a folder/collection or write as text
                         file
@@ -81,8 +77,6 @@ positional arguments:
                         "folder" --asset "users/john/doe" --user
                         "jimmy@doe.com:R"
     collprop            Sets Overall Properties for Image Collection
-    convert2ft          Uploads a given feature collection to Google Fusion
-                        Table.
     cleanout            Clear folders with datasets from earlier downloaded
     cancel              Cancel all running tasks
 
@@ -161,6 +155,17 @@ Having metadata helps in organising your asstets, but is not mandatory - you can
 ### EE User
 This tool is designed to allow different users to change earth engine authentication credentials. The tool invokes the authentication call and copies the authentication key verification website to the clipboard which can then be pasted onto a browser and the generated key can be pasted back
 
+### Create
+This tool allows you to create a collection or folder in your earth engine root directory. The tool uses the system cli to achieve this and this has been included so as to reduce the need to switch between multiple tools and CLI.
+```
+usage: ppipe.py create [-h] --typ TYP --path PATH
+
+optional arguments:
+  -h, --help   show this help message and exit
+  --typ TYP    Specify type: collection or folder
+  --path PATH  This is the path for the earth engine asset to be created full
+               path is needsed eg: users/johndoe/collection
+```			   
 ### Upload a directory with images to your myfolder/mycollection and associate properties with each image:
 ```
 geeadd upload -u johndoe@gmail.com --source path_to_directory_with_tif -m path_to_metadata.csv --dest users/johndoe/myfolder/myponycollection
@@ -299,20 +304,6 @@ optional arguments:
                tem:tags=tags"/"system:title=title
 ```
 
-
-### Convert to Fusion Table
-Once validated with gdal and google fusion table it can be used to convert any geoObject to google fusion table. Forked and contributed by Gennadii [here](https://github.com/gena/ogr2ft). The scripts can be used only with a specific google account
-```
-usage: geeadd.py convert2ft [-h] --i I --o O [--add_missing]
-
-optional arguments:
-  -h, --help     show this help message and exit
-  --i I          input feature source (KML, SHP, SpatiLite, etc.)
-  --o O          output Fusion Table name
-  --add_missing  add missing features from the last inserted feature index
-
-geeadd.py convert2ft --i "./aoi.kml" --o "converted_aoi"
-```
 
 ### Cleanup Utility
 This script is used to clean folders once all processes have been completed. In short this is a function to clear folder on local machine.
