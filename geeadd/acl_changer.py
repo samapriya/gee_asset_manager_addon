@@ -1,5 +1,4 @@
 import ee
-import ee.mapclient
 import subprocess
 
 ##initialize earth engine

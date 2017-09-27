@@ -1,5 +1,4 @@
 import ee
-import ee.mapclient
 import subprocess
 import csv
 from datetime import datetime
@@ -18,7 +17,7 @@ def genreport(report):
         writer=csv.DictWriter(canceled,fieldnames=["Task ID","Task Type", "Start Date","Start Time","End Date","End Time","Task Description", "Source Script", "Output State"],delimiter=',')
         writer.writeheader()
     try:
-        for line in subprocess.check_output("earthengine task list").split('\n'):
+        for line in subprocess.check_output("earthengine task list",shell=True).split('\n'):
             tsk=line.split(' ')[0]
             ur=ee.data.getTaskStatus(tsk)
             error=str(ur).split('state')[1].split(',')[0].strip("': u'.")
