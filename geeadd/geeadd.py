@@ -17,6 +17,7 @@ from collectionprop import collprop
 from taskreport import genreport
 from acl_changer import access
 from ee_ls import lst
+from collsizes import collsize
 
 def cancel_all_running_tasks():
     logging.info('Attempting to cancel all running tasks')
@@ -46,17 +47,21 @@ def mover_from_parser(args):
 def copy_from_parser(args):
 	copy(initial=args.initial,final=args.final)
 def access_from_parser(args):
-	copy(mode=args.mode,asset=args.asset,user=args.user)
+	access(mode=args.mode,asset=args.asset,user=args.user)
 def cleanout_from_parser(args):
     cleanout(args.dirpath)
 def tasks():
     tasklist=subprocess.check_output("earthengine task list")
+    taskcompleted=tasklist.count("COMPLETED")
     taskready=tasklist.count("READY")
     taskrunning=tasklist.count("RUNNING")
     taskfailed=tasklist.count("FAILED")
+    taskcancelled=tasklist.count("CANCELLED")
+    print("Completed Tasks:",taskcompleted)
     print("Running Tasks:",taskrunning)
     print("Ready Tasks:",taskready)
     print("Failed Tasks:",taskfailed)
+    print("Cancelled Tasks:",taskcancelled)
 def tasks_from_parser(args):
     tasks()
 
@@ -73,6 +78,8 @@ def genreport_from_parser(args):
     genreport(report=args.r)
 def collprop_from_parser(args):
     collprop(imcoll=args.coll,prop=args.p)
+def collsize_from_parser(args):
+    collsize(coll=args.coll)
 def lst_from_parser(args):
     lst(location=args.location,typ=args.type,items=args.items,f=args.folder)
 
@@ -107,6 +114,10 @@ def main(args=None):
     parser_lst.add_argument('--items', help="Number of items to list")
     parser_lst.add_argument('--folder',help="Folder location for report to be exported")
     parser_lst.set_defaults(func=lst_from_parser)
+    
+    parser_collsize = subparsers.add_parser('collsize',help='Collects collection size in Human Readable form & Number of assets')
+    parser_collsize.add_argument('--coll', help='Earth Engine Collection for which to get size properties', required=True)
+    parser_collsize.set_defaults(func=collsize_from_parser)
     
     parser_tasks=subparsers.add_parser('tasks',help='Queries currently running, enqued,failed')
     parser_tasks.set_defaults(func=tasks_from_parser)

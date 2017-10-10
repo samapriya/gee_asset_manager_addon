@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 setup(
     name='geeadd',
-    version='0.1.7',
+    version='0.1.8',
     packages=['geeaddon'],
     package_data={'geeaddon': ['logconfig.json']},
     url='https://github.com/samapriya/gee_asset_manager_addon',
