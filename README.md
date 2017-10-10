@@ -333,4 +333,7 @@ optional arguments:
 ```
 
 ### Changelog
+###v0.1.8
+- Fixed issues with install
+- Dependcies now part of setup.py
 - Updated Parser and general improvements
