@@ -98,16 +98,21 @@ def main(args=None):
 
     parser_upload = subparsers.add_parser('upload', help='Batch Asset Uploader.')
     required_named = parser_upload.add_argument_group('Required named arguments.')
-    required_named.add_argument('-u', '--user', help='Google account name (gmail address).', required=True)
     required_named.add_argument('--source', help='Path to the directory with images for upload.', required=True)
     required_named.add_argument('--dest', help='Destination. Full path for upload to Google Earth Engine, e.g. users/pinkiepie/myponycollection', required=True)
     optional_named = parser_upload.add_argument_group('Optional named arguments')
     optional_named.add_argument('-m', '--metadata', help='Path to CSV with metadata.')
+    optional_named.add_argument('-mf','--manifest',help='Manifest type to be used,for planetscope use "planetscope"')
     optional_named.add_argument('--large', action='store_true', help='(Advanced) Use multipart upload. Might help if upload of large '
                                                                      'files is failing on some systems. Might cause other issues.')
     optional_named.add_argument('--nodata', type=int, help='The value to burn into the raster as NoData (missing data)')
-    parser_upload.set_defaults(func=upload_from_parser)
 
+    required_named.add_argument('-u', '--user', help='Google account name (gmail address).')
+    optional_named.add_argument('-s', '--service-account', help='Google Earth Engine service account.')
+    optional_named.add_argument('-k', '--private-key', help='Google Earth Engine private key file.')
+    optional_named.add_argument('-b', '--bucket', help='Google Cloud Storage bucket name.')
+    parser_upload.set_defaults(func=upload_from_parser)
+    
     parser_lst = subparsers.add_parser('lst',help='List assets in a folder/collection or write as text file')
     parser_lst.add_argument('--location', help='This it the location of your folder/collection', required=True)
     parser_lst.add_argument('--type', help='Whether you want the list to be printed or output as text', required=True)
