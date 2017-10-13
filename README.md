@@ -17,6 +17,7 @@ Google Earth Engine Batch Asset Manager with Addons is an extension of the one d
     * [Upload a directory with images and associate properties with each image:](#upload-a-directory-with-images-and-associate-properties-with-each-image)
 	* [Upload a directory with images with specific NoData value to a selected destination:](#upload-a-directory-with-images-with-specific-nodata-value-to-a-selected-destination)
 	* [Asset List](#asset-list)
+    * [Earth Engine Asset Report](#earth-engine-asset-report)
 	* [Task Query](#task-query)
 	* [Task Query during ingestion](#task-query-during-ingestion)
 	* [Task Report](#task-report)
@@ -52,19 +53,24 @@ sudo python setup.py develop or sudo python setup.py install
 As usual, to print help:
 ```
 usage: geeadd.py [-h]
-                 {ee_user,create,upload,lst,tasks,taskquery,report,delete,mover,copy,access,collprop,cleanout,cancel}
+                 {ee_user,create,upload,lst,ee_report,collsize,tasks,taskquery,report,delete,mover,copy,access,collprop,cleanout,cancel}
                  ...
 
 Google Earth Engine Batch Asset Manager with Addons
 
 positional arguments:
-  {ee_user,create,upload,lst,tasks,taskquery,report,delete,mover,copy,access,collprop,cleanout,cancel}
+  {ee_user,create,upload,lst,ee_report,collsize,tasks,taskquery,report,delete,mover,copy,access,collprop,cleanout,cancel}
     ee_user             Allows you to associate/change GEE account to system
     create              Allows the user to create an asset collection or
                         folder in Google Earth Engine
     upload              Batch Asset Uploader.
     lst                 List assets in a folder/collection or write as text
                         file
+    ee_report           Prints a detailed report of all Earth Engine Assets
+                        includes Asset Type, Path,Number of
+                        Assets,size(MB),unit,owner,readers,writers
+    collsize            Collects collection size in Human Readable form &
+                        Number of assets
     tasks               Queries currently running, enqued,failed
     taskquery           Queries currently running, enqued,failed ingestions
                         and uploaded assets
@@ -85,6 +91,7 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+
 ```
 
 To obtain help for a specific functionality, simply call it with _help_
@@ -133,7 +140,7 @@ By metadata we understand here the properties associated with each image. Thanks
 | file1                        | value1           | value2           |
 | file2                        | value3           | value4           |
 
-Note that header can contain only letters, digits and underscores. 
+Note that header can contain only letters, digits and underscores.
 
 Example:
 
@@ -168,14 +175,14 @@ optional arguments:
   --typ TYP    Specify type: collection or folder
   --path PATH  This is the path for the earth engine asset to be created full
                path is needsed eg: users/johndoe/collection
-```			   
+```
 ### Upload a directory with images to your myfolder/mycollection and associate properties with each image:
 ```
 geeadd upload -u johndoe@gmail.com --source path_to_directory_with_tif -m path_to_metadata.csv --dest users/johndoe/myfolder/myponycollection
 ```
 The script will prompt the user for Google account password. The program will also check that all properties in path_to_metadata.csv do not contain any illegal characters for GEE. Don't need metadata? Simply skip this option.
 
-### Upload a directory with images with specific NoData value to a selected destination 
+### Upload a directory with images with specific NoData value to a selected destination
 ```
 geeadd upload -u johndoe@gmail.com --source path_to_directory_with_tif --dest users/johndoe/myfolder/myponycollection --nodata 222
 ```
@@ -193,6 +200,19 @@ optional arguments:
                        text(print/report)
   --items ITEMS        Number of items to list
 ```
+### Earth Engine Asset Report
+This tool recursively goes through all your assets(Includes Images, ImageCollection,Table,) and generates a report containing the following fields
+[Type,Asset Type, Path,Number of Assets,size(MB),unit,owner,readers,writers].
+
+```
+usage: geeadd.py ee_report [-h] --outfile OUTFILE
+
+optional arguments:
+  -h, --help         show this help message and exit
+  --outfile OUTFILE  This it the location of your report csv file
+```
+A simple setup is the following
+``` geeadd --outfile "C:\johndoe\report.csv"```
 
 ### Task Query
 This script counts all currently running and ready tasks along with failed tasks.
@@ -215,10 +235,10 @@ optional arguments:
   --destination DESTINATION
                         Full path to asset where you are uploading files
 
-geeadd.py taskquery "users/johndoe/myfolder/myponycollection"						
+geeadd.py taskquery "users/johndoe/myfolder/myponycollection"
 ```
 
-	
+
 ### Task Report
 Sometimes it is important to generate a report based on all tasks that is running or has finished. Generated report includes taskId, data time, task status and type
 ```
@@ -263,7 +283,7 @@ optional arguments:
                         Existing path of assets
   --finalpath FINALPATH
                         New path for assets
-geeadd.py mover --assetpath "users/johndoe/myfolder/myponycollection" --destination "users/johndoe/myfolder/myotherponycollection"					
+geeadd.py mover --assetpath "users/johndoe/myfolder/myponycollection" --destination "users/johndoe/myfolder/myotherponycollection"
 ```
 
 ### Assets Copy
@@ -275,7 +295,7 @@ optional arguments:
   -h, --help         show this help message and exit
   --initial INITIAL  Existing path of assets
   --final FINAL      New path for assets
-geeadd.py mover --initial "users/johndoe/myfolder/myponycollection" --final "users/johndoe/myfolder/myotherponycollection"					
+geeadd.py mover --initial "users/johndoe/myfolder/myponycollection" --final "users/johndoe/myfolder/myotherponycollection"
 ```
 
 ### Assets Access
@@ -296,7 +316,7 @@ geeadd.py access --mode folder --asset "folder/collection/image" --user "john@do
 ```
 
 ### Set Collection Property
-This script is derived from the ee tool to set collection properties and will set overall properties for collection. 
+This script is derived from the ee tool to set collection properties and will set overall properties for collection.
 ```
 usage: geeadd.py collprop [-h] [--coll COLL] [--p P]
 

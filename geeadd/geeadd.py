@@ -18,6 +18,7 @@ from taskreport import genreport
 from acl_changer import access
 from ee_ls import lst
 from collsizes import collsize
+from ee_report import ee_report
 
 def cancel_all_running_tasks():
     logging.info('Attempting to cancel all running tasks')
@@ -28,7 +29,7 @@ def cancel_all_running_tasks():
 
 def cancel_all_running_tasks_from_parser(args):
     cancel_all_running_tasks()
-	
+
 def delete_collection_from_parser(args):
     delete(args.id)
 
@@ -39,6 +40,8 @@ def upload_from_parser(args):
            metadata_path=args.metadata,
            multipart_upload=args.large,
            nodata_value=args.nodata)
+def ee_report_from_parser(args):
+    ee_report(output=args.outfile)
 
 def taskquery_from_parser(args):
     taskquery(destination=args.destination)
@@ -71,7 +74,7 @@ def create_from_parser(args):
     typ=str(args.typ)
     ee_path=str(args.path)
     os.system("earthengine create "+typ+" "+ee_path)
-    
+
 def ee_user_from_parser(args):
     ee_authorization()
 def genreport_from_parser(args):
@@ -112,21 +115,25 @@ def main(args=None):
     optional_named.add_argument('-k', '--private-key', help='Google Earth Engine private key file.')
     optional_named.add_argument('-b', '--bucket', help='Google Cloud Storage bucket name.')
     parser_upload.set_defaults(func=upload_from_parser)
-    
+
     parser_lst = subparsers.add_parser('lst',help='List assets in a folder/collection or write as text file')
     parser_lst.add_argument('--location', help='This it the location of your folder/collection', required=True)
-    parser_lst.add_argument('--type', help='Whether you want the list to be printed or output as text', required=True)
+    parser_lst.add_argument('--type', help='Whether you want the list to be printed or output as text[print/report]', required=True)
     parser_lst.add_argument('--items', help="Number of items to list")
     parser_lst.add_argument('--folder',help="Folder location for report to be exported")
     parser_lst.set_defaults(func=lst_from_parser)
-    
+
+    parser_ee_report = subparsers.add_parser('ee_report',help='Prints a detailed report of all Earth Engine Assets includes Asset Type, Path,Number of Assets,size(MB),unit,owner,readers,writers')
+    parser_ee_report.add_argument('--outfile', help='This it the location of your report csv file ', required=True)
+    parser_ee_report.set_defaults(func=ee_report_from_parser)
+
     parser_collsize = subparsers.add_parser('collsize',help='Collects collection size in Human Readable form & Number of assets')
     parser_collsize.add_argument('--coll', help='Earth Engine Collection for which to get size properties', required=True)
     parser_collsize.set_defaults(func=collsize_from_parser)
-    
+
     parser_tasks=subparsers.add_parser('tasks',help='Queries currently running, enqued,failed')
     parser_tasks.set_defaults(func=tasks_from_parser)
-    
+
     parser_taskquery=subparsers.add_parser('taskquery',help='Queries currently running, enqued,failed ingestions and uploaded assets')
     parser_taskquery.add_argument('--destination',help='Full path to asset where you are uploading files')
     parser_taskquery.set_defaults(func=taskquery_from_parser)
@@ -135,11 +142,11 @@ def main(args=None):
     parser_genreport.add_argument('--r',help='Folder Path where the reports will be saved')
     parser_genreport.set_defaults(func=genreport_from_parser)
 
-   
+
     parser_delete = subparsers.add_parser('delete', help='Deletes collection and all items inside. Supports Unix-like wildcards.')
     parser_delete.add_argument('id', help='Full path to asset for deletion. Recursively removes all folders, collections and images.')
     parser_delete.set_defaults(func=delete_collection_from_parser)
-    
+
     parser_mover=subparsers.add_parser('mover',help='Moves all assets from one collection to another')
     parser_mover.add_argument('--assetpath',help='Existing path of assets')
     parser_mover.add_argument('--finalpath',help='New path for assets')
@@ -160,11 +167,11 @@ def main(args=None):
     parser_collprop.add_argument('--coll',help='Path of Image Collection')
     parser_collprop.add_argument('--p',help='"system:description=Description"/"system:provider_url=url"/"system:tags=tags"/"system:title=title')
     parser_collprop.set_defaults(func=collprop_from_parser)
-    
+
     parser_cleanout=subparsers.add_parser('cleanout',help='Clear folders with datasets from earlier downloaded')
     parser_cleanout.add_argument('--dirpath',help='Folder you want to delete after all processes have been completed')
     parser_cleanout.set_defaults(func=cleanout_from_parser)
-    
+
     parser_cancel = subparsers.add_parser('cancel', help='Cancel all running tasks')
     parser_cancel.set_defaults(func=cancel_all_running_tasks_from_parser)
 
