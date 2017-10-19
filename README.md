@@ -17,6 +17,7 @@ Google Earth Engine Batch Asset Manager with Addons is an extension of the one d
     * [Upload a directory with images and associate properties with each image:](#upload-a-directory-with-images-and-associate-properties-with-each-image)
 	* [Upload a directory with images with specific NoData value to a selected destination:](#upload-a-directory-with-images-with-specific-nodata-value-to-a-selected-destination)
 	* [Asset List](#asset-list)
+	* [Asset Size](#asset-size)
     * [Earth Engine Asset Report](#earth-engine-asset-report)
 	* [Task Query](#task-query)
 	* [Task Report](#task-report)
@@ -211,6 +212,17 @@ Required named arguments.:
 Optional named arguments:
   --items ITEMS        Number of items to list
   --output OUTPUT      Folder location for report to be exported
+```
+
+### Asset Size
+This tool allows you to query the size of any Earth Engine asset[Images, Image Collections, Tables and Folders] and prints out the number of assets and total asset size in non-byte encoding meaning KB, MB, GB, TB depending on size.
+
+```
+usage: geeadd assetsize [-h] --asset ASSET
+
+optional arguments:
+  -h, --help     show this help message and exit
+  --asset ASSET  Earth Engine Asset for which to get size properties
 ```
 
 ### Earth Engine Asset Report
