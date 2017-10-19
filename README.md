@@ -1,6 +1,6 @@
 # Google Earth Engine Batch Asset Manager with Addons
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1011115.svg)](https://doi.org/10.5281/zenodo.1011115)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1008819.svg)](https://doi.org/10.5281/zenodo.1008819)
 
 Google Earth Engine Batch Asset Manager with Addons is an extension of the one developed by Lukasz [here](https://github.com/tracek/gee_asset_manager) and additional tools were added to include functionality for moving assets, conversion of objects to fusion table, cleaning folders, querying tasks. The ambition is apart from helping user with batch actions on assets along with interacting and extending capabilities of existing GEE CLI. It is developed case by case basis to include more features in the future as it becomes available or as need arises. tab.
 
@@ -19,14 +19,12 @@ Google Earth Engine Batch Asset Manager with Addons is an extension of the one d
 	* [Asset List](#asset-list)
     * [Earth Engine Asset Report](#earth-engine-asset-report)
 	* [Task Query](#task-query)
-	* [Task Query during ingestion](#task-query-during-ingestion)
 	* [Task Report](#task-report)
     * [Delete a collection with content:](#delete-a-collection-with-content)
 	* [Assets Move](#assets-move)
 	* [Assets Copy](#assets-copy)
 	* [Assets Access](#assets-access)
 	* [Set Collection Property](#set-collection-property)
-	* [Cleanup Utility](#cleanup-utility)
 	* [Cancel all tasks](#cancel-all-tasks)
 
 ## Installation
@@ -59,7 +57,7 @@ usage: geeadd.py [-h]
 Google Earth Engine Batch Asset Manager with Addons
 
 positional arguments:
-  {ee_user,create,upload,lst,ee_report,collsize,tasks,taskquery,report,delete,mover,copy,access,collprop,cleanout,cancel}
+  {ee_user,create,upload,lst,ee_report,assetsize,tasks,taskreport,delete,mover,copy,access,collprop,cancel}
     ee_user             Allows you to associate/change GEE account to system
     create              Allows the user to create an asset collection or
                         folder in Google Earth Engine
@@ -69,12 +67,11 @@ positional arguments:
     ee_report           Prints a detailed report of all Earth Engine Assets
                         includes Asset Type, Path,Number of
                         Assets,size(MB),unit,owner,readers,writers
-    collsize            Collects collection size in Human Readable form &
-                        Number of assets
-    tasks               Queries currently running, enqued,failed
-    taskquery           Queries currently running, enqued,failed ingestions
-                        and uploaded assets
-    report              Create a report of all tasks and exports to a CSV file
+    assetsize           Prints collection size in Human Readable form & Number
+                        of assets
+    tasks               Queries current task status
+                        [completed,running,ready,failed,cancelled]
+    taskreport          Create a report of all tasks and exports to a CSV file
     delete              Deletes collection and all items inside. Supports
                         Unix-like wildcards.
     mover               Moves all assets from one collection to another
@@ -86,7 +83,6 @@ positional arguments:
                         "folder" --asset "users/john/doe" --user
                         "jimmy@doe.com:R"
     collprop            Sets Overall Properties for Image Collection
-    cleanout            Clear folders with datasets from earlier downloaded
     cancel              Cancel all running tasks
 
 optional arguments:
@@ -191,15 +187,22 @@ In this case we need to supply full path to the destination, which is helpful wh
 ### Asset List
 This tool is designed to either print or output asset lists within folders or collections using earthengine ls tool functions.
 ```
-usage: geeadd lst [-h] --location LOCATION --type TYPE [--items ITEMS]
+usage: geeadd.py lst [-h] --location LOCATION --typ TYP [--items ITEMS]
+                     [--output OUTPUT]
 
 optional arguments:
   -h, --help           show this help message and exit
+
+Required named arguments.:
   --location LOCATION  This it the location of your folder/collection
-  --type TYPE          Whether you want the list to be printed or output as
-                       text(print/report)
+  --typ TYP            Whether you want the list to be printed or output as
+                       text[print/report]
+
+Optional named arguments:
   --items ITEMS        Number of items to list
+  --output OUTPUT      Folder location for report to be exported
 ```
+
 ### Earth Engine Asset Report
 This tool recursively goes through all your assets(Includes Images, ImageCollection,Table,) and generates a report containing the following fields
 [Type,Asset Type, Path,Number of Assets,size(MB),unit,owner,readers,writers].
@@ -225,20 +228,6 @@ optional arguments:
 geeadd.py tasks
 ```
 
-### Task Query during ingestion
-This script can be used intermittently to look at running, failed and ready(waiting) tasks during ingestion. This script is a special case using query tasks only when uploading assets to collection by providing collection pathway to see how collection size increases.
-```
-usage: geeadd.py taskquery [-h] [--destination DESTINATION]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --destination DESTINATION
-                        Full path to asset where you are uploading files
-
-geeadd.py taskquery "users/johndoe/myfolder/myponycollection"
-```
-
-
 ### Task Report
 Sometimes it is important to generate a report based on all tasks that is running or has finished. Generated report includes taskId, data time, task status and type
 ```
@@ -247,10 +236,10 @@ usage: geeadd.py report [-h] [--r R] [--e E]
 optional arguments:
   -h, --help  show this help message and exit
   --r R       Path & CSV filename where the report will be saved
-  --e E       Path & CSV filename where the errorlog will be saved
 
 geeadd.py report --r "report.csv" --e "errorlog.csv"
 ```
+
 ### Delete a collection with content:
 
 The delete is recursive, meaning it will delete also all children assets: images, collections and folders. Use with caution!
@@ -327,19 +316,6 @@ optional arguments:
                tem:tags=tags"/"system:title=title
 ```
 
-
-### Cleanup Utility
-This script is used to clean folders once all processes have been completed. In short this is a function to clear folder on local machine.
-```
-usage: geeadd.py cleanout [-h] [--dirpath DIRPATH]
-
-optional arguments:
-  -h, --help         show this help message and exit
-  --dirpath DIRPATH  Folder you want to delete after all processes have been
-                     completed
-geeadd.py cleanout --dirpath "./folder"
-```
-
 ### Cancel all tasks
 This is a simpler tool, can be called directly from the earthengine cli as well
 ```
@@ -353,9 +329,11 @@ optional arguments:
 ```
 
 ### Changelog
+#### v0.2.0
+- Tool improvements and enhancements
+
 #### v0.1.9
-- Added Earth Engine Asset Report Tool
-- General improvements
+- New tool EE_Report was added
 
 #### v0.1.8
 - Fixed issues with install

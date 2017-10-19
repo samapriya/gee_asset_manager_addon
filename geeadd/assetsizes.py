@@ -1,10 +1,9 @@
-import ee
-import subprocess
-import csv
-import os
-import json
+import ee,subprocess,csv,os,json
+
 ##initialize earth engine
 ee.Initialize()
+
+#Create empty list for file size and asset number
 s=[]
 fsz=[]
 def assetsize(asset):
@@ -112,3 +111,5 @@ def assetsize(asset):
                 print(str(format(float(sz),'.2f'))+" KB")
                 print("Total Number of Assets "+str(sum(fsz)))
 
+if __name__ == '__main__':
+    assetsize(None)

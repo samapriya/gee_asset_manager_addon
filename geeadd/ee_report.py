@@ -49,9 +49,9 @@ def ee_report(output):
                 o=str(own).split('"owners": [')[1].split("]")[0].replace('"','')
                 r=str(own).split('"readers": [')[1].split("]")[0].replace('"','')
                 w=str(own).split('"writers": [')[1].split("]")[0].replace('"','')
-                print(o,r,w)
+                #print(o,r,w)
                 print("Processing Table "+str(tail))
-                ast=collc.size().getInfo()
+                ast="1"
                 size=collc.get('system:asset_size').getInfo()
                 sz=float(size)/1000000
                 unit="MB"
