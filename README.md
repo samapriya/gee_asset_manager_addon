@@ -241,13 +241,11 @@ geeadd.py tasks
 ### Task Report
 Sometimes it is important to generate a report based on all tasks that is running or has finished. Generated report includes taskId, data time, task status and type
 ```
-usage: geeadd.py report [-h] [--r R] [--e E]
+usage: geeadd taskreport [-h] [--r R]
 
 optional arguments:
   -h, --help  show this help message and exit
-  --r R       Path & CSV filename where the report will be saved
-
-geeadd.py report --r "report.csv" --e "errorlog.csv"
+  --r R       Folder Path where the reports will be saved
 ```
 
 ### Delete a collection with content:
