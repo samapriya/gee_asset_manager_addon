@@ -59,7 +59,7 @@ def assetsize(asset):
             sz=float(size)/1000
             print('Total size in KB = '+format(float(sz),'.2f'))
     elif header =="Folder":
-        b=subprocess.check_output("earthengine ls "+asset+" -l -r")
+        b=subprocess.check_output("earthengine ls "+asset+" -l -r",shell=True)
 
         try:
             for item in b.split('\n'):

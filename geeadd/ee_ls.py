@@ -8,7 +8,7 @@ ee.Initialize()
 
 def lst(location, typ, items=None,output=None):
     if items > 0 and typ =='print':
-        b=subprocess.check_output("earthengine ls "+location+" --max_items "+str(items)+" -l -r")
+        b=subprocess.check_output("earthengine ls "+location+" --max_items "+str(items)+" -l -r",shell=True)
         try:
             for item in b.split('\n'):
                 a=item.replace("[","").replace("]","").split()
@@ -36,7 +36,7 @@ def lst(location, typ, items=None,output=None):
         except Exception:
             return "worked"
     elif items is None and typ =='print':
-        b=subprocess.check_output("earthengine ls "+location+" -l -r")
+        b=subprocess.check_output("earthengine ls "+location+" -l -r",shell=True)
         try:
             for item in b.split('\n'):
                 a=item.replace("[","").replace("]","").split()
@@ -115,7 +115,7 @@ def lst(location, typ, items=None,output=None):
         with open(output,"wb") as csvfile:
             writer=csv.DictWriter(csvfile,fieldnames=["type", "path","No of Assets","size","unit"], delimiter=',')
             writer.writeheader()
-            b=subprocess.check_output("earthengine ls "+location+" --max_items "+str(items)+" -l -r")
+            b=subprocess.check_output("earthengine ls "+location+" --max_items "+str(items)+" -l -r",shell=True)
         try:
             for item in b.split('\n'):
                 a=item.replace("[","").replace("]","").split()

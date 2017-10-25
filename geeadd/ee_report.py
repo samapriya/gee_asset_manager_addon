@@ -5,8 +5,8 @@ def ee_report(output):
     with open(output,"wb") as csvfile:
         writer=csv.DictWriter(csvfile,fieldnames=["type", "path","No of Assets","size","unit","owner","readers","writers"], delimiter=',')
         writer.writeheader()
-    a=subprocess.check_output("earthengine ls")
-    b=subprocess.check_output("earthengine ls "+a+" -l -r")
+    a=subprocess.check_output("earthengine ls",shell=True)
+    b=subprocess.check_output("earthengine ls "+a+" -l -r",shell=True)
     try:
         for item in b.split('\n'):
             a=item.replace("[","").replace("]","").split()
@@ -14,7 +14,7 @@ def ee_report(output):
             tail=a[1]
             if header=="ImageCollection":
                 collc=ee.ImageCollection(tail)
-                own=json.dumps(json.loads(subprocess.check_output('earthengine acl get '+tail)), ensure_ascii=False)
+                own=json.dumps(json.loads(subprocess.check_output('earthengine acl get '+tail,shell=True)), ensure_ascii=False)
                 #print(own)
                 o=str(own).split('"owners": [')[1].split("]")[0].replace('"','')
                 r=str(own).split('"readers": [')[1].split("]")[0].replace('"','')
@@ -30,7 +30,7 @@ def ee_report(output):
                 csvfile.close()
             elif header=="Image":
                 collc=ee.Image(tail)
-                own=json.dumps(json.loads(subprocess.check_output('earthengine acl get '+tail)), ensure_ascii=False)
+                own=json.dumps(json.loads(subprocess.check_output('earthengine acl get '+tail,shell=True)), ensure_ascii=False)
                 o=str(own).split('"owners": [')[1].split("]")[0].replace('"','')
                 r=str(own).split('"readers": [')[1].split("]")[0].replace('"','')
                 w=str(own).split('"writers": [')[1].split("]")[0].replace('"','')
@@ -45,7 +45,7 @@ def ee_report(output):
                 csvfile.close()
             elif header=="Table":
                 collc=ee.FeatureCollection(tail)
-                own=json.dumps(json.loads(subprocess.check_output('earthengine acl get '+tail)), ensure_ascii=False)
+                own=json.dumps(json.loads(subprocess.check_output('earthengine acl get '+tail,shell=True)), ensure_ascii=False)
                 o=str(own).split('"owners": [')[1].split("]")[0].replace('"','')
                 r=str(own).split('"readers": [')[1].split("]")[0].replace('"','')
                 w=str(own).split('"writers": [')[1].split("]")[0].replace('"','')
