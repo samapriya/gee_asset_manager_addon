@@ -6,7 +6,7 @@ def ee_report(output):
         writer=csv.DictWriter(csvfile,fieldnames=["type", "path","No of Assets","size","unit","owner","readers","writers"], delimiter=',')
         writer.writeheader()
     a=subprocess.check_output("earthengine ls",shell=True)
-    b=subprocess.check_output("earthengine ls "+a+" -l -r",shell=True)
+    b=subprocess.check_output("earthengine ls "+'"'+a+'"'+" -l -r",shell=False)
     try:
         for item in b.split('\n'):
             a=item.replace("[","").replace("]","").split()
