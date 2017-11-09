@@ -100,7 +100,7 @@ def main(args=None):
     required_named.add_argument('--dest', help='Destination. Full path for upload to Google Earth Engine, e.g. users/pinkiepie/myponycollection', required=True)
     optional_named = parser_upload.add_argument_group('Optional named arguments')
     optional_named.add_argument('-m', '--metadata', help='Path to CSV with metadata.')
-    optional_named.add_argument('-mf','--manifest',help='Manifest type to be used,for planetscope use "planetscope"')
+    optional_named.add_argument('-mf','--manifest',help='Manifest type to be used,for PlanetScope Orthotile|"PSO" or PS4Band Surface Reflectance|"PS4B_SR"')
     optional_named.add_argument('--large', action='store_true', help='(Advanced) Use multipart upload. Might help if upload of large '
                                                                      'files is failing on some systems. Might cause other issues.')
     optional_named.add_argument('--nodata', type=int, help='The value to burn into the raster as NoData (missing data)')

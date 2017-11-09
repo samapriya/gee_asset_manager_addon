@@ -92,7 +92,7 @@ def upload(user, source_path, destination_path, manifest=None,metadata_path=None
 
             asset_request = __create_asset_request(asset_full_path, gsid, properties, nodata_value)
 
-            if manifest=="planetscope":
+            if manifest=="PSO":
                 with open(metadata_path,'r') as myfile:
                     head=myfile.readlines()[0:1]
                     delim=str(head).split(',')
@@ -110,6 +110,29 @@ def upload(user, source_path, destination_path, manifest=None,metadata_path=None
                         +' -p '+'"'+"(number)"+headlist[12]+'='+line['spcAngle']+'"'+' -p '+'"'+"(number)"+headlist[13]+'='+line['rsf']+'"'
                         +' -p '+'"'+"(number)"+headlist[14]+'='+line['refCoeffB1']+'"'+' -p '+'"'+"(number)"+headlist[15]+'='+line['refCoeffB2']+'"'
                         +' -p '+'"'+"(number)"+headlist[16]+'='+line['refCoeffB3']+'"'+' -p '+'"'+"(number)"+"refCoeffB4"+'='+line['refCoeffB4']+'"'+' --nodata_value=0')
+                    b=absolute+' '+gsid
+                    print(subprocess.check_output(b))##Executes the command line function to start ingestion process
+            elif manifest=="PS4B_SR":
+                with open(metadata_path,'r') as myfile:
+                    head=myfile.readlines()[0:1]
+                    delim=str(head).split(',')
+                    headlist=list(delim)
+                with open(metadata_path, 'r') as f:
+                    reader = csv.DictReader(f,delimiter=",")
+                    for i, line in enumerate(reader):
+                        absolute= ("earthengine upload image "+"--asset_id="+destination_path+'/'+filename+' '
+                        +' -p '+'"'+"(string)"+"id_no"+'='+filename+'"'+' -p '+'"'+"(string)"+headlist[1]+'='+line['platform']+'"'
+                        +' -p '+'"'+"(string)"+headlist[2]+'='+line['satType']+'"'+' -p '+'"'+"(string)"+headlist[3]+'='+line['satID']+'"'
+                        +' -p '+'"'+"(number)"+headlist[4]+'='+line['numBands']+'"'+' -p '+'"'+"(number)"+headlist[5]+'='+line['cloudcover']+'"'
+                        +' -p '+'"'+"(number)"+headlist[6]+'='+line['system:time_start']+'"'+' -p '+'"'+"(string)"+headlist[7]+'='+line['AtmModel']+'"'
+                        +' -p '+'"'+"(string)"+headlist[8]+'='+line['Aerosol_Model']+'"'+' -p '+'"'+"(string)"+headlist[9]+'='+line['AOT_Method']+'"'
+                        +' -p '+'"'+"(number)"+headlist[10]+'='+line['AOT_Std']+'"'+' -p '+'"'+"(number)"+headlist[11]+'='+line['AOT_Used']+'"'
+                        +' -p '+'"'+"(string)"+headlist[12]+'='+line['AOT_Status']+'"'+' -p '+'"'+"(number)"+headlist[13]+'='+line['AOT_MeanQual']+'"'
+                        +' -p '+'"'+"(number)"+headlist[14]+'='+line['LUTS_Version']+'"'+' -p '+'"'+"(number)"+headlist[15]+'='+line['SolarZenAngle']+'"'
+                        +' -p '+'"'+"(number)"+headlist[16]+'='+line['AOT_Coverage']+'"'+' -p '+'"'+"(string)"+headlist[17]+'='+line['AOT_Source']+'"'
+                        +' -p '+'"'+"(string)"+headlist[18]+'='+line['AtmCorr_Alg']+'"'+' -p '+'"'+"(number)"+headlist[19]+'='+line['incAngle']+'"'
+                        +' -p '+'"'+"(number)"+headlist[20]+'='+line['illAzAngle']+'"'+' -p '+'"'+"(number)"+headlist[21]+'='+line['illElvAngle']+'"'
+                        +' -p '+'"'+"(number)"+headlist[22]+'='+line['azAngle']+'"'+' -p '+'"'+"(number)"+'spcAngle'+'='+line['spcAngle']+'"'+' --nodata_value=0')
                     b=absolute+' '+gsid
                     print(subprocess.check_output(b))##Executes the command line function to start ingestion process
             else:
