@@ -349,6 +349,9 @@ optional arguments:
 ```
 
 ### Changelog
+#### v0.2.1
+- Added capability to handle PlanetScope 4Band Surface Reflectance Metadata Type
+- General Improvements
 #### v0.2.0
 - Tool improvements and enhancements
 
