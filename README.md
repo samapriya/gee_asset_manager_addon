@@ -350,9 +350,13 @@ optional arguments:
 ```
 
 ### Changelog
+#### v0.2.2
+- Added improvement to earthengine authorization
+
 #### v0.2.1
 - Added capability to handle PlanetScope 4Band Surface Reflectance Metadata Type
 - General Improvements
+
 #### v0.2.0
 - Tool improvements and enhancements
 
@@ -361,5 +365,5 @@ optional arguments:
 
 #### v0.1.8
 - Fixed issues with install
-- Dependcies now part of setup.py
+- Dependencies now part of setup.py
 - Updated Parser and general improvements

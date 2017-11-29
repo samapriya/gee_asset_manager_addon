@@ -1,11 +1,11 @@
 #! /usr/bin/env python
 
-import argparse
-import logging
+import argparse,clipboard,time
+import logging,getpass
 import os
 import ee
 import subprocess
-
+from ee import oauth
 from batch_copy import copy
 from batch_remover import delete
 from batch_uploader import upload
@@ -18,7 +18,7 @@ from acl_changer import access
 from ee_ls import lst
 from assetsizes import assetsize
 from ee_report import ee_report
-
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
 def cancel_all_running_tasks():
     logging.info('Attempting to cancel all running tasks')
     running_tasks = [task for task in ee.data.getTaskList() if task['state'] == 'RUNNING']
@@ -63,15 +63,24 @@ def tasks():
 def tasks_from_parser(args):
     tasks()
 
-def ee_authorization():
-    os.system("python ee_auth.py")
+def ee_auth_entry():
+    auth_url = ee.oauth.get_authorization_url()
+    clipboard.copy(auth_url)
+    print("Authentication link copied: Go to browser and click paste")
+    time.sleep(10)
+    print("Enter your GEE API Token")
+    password=str(getpass.getpass())
+    auth_code=str(password)
+    token = ee.oauth.request_token(auth_code)
+    ee.oauth.write_token(token)
+    print('\nSuccessfully saved authorization token.')
+def ee_user_from_parser(args):
+    ee_auth_entry()
 def create_from_parser(args):
     typ=str(args.typ)
     ee_path=str(args.path)
     os.system("earthengine create "+typ+" "+ee_path)
 
-def ee_user_from_parser(args):
-    ee_authorization()
 def genreport_from_parser(args):
     genreport(report=args.r)
 def collprop_from_parser(args):
