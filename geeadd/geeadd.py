@@ -175,7 +175,7 @@ def main(args=None):
 
     args = parser.parse_args()
 
-    ee.Initialize()
+    #ee.Initialize()
     args.func(args)
 
 if __name__ == '__main__':
