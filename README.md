@@ -352,7 +352,7 @@ optional arguments:
 
 ### Changelog
 
-### v0.2.3
+#### v0.2.3
 - Removing the initialization loop error
 
 #### v0.2.2
