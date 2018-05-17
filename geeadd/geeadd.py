@@ -6,6 +6,7 @@ import os
 import ee
 import subprocess
 from ee import oauth
+from hurry import filesize
 from batch_copy import copy
 from batch_remover import delete
 from batch_uploader import upload
@@ -39,6 +40,14 @@ def upload_from_parser(args):
            metadata_path=args.metadata,
            multipart_upload=args.large,
            nodata_value=args.nodata)
+def quota():
+    quota=ee.data.getAssetRootQuota(ee.data.getAssetRoots()[0]['id'])
+    print('')
+    print("Total Quota: "+filesize.size(quota['asset_size']['limit']))
+    print("Used Quota: "+filesize.size(quota['asset_size']['usage']))
+
+def quota_from_parser(args):
+    quota()
 def ee_report_from_parser(args):
     ee_report(output=args.outfile)
 
@@ -98,6 +107,9 @@ def main(args=None):
     parser_ee_user=subparsers.add_parser('ee_user',help='Allows you to associate/change GEE account to system')
     parser_ee_user.set_defaults(func=ee_user_from_parser)
 
+    parser_quota = subparsers.add_parser('quota', help='Print Earth Engine total quota and used quota')
+    parser_quota.set_defaults(func=quota_from_parser)
+    
     parser_create = subparsers.add_parser('create',help='Allows the user to create an asset collection or folder in Google Earth Engine')
     parser_create.add_argument('--typ', help='Specify type: collection or folder', required=True)
     parser_create.add_argument('--path', help='This is the path for the earth engine asset to be created full path is needsed eg: users/johndoe/collection', required=True)
