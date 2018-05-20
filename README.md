@@ -109,36 +109,33 @@ for images, which is covered in the next section:
 
 
 ```
-usage: geeadd upload [-h] --source SOURCE --dest DEST [-m METADATA]
-                     [-mf MANIFEST] [--large] [--nodata NODATA] [-u USER]
-                     [-s SERVICE_ACCOUNT] [-k PRIVATE_KEY] [-b BUCKET]
-
-optional arguments:
-  -h, --help            show this help message and exit
-
-Required named arguments.:
-  --source SOURCE       Path to the directory with images for upload.
-  --dest DEST           Destination. Full path for upload to Google Earth
-                        Engine, e.g. users/pinkiepie/myponycollection
-  -u USER, --user USER  Google account name (gmail address).
-
-Optional named arguments:
-  -m METADATA, --metadata METADATA
-                        Path to CSV with metadata.
-  -mf MANIFEST, --manifest MANIFEST
-                        Manifest type to be used,for planetscope use
-                        "planetscope"
-  --large               (Advanced) Use multipart upload. Might help if upload
-                        of large files is failing on some systems. Might cause
-                        other issues.
-  --nodata NODATA       The value to burn into the raster as NoData (missing
-                        data)
-  -s SERVICE_ACCOUNT, --service-account SERVICE_ACCOUNT
-                        Google Earth Engine service account.
-  -k PRIVATE_KEY, --private-key PRIVATE_KEY
-                        Google Earth Engine private key file.
-  -b BUCKET, --bucket BUCKET
-                        Google Cloud Storage bucket name.
+usage: geeadd.py upload [-h] --source SOURCE --dest DEST [-m METADATA]                    
+                        [--large] [--nodata NODATA] [--bands BANDS] [-u USER]             
+                        [-b BUCKET]                                                       
+                                                                                          
+optional arguments:                                                                       
+  -h, --help            show this help message and exit                                   
+                                                                                          
+Required named arguments.:                                                                
+  --source SOURCE       Path to the directory with images for upload.                     
+  --dest DEST           Destination. Full path for upload to Google Earth                 
+                        Engine, e.g. users/pinkiepie/myponycollection                     
+  -u USER, --user USER  Google account name (gmail address).                              
+                                                                                          
+Optional named arguments:                                                                 
+  -m METADATA, --metadata METADATA                                                        
+                        Path to CSV with metadata.                                        
+  --large               (Advanced) Use multipart upload. Might help if upload             
+                        of large files is failing on some systems. Might cause            
+                        other issues.                                                     
+  --nodata NODATA       The value to burn into the raster as NoData (missing              
+                        data)                                                             
+  --bands BANDS         Comma-separated list of names to use for the image                
+                        bands. Spacesor other special characters are not                  
+                        allowed.                                                          
+  -b BUCKET, --bucket BUCKET                                                              
+                        Google Cloud Storage bucket name.                                 
+                                                                                          
 ```
 
 ### Parsing metadata
@@ -177,7 +174,7 @@ This tool is designed to allow different users to change earth engine authentica
 ### Create
 This tool allows you to create a collection or folder in your earth engine root directory. The tool uses the system cli to achieve this and this has been included so as to reduce the need to switch between multiple tools and CLI.
 ```
-usage: ppipe.py create [-h] --typ TYP --path PATH
+usage: geeadd.py create [-h] --typ TYP --path PATH
 
 optional arguments:
   -h, --help   show this help message and exit
@@ -352,6 +349,9 @@ optional arguments:
 
 ### Changelog
 
+#### v0.2.5
+- Handles bandnames during upload thanks to Lukasz for original upload code
+- Removed manifest option, that can be handled by seperate tool (ppipe)
 #### v0.2.3
 - Removing the initialization loop error
 
