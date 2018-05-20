@@ -6,7 +6,7 @@ import logging
 import os
 import sys
 import time
-import subprocess
+
 if sys.version_info > (3, 0):
     from urllib.parse import unquote
 else:
@@ -20,11 +20,10 @@ from bs4 import BeautifulSoup
 
 from google.cloud import storage
 
-from metadata_loader import load_metadata_from_csv, validate_metadata_from_csv
+from .metadata_loader import load_metadata_from_csv, validate_metadata_from_csv
 
 
-def upload(user, source_path, destination_path, manifest=None,metadata_path=None, multipart_upload=False, nodata_value=None, bucket_name=None):
-
+def upload(user, source_path, destination_path, metadata_path=None, multipart_upload=False, nodata_value=None, bucket_name=None, band_names=[]):
     """
     Uploads content of a given directory to GEE. The function first uploads an asset to Google Cloud Storage (GCS)
     and then uses ee.data.startIngestion to put it into GEE, Due to GCS intermediate step, users is asked for
@@ -47,6 +46,7 @@ def upload(user, source_path, destination_path, manifest=None,metadata_path=None
 
     path = os.path.join(os.path.expanduser(source_path), '*.tif')
     all_images_paths = glob.glob(path)
+
     if len(all_images_paths) == 0:
         logging.error('%s does not contain any tif images.', path)
         sys.exit(1)
@@ -82,6 +82,7 @@ def upload(user, source_path, destination_path, manifest=None,metadata_path=None
             continue
 
         properties = metadata[filename] if metadata else None
+
         try:
             if user is not None:
                 gsid = __upload_file_gee(session=google_session,
@@ -90,63 +91,22 @@ def upload(user, source_path, destination_path, manifest=None,metadata_path=None
             else:
                 gsid = __upload_file_gcs(storage_client, bucket_name, image_path)
 
-            asset_request = __create_asset_request(asset_full_path, gsid, properties, nodata_value)
+            asset_request = __create_asset_request(asset_full_path, gsid, properties, nodata_value, band_names)
 
-            if manifest=="PSO":
-                with open(metadata_path,'r') as myfile:
-                    head=myfile.readlines()[0:1]
-                    delim=str(head).split(',')
-                    headlist=list(delim)
-                with open(metadata_path, 'r') as f:
-                    reader = csv.DictReader(f,delimiter=",")
-                    for i, line in enumerate(reader):
-                        absolute= ("earthengine upload image "+"--asset_id="+destination_path+'/'+filename+' '
-                        +' -p '+'"'+"(string)"+"id_no"+'='+filename+'"'+' -p '+'"'+"(number)"+headlist[1]+'='+line['system:time_start']+'"'
-                        +' -p '+'"'+"(string)"+headlist[2]+'='+line['platform']+'"'+' -p '+'"'+"(string)"+headlist[3]+'='+line['satType']+'"'
-                        +' -p '+'"'+"(string)"+headlist[4]+'='+line['satID']+'"'+' -p '+'"'+"(number)"+headlist[5]+'='+line['tileID']+'"'
-                        +' -p '+'"'+"(number)"+headlist[6]+'='+line['numBands']+'"'+' -p '+'"'+"(number)"+headlist[7]+'='+line['cloudcover']+'"'
-                        +' -p '+'"'+"(number)"+headlist[8]+'='+line['incAngle']+'"'+' -p '+'"'+"(number)"+headlist[9]+'='+line['illAzAngle']+'"'
-                        +' -p '+'"'+"(number)"+headlist[10]+'='+line['illElvAngle']+'"'+' -p '+'"'+"(number)"+headlist[11]+'='+line['azAngle']+'"'
-                        +' -p '+'"'+"(number)"+headlist[12]+'='+line['spcAngle']+'"'+' -p '+'"'+"(number)"+headlist[13]+'='+line['rsf']+'"'
-                        +' -p '+'"'+"(number)"+headlist[14]+'='+line['refCoeffB1']+'"'+' -p '+'"'+"(number)"+headlist[15]+'='+line['refCoeffB2']+'"'
-                        +' -p '+'"'+"(number)"+headlist[16]+'='+line['refCoeffB3']+'"'+' -p '+'"'+"(number)"+"refCoeffB4"+'='+line['refCoeffB4']+'"'+' --nodata_value=0')
-                    b=absolute+' '+gsid
-                    print(subprocess.check_output(b))##Executes the command line function to start ingestion process
-            elif manifest=="PS4B_SR":
-                with open(metadata_path,'r') as myfile:
-                    head=myfile.readlines()[0:1]
-                    delim=str(head).split(',')
-                    headlist=list(delim)
-                with open(metadata_path, 'r') as f:
-                    reader = csv.DictReader(f,delimiter=",")
-                    for i, line in enumerate(reader):
-                        absolute= ("earthengine upload image "+"--asset_id="+destination_path+'/'+filename+' '
-                        +' -p '+'"'+"(string)"+"id_no"+'='+filename+'"'+' -p '+'"'+"(string)"+headlist[1]+'='+line['platform']+'"'
-                        +' -p '+'"'+"(string)"+headlist[2]+'='+line['satType']+'"'+' -p '+'"'+"(string)"+headlist[3]+'='+line['satID']+'"'
-                        +' -p '+'"'+"(number)"+headlist[4]+'='+line['numBands']+'"'+' -p '+'"'+"(number)"+headlist[5]+'='+line['cloudcover']+'"'
-                        +' -p '+'"'+"(number)"+headlist[6]+'='+line['system:time_start']+'"'+' -p '+'"'+"(string)"+headlist[7]+'='+line['AtmModel']+'"'
-                        +' -p '+'"'+"(string)"+headlist[8]+'='+line['Aerosol_Model']+'"'+' -p '+'"'+"(string)"+headlist[9]+'='+line['AOT_Method']+'"'
-                        +' -p '+'"'+"(number)"+headlist[10]+'='+line['AOT_Std']+'"'+' -p '+'"'+"(number)"+headlist[11]+'='+line['AOT_Used']+'"'
-                        +' -p '+'"'+"(string)"+headlist[12]+'='+line['AOT_Status']+'"'+' -p '+'"'+"(number)"+headlist[13]+'='+line['AOT_MeanQual']+'"'
-                        +' -p '+'"'+"(number)"+headlist[14]+'='+line['LUTS_Version']+'"'+' -p '+'"'+"(number)"+headlist[15]+'='+line['SolarZenAngle']+'"'
-                        +' -p '+'"'+"(number)"+headlist[16]+'='+line['AOT_Coverage']+'"'+' -p '+'"'+"(string)"+headlist[17]+'='+line['AOT_Source']+'"'
-                        +' -p '+'"'+"(string)"+headlist[18]+'='+line['AtmCorr_Alg']+'"'+' -p '+'"'+"(number)"+headlist[19]+'='+line['incAngle']+'"'
-                        +' -p '+'"'+"(number)"+headlist[20]+'='+line['illAzAngle']+'"'+' -p '+'"'+"(number)"+headlist[21]+'='+line['illElvAngle']+'"'
-                        +' -p '+'"'+"(number)"+headlist[22]+'='+line['azAngle']+'"'+' -p '+'"'+"(number)"+'spcAngle'+'='+line['spcAngle']+'"'+' --nodata_value=0')
-                    b=absolute+' '+gsid
-                    print(subprocess.check_output(b))##Executes the command line function to start ingestion process
-            else:
-                task_id = __start_ingestion_task(asset_request)
-                submitted_tasks_id[task_id] = filename
-                __periodic_check(current_image=current_image_no, period=20, tasks=submitted_tasks_id, writer=failed_asset_writer)
+            task_id = __start_ingestion_task(asset_request)
+            submitted_tasks_id[task_id] = filename
+            __periodic_check(current_image=current_image_no, period=20, tasks=submitted_tasks_id, writer=failed_asset_writer)
         except Exception as e:
             logging.exception('Upload of %s has failed.', filename)
             failed_asset_writer.writerow([filename, 0, str(e)])
 
-        __check_for_failed_tasks_and_report(tasks=submitted_tasks_id, writer=failed_asset_writer)
-        failed_asset_writer.close()
+    __check_for_failed_tasks_and_report(tasks=submitted_tasks_id, writer=failed_asset_writer)
+    failed_asset_writer.close()
 
-def __create_asset_request(asset_full_path, gsid, properties, nodata_value):
+def __create_asset_request(asset_full_path, gsid, properties, nodata_value, band_names):
+    if band_names:
+        band_names = [{'id': name} for name in band_names]
+
     return {"id": asset_full_path,
         "tilesets": [
             {"sources": [
@@ -155,7 +115,7 @@ def __create_asset_request(asset_full_path, gsid, properties, nodata_value):
                  }
             ]}
         ],
-        "bands": [],
+        "bands": band_names,
         "properties": properties,
         "missingData": {"value": nodata_value}
     }
@@ -268,7 +228,6 @@ def __upload_file_gee(session, file_path, use_multipart):
     with open(file_path, 'rb') as f:
         upload_url = __get_upload_url(session)
 
-
         if use_multipart:
             form = encoder.MultipartEncoder({
                 "documents": (file_path, f, "application/octet-stream"),
@@ -281,7 +240,6 @@ def __upload_file_gee(session, file_path, use_multipart):
             resp = session.post(upload_url, files=files)
 
         gsid = resp.json()[0]
-        #print('GSID',gsid)
 
         return gsid
 
