@@ -39,7 +39,23 @@ def upload_from_parser(args):
            destination_path=args.dest,
            metadata_path=args.metadata,
            multipart_upload=args.large,
-           nodata_value=args.nodata)
+           nodata_value=args.nodata,
+           bucket_name=args.bucket,
+           band_names=args.bands)
+
+
+def _comma_separated_strings(string):
+  """Parses an input consisting of comma-separated strings.
+     Slightly modified version of: https://pypkg.com/pypi/earthengine-api/f/ee/cli/commands.py
+  """
+  error_msg = 'Argument should be a comma-separated list of alphanumeric strings (no spaces or other' \
+              'special characters): {}'
+  values = string.split(',')
+  for name in values:
+      if not name.isalnum():
+          raise argparse.ArgumentTypeError(error_msg.format(string))
+  return values
+
 def quota():
     quota=ee.data.getAssetRootQuota(ee.data.getAssetRoots()[0]['id'])
     print('')
@@ -102,6 +118,8 @@ def lst_from_parser(args):
 def main(args=None):
     setup_logging()
     parser = argparse.ArgumentParser(description='Google Earth Engine Batch Asset Manager with Addons')
+    parser.add_argument('-s', '--service-account', help='Google Earth Engine service account.', required=False)
+    parser.add_argument('-k', '--private-key', help='Google Earth Engine private key file.', required=False)
 
     subparsers = parser.add_subparsers()
     parser_ee_user=subparsers.add_parser('ee_user',help='Allows you to associate/change GEE account to system')
@@ -121,15 +139,15 @@ def main(args=None):
     required_named.add_argument('--dest', help='Destination. Full path for upload to Google Earth Engine, e.g. users/pinkiepie/myponycollection', required=True)
     optional_named = parser_upload.add_argument_group('Optional named arguments')
     optional_named.add_argument('-m', '--metadata', help='Path to CSV with metadata.')
-    optional_named.add_argument('-mf','--manifest',help='Manifest type to be used,for PlanetScope Orthotile|"PSO" or PS4Band Surface Reflectance|"PS4B_SR"')
     optional_named.add_argument('--large', action='store_true', help='(Advanced) Use multipart upload. Might help if upload of large '
                                                                      'files is failing on some systems. Might cause other issues.')
     optional_named.add_argument('--nodata', type=int, help='The value to burn into the raster as NoData (missing data)')
+    optional_named.add_argument('--bands', type=_comma_separated_strings, help='Comma-separated list of names to use for the image bands. Spaces'
+                                                                               'or other special characters are not allowed.')
 
     required_named.add_argument('-u', '--user', help='Google account name (gmail address).')
-    optional_named.add_argument('-s', '--service-account', help='Google Earth Engine service account.')
-    optional_named.add_argument('-k', '--private-key', help='Google Earth Engine private key file.')
     optional_named.add_argument('-b', '--bucket', help='Google Cloud Storage bucket name.')
+
     parser_upload.set_defaults(func=upload_from_parser)
 
     parser_lst = subparsers.add_parser('lst',help='List assets in a folder/collection or write as text file')

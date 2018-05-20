@@ -20,7 +20,7 @@ from bs4 import BeautifulSoup
 
 from google.cloud import storage
 
-from .metadata_loader import load_metadata_from_csv, validate_metadata_from_csv
+from metadata_loader import load_metadata_from_csv, validate_metadata_from_csv
 
 
 def upload(user, source_path, destination_path, metadata_path=None, multipart_upload=False, nodata_value=None, bucket_name=None, band_names=[]):

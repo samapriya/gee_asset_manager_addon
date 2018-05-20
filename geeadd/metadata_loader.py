@@ -1,9 +1,8 @@
+import ast
+import collections
 import csv
 import logging
 import re
-import collections
-import ast
-
 
 ValidationResult = collections.namedtuple('ValidationResult', ['success', 'keys'])
 
@@ -69,28 +68,20 @@ def load_metadata_from_csv(path):
         metadata = {}
 
         for row in reader:
-            if properties_allowed(properties=row, validator=allowed_property_value):
-                values = []
-                for item in row:
-                    try:
-                        values.append(ast.literal_eval(item))
-                    except (ValueError, SyntaxError) as e:
-                        values.append(item)
-                metadata[row[0]] = dict(zip(header, values))
+#            if properties_allowed(properties=row, validator=allowed_property_value):
+            values = []
+            for item in row:
+                try:
+                    values.append(ast.literal_eval(item))
+                except (ValueError, SyntaxError) as e:
+                    values.append(item)
+            metadata[row[0]] = dict(zip(header, values))
 
         return metadata
 
 
 def properties_allowed(properties, validator):
     return all(validator(prop) for prop in properties)
-
-
-def allowed_property_value(prop):
-    if prop:
-        return True
-    else:
-        logging.warning('Illegal property: empty string or None')
-        return False
 
 
 def allowed_property_key(prop):
@@ -108,9 +99,3 @@ def allowed_property_key(prop):
                         'system:tags, system:time_end, system:time_start, system:title] are allowed; other property '
                         'keys must contain only letters, digits and underscores.')
         return False
-
-
-def is_legal_gee_metadata(row):
-    key = row[0]
-    values = row[1:]
-    re.match("^[A-Za-z0-9_]+$", ' asss_sasa')
