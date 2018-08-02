@@ -1,5 +1,6 @@
 # Google Earth Engine Batch Asset Manager with Addons
 
+[![PyPI version](https://badge.fury.io/py/geeadd.svg)](https://badge.fury.io/py/geeadd)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1194308.svg)](https://doi.org/10.5281/zenodo.1194308)
 [![Say Thanks!](https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg)](https://saythanks.io/to/samapriya)
 
