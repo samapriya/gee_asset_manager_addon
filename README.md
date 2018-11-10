@@ -385,9 +385,14 @@ optional arguments:
 
 ### Changelog
 
+#### v0.2.6
+- Major improvement to move, batch copy, and task reporting
+- Major improvements to access tool to allow users read/write permission to entire Folder/collection.
+
 #### v0.2.5
 - Handles bandnames during upload thanks to Lukasz for original upload code
 - Removed manifest option, that can be handled by seperate tool (ppipe)
+
 #### v0.2.3
 - Removing the initialization loop error
 
