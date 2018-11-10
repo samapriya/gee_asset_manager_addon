@@ -1,6 +1,5 @@
 # Google Earth Engine Batch Asset Manager with Addons
 
-[![PyPI version](https://badge.fury.io/py/geeadd.svg)](https://badge.fury.io/py/geeadd)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1194308.svg)](https://doi.org/10.5281/zenodo.1194308)
 [![Say Thanks!](https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg)](https://saythanks.io/to/samapriya)
 
@@ -12,13 +11,15 @@ Google Earth Engine Batch Asset Manager with Addons is an extension of the one d
 * [Installation](#installation)
 * [Getting started](#getting-started)
     * [Batch uploader](#batch-uploader)
+	* [Batch Table uploader](#batch-table-uploader)
     * [Parsing metadata](#parsing-metadata)
 * [Usage examples](#usage-examples)
 	* [EE User](#ee-user)
 	* [Create](#create)
     * [Upload a directory with images and associate properties with each image:](#upload-a-directory-with-images-and-associate-properties-with-each-image)
 	* [Upload a directory with images with specific NoData value to a selected destination:](#upload-a-directory-with-images-with-specific-nodata-value-to-a-selected-destination)
-	* [Asset List](#asset-list)
+	* [gee table upload](#gee-table-upload)
+    * [Asset List](#asset-list)
 	* [Asset Size](#asset-size)
     * [Earth Engine Asset Report](#earth-engine-asset-report)
 	* [Task Query](#task-query)
@@ -53,19 +54,21 @@ sudo python setup.py develop or sudo python setup.py install
 ## Getting started
 
 As usual, to print help:
-```
-usage: geeadd.py [-h]
-                 {ee_user,create,upload,lst,ee_report,collsize,tasks,taskquery,report,delete,mover,copy,access,collprop,cleanout,cancel}
-                 ...
 
+```
 Google Earth Engine Batch Asset Manager with Addons
 
 positional arguments:
-  {ee_user,create,upload,lst,ee_report,assetsize,tasks,taskreport,delete,mover,copy,access,collprop,cancel}
+  {ee_user,quota,create,zipshape,upload,tabup,lst,ee_report,assetsize,tasks,taskreport,delete,mover,copy,access,delete_metadata,cancel}
     ee_user             Allows you to associate/change GEE account to system
+    quota               Print Earth Engine total quota and used quota
     create              Allows the user to create an asset collection or
                         folder in Google Earth Engine
-    upload              Batch Asset Uploader.
+    zipshape            Zips all shapefiles and subsidary files into
+                        individual zip files
+    upload              Batch Asset Uploader upload images to collection
+    tabup               Batch Table Uploader upload the shapefiles you zipped
+                        earlier.
     lst                 List assets in a folder/collection or write as text
                         file
     ee_report           Prints a detailed report of all Earth Engine Assets
@@ -82,16 +85,17 @@ positional arguments:
     copy                Copies all assets from one collection to another:
                         Including copying from other users if you have read
                         permission to their assets
-    access              Sets Permissions for Images, Collection or all assets
-                        in EE Folder Example: python ee_permissions.py --mode
-                        "folder" --asset "users/john/doe" --user
-                        "jimmy@doe.com:R"
-    collprop            Sets Overall Properties for Image Collection
+    access              Sets Permissions for items in folder
+    delete_metadata     Use with caution: delete any metadata from collection
+                        or image
     cancel              Cancel all running tasks
 
 optional arguments:
   -h, --help            show this help message and exit
-
+  -s SERVICE_ACCOUNT, --service-account SERVICE_ACCOUNT
+                        Google Earth Engine service account.
+  -k PRIVATE_KEY, --private-key PRIVATE_KEY
+                        Google Earth Engine private key file.
 ```
 
 To obtain help for a specific functionality, simply call it with _help_
@@ -110,34 +114,52 @@ for images, which is covered in the next section:
 
 
 ```
-usage: geeadd.py upload [-h] --source SOURCE --dest DEST [-m METADATA]                    
-                        [--large] [--nodata NODATA] [--bands BANDS] [-u USER]             
-                        [-b BUCKET]                                                       
-                                                                                          
-optional arguments:                                                                       
-  -h, --help            show this help message and exit                                   
-                                                                                          
-Required named arguments.:                                                                
-  --source SOURCE       Path to the directory with images for upload.                     
-  --dest DEST           Destination. Full path for upload to Google Earth                 
-                        Engine, e.g. users/pinkiepie/myponycollection                     
-  -u USER, --user USER  Google account name (gmail address).                              
-                                                                                          
-Optional named arguments:                                                                 
-  -m METADATA, --metadata METADATA                                                        
-                        Path to CSV with metadata.                                        
-  --large               (Advanced) Use multipart upload. Might help if upload             
-                        of large files is failing on some systems. Might cause            
-                        other issues.                                                     
-  --nodata NODATA       The value to burn into the raster as NoData (missing              
-                        data)                                                             
-  --bands BANDS         Comma-separated list of names to use for the image                
-                        bands. Spacesor other special characters are not                  
-                        allowed.                                                          
-  -b BUCKET, --bucket BUCKET                                                              
-                        Google Cloud Storage bucket name.                                 
-                                                                                          
+usage: geeadd.py upload [-h] --source SOURCE --dest DEST [-m METADATA]
+                        [--large] [--nodata NODATA] [--bands BANDS] [-u USER]
+                        [-b BUCKET]
+
+optional arguments:
+  -h, --help            show this help message and exit
+
+Required named arguments.:
+  --source SOURCE       Path to the directory with images for upload.
+  --dest DEST           Destination. Full path for upload to Google Earth
+                        Engine, e.g. users/pinkiepie/myponycollection
+  -u USER, --user USER  Google account name (gmail address).
+
+Optional named arguments:
+  -m METADATA, --metadata METADATA
+                        Path to CSV with metadata.
+  --large               (Advanced) Use multipart upload. Might help if upload
+                        of large files is failing on some systems. Might cause
+                        other issues.
+  --nodata NODATA       The value to burn into the raster as NoData (missing
+                        data)
+  --bands BANDS         Comma-separated list of names to use for the image
+                        bands. Spacesor other special characters are not
+                        allowed.
+  -b BUCKET, --bucket BUCKET
+                        Google Cloud Storage bucket name.
+
 ```
+
+## Batch Table uploader
+The script creates a Folder from zipped shapefiles in your local directory. By default, the table name is the same as the name of the zipped file in your local
+directory. This is a modified version of the upload tool for image uploading and taking fewer inputs.
+
+```
+usage: geeadd tabup [-h] --source SOURCE --dest DEST [-u USER]
+
+optional arguments:
+  -h, --help            show this help message and exit
+
+Required named arguments.:
+  --source SOURCE       Path to the directory with zipped folder for upload.
+  --dest DEST           Destination. Full path for upload to Google Earth
+                        Engine, e.g. users/pinkiepie/myponycollection
+  -u USER, --user USER  Google account name (gmail address).
+```
+
 
 ### Parsing metadata
 By metadata we understand here the properties associated with each image. Thanks to these, GEE user can easily filter collection based on specified criteria. The file with metadata should be organised as follows:
@@ -194,6 +216,22 @@ The script will prompt the user for Google account password. The program will al
 geeadd upload -u johndoe@gmail.com --source path_to_directory_with_tif --dest users/johndoe/myfolder/myponycollection --nodata 222
 ```
 In this case we need to supply full path to the destination, which is helpful when we upload to a shared folder. In the provided example we also burn value 222 into all rasters for missing data (NoData).
+
+### gee table upload
+This tool allows you to batch download tables/shapefiles to a folder. It uses a modified version of the image upload and a wrapper around the earthengine upload cli to achieve this while creating folders if they don't exist and reporting on assets and checking on uploads. This only requires a source, destination and your ee authenticated email address.
+
+```
+usage: geeadd tabup [-h] --source SOURCE --dest DEST [-u USER]
+
+optional arguments:
+  -h, --help            show this help message and exit
+
+Required named arguments.:
+  --source SOURCE       Path to the directory with zipped folder for upload.
+  --dest DEST           Destination. Full path for upload to Google Earth
+                        Engine, e.g. users/pinkiepie/myponycollection
+  -u USER, --user USER  Google account name (gmail address).
+```
 
 ### Asset List
 This tool is designed to either print or output asset lists within folders or collections using earthengine ls tool functions.
@@ -310,18 +348,15 @@ geeadd.py mover --initial "users/johndoe/myfolder/myponycollection" --final "use
 ### Assets Access
 This tool allows you to set asset acess for either folder , collection or image recursively meaning you can add collection access properties for multiple assets at the same time.
 ```
-usage: geeadd access [-h] --mode MODE --asset ASSET --user USER
+usage: geeadd.py access [-h] --asset ASSET --user USER --role ROLE
 
 optional arguments:
   -h, --help     show this help message and exit
-  --mode MODE    This lets you select if you want to change permission or
-                 folder/collection/image
   --asset ASSET  This is the path to the earth engine asset whose permission
                  you are changing folder/collection/image
-  --user USER    This is the email address to whom you want to give read or
-                 write permission Usage: "john@doe.com:R" or "john@doe.com:W"
-                 R/W refers to read or write permission
-geeadd.py access --mode folder --asset "folder/collection/image" --user "john@doe.com:R"
+  --user USER    Full email address of the user, try using "AllUsers" to make
+                 it public
+  --role ROLE    Choose between reader, writer or delete
 ```
 
 ### Set Collection Property

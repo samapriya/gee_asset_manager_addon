@@ -5,21 +5,33 @@ import logging,getpass
 import os
 import ee
 import subprocess
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
 from ee import oauth
-from hurry import filesize
 from batch_copy import copy
 from batch_remover import delete
 from batch_uploader import upload
 from config import setup_logging
 from batch_mover import mover
 from cleanup import cleanout
-from collectionprop import collprop
-from taskreport import genreport
+from tabup import tabup
+from taskrep import genreport
 from acl_changer import access
 from ee_ls import lst
 from assetsizes import assetsize
 from ee_report import ee_report
-os.chdir(os.path.dirname(os.path.realpath(__file__)))
+from ee_del_meta import delprop
+from zipfiles import zipshape
+
+
+suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
+def humansize(nbytes):
+    i = 0
+    while nbytes >= 1024 and i < len(suffixes)-1:
+        nbytes /= 1024.
+        i += 1
+    f = ('%.2f' % nbytes).rstrip('0').rstrip('.')
+    return '%s %s' % (f, suffixes[i])
+
 def cancel_all_running_tasks():
     logging.info('Attempting to cancel all running tasks')
     running_tasks = [task for task in ee.data.getTaskList() if task['state'] == 'RUNNING']
@@ -33,6 +45,9 @@ def cancel_all_running_tasks_from_parser(args):
 def delete_collection_from_parser(args):
     delete(args.id)
 
+def zipshape_from_parser(args):
+    zipshape(directory=args.input,export=args.output)
+
 def upload_from_parser(args):
     upload(user=args.user,
            source_path=args.source,
@@ -42,7 +57,10 @@ def upload_from_parser(args):
            nodata_value=args.nodata,
            bucket_name=args.bucket,
            band_names=args.bands)
-
+def tabup_from_parser(args):
+    tabup(user=args.user,
+           source_path=args.source,
+           destination_path=args.dest)
 
 def _comma_separated_strings(string):
   """Parses an input consisting of comma-separated strings.
@@ -59,32 +77,35 @@ def _comma_separated_strings(string):
 def quota():
     quota=ee.data.getAssetRootQuota(ee.data.getAssetRoots()[0]['id'])
     print('')
-    print("Total Quota: "+filesize.size(quota['asset_size']['limit']))
-    print("Used Quota: "+filesize.size(quota['asset_size']['usage']))
+    print("Total Quota: "+str(humansize(quota['asset_size']['limit'])))
+    print("Used Quota: "+str(humansize(quota['asset_size']['usage'])))
 
 def quota_from_parser(args):
     quota()
+
 def ee_report_from_parser(args):
     ee_report(output=args.outfile)
 
 def mover_from_parser(args):
-	mover(assetpath=args.assetpath,destinationpath=args.finalpath)
+	mover(collection_path=args.assetpath,final_path=args.finalpath)
 def copy_from_parser(args):
-	copy(initial=args.initial,final=args.final)
+	copy(collection_path=args.initial,final_path=args.final)
 def access_from_parser(args):
-	access(mode=args.mode,asset=args.asset,user=args.user)
+	access(collection_path=args.asset,user=args.user,role=args.role)
+def delete_metadata_from_parser(args):
+    delprop(collection_path=args.asset,property=args.property)
+
 def tasks():
-    tasklist=subprocess.check_output("earthengine task list")
-    taskcompleted=tasklist.count("COMPLETED")
-    taskready=tasklist.count("READY")
-    taskrunning=tasklist.count("RUNNING")
-    taskfailed=tasklist.count("FAILED")
-    taskcancelled=tasklist.count("CANCELLED")
-    print("Completed Tasks:",taskcompleted)
-    print("Running Tasks:",taskrunning)
-    print("Ready Tasks:",taskready)
-    print("Failed Tasks:",taskfailed)
-    print("Cancelled Tasks:",taskcancelled)
+    statuses=ee.data.getTaskList()
+    st=[]
+    for status in statuses:
+        st.append(status['state'])
+    print("Tasks Running: "+str(st.count('RUNNING')))
+    print("Tasks Ready: "+str(st.count('READY')))
+    print("Tasks Completed: "+str(st.count('COMPLETED')))
+    print("Tasks Failed: "+str(st.count('FAILED')))
+    print("Tasks Cancelled: "+str(st.count('CANCELLED')))
+
 def tasks_from_parser(args):
     tasks()
 
@@ -108,8 +129,6 @@ def create_from_parser(args):
 
 def genreport_from_parser(args):
     genreport(report=args.r)
-def collprop_from_parser(args):
-    collprop(imcoll=args.coll,prop=args.p)
 def assetsize_from_parser(args):
     assetsize(asset=args.asset)
 def lst_from_parser(args):
@@ -127,13 +146,19 @@ def main(args=None):
 
     parser_quota = subparsers.add_parser('quota', help='Print Earth Engine total quota and used quota')
     parser_quota.set_defaults(func=quota_from_parser)
-    
+
     parser_create = subparsers.add_parser('create',help='Allows the user to create an asset collection or folder in Google Earth Engine')
     parser_create.add_argument('--typ', help='Specify type: collection or folder', required=True)
     parser_create.add_argument('--path', help='This is the path for the earth engine asset to be created full path is needsed eg: users/johndoe/collection', required=True)
     parser_create.set_defaults(func=create_from_parser)
 
-    parser_upload = subparsers.add_parser('upload', help='Batch Asset Uploader.')
+    parser_zipshape = subparsers.add_parser('zipshape', help='Zips all shapefiles and subsidary files into individual zip files')
+    required_named = parser_zipshape.add_argument_group('Required named arguments.')
+    required_named.add_argument('--input', help='Path to the input directory with all shape files', required=True)
+    required_named.add_argument('--output', help='Destination folder Full path where shp, shx, prj and dbf files if present in input will be zipped and stored', required=True)
+    parser_zipshape.set_defaults(func=zipshape_from_parser)
+
+    parser_upload = subparsers.add_parser('upload', help='Batch Asset Uploader upload images to collection')
     required_named = parser_upload.add_argument_group('Required named arguments.')
     required_named.add_argument('--source', help='Path to the directory with images for upload.', required=True)
     required_named.add_argument('--dest', help='Destination. Full path for upload to Google Earth Engine, e.g. users/pinkiepie/myponycollection', required=True)
@@ -149,6 +174,13 @@ def main(args=None):
     optional_named.add_argument('-b', '--bucket', help='Google Cloud Storage bucket name.')
 
     parser_upload.set_defaults(func=upload_from_parser)
+
+    parser_tabup = subparsers.add_parser('tabup', help='Batch Table Uploader upload the shapefiles you zipped earlier.')
+    required_named = parser_tabup.add_argument_group('Required named arguments.')
+    required_named.add_argument('--source', help='Path to the directory with zipped folder for upload.', required=True)
+    required_named.add_argument('--dest', help='Destination. Full path for upload to Google Earth Engine, e.g. users/pinkiepie/myponycollection', required=True)
+    required_named.add_argument('-u', '--user', help='Google account name (gmail address).')
+    parser_tabup.set_defaults(func=tabup_from_parser)
 
     parser_lst = subparsers.add_parser('lst',help='List assets in a folder/collection or write as text file')
     required_named = parser_lst.add_argument_group('Required named arguments.')
@@ -171,7 +203,7 @@ def main(args=None):
     parser_tasks.set_defaults(func=tasks_from_parser)
 
     parser_genreport=subparsers.add_parser('taskreport',help='Create a report of all tasks and exports to a CSV file')
-    parser_genreport.add_argument('--r',help='Folder Path where the reports will be saved')
+    parser_genreport.add_argument('--r',help='Path to csv report file')
     parser_genreport.set_defaults(func=genreport_from_parser)
 
 
@@ -189,16 +221,16 @@ def main(args=None):
     parser_copy.add_argument('--final',help='New path for assets')
     parser_copy.set_defaults(func=copy_from_parser)
 
-    parser_access = subparsers.add_parser('access',help='Sets Permissions for Images, Collection or all assets in EE Folder Example: python ee_permissions.py --mode "folder" --asset "users/john/doe" --user "jimmy@doe.com:R"')
-    parser_access.add_argument('--mode', help='This lets you select if you want to change permission or folder/collection/image', required=True)
+    parser_access = subparsers.add_parser('access',help='Sets Permissions for items in folder')
     parser_access.add_argument('--asset', help='This is the path to the earth engine asset whose permission you are changing folder/collection/image', required=True)
-    parser_access.add_argument('--user', help="""This is the email address to whom you want to give read or write permission Usage: "john@doe.com:R" or "john@doe.com:W" R/W refers to read or write permission""", required=True, default=False)
+    parser_access.add_argument('--user', help='Full email address of the user, try using "AllUsers" to make it public', required=True, default=False)
+    parser_access.add_argument('--role', help='Choose between reader, writer or delete', required=True)
     parser_access.set_defaults(func=access_from_parser)
 
-    parser_collprop=subparsers.add_parser('collprop',help='Sets Overall Properties for Image Collection')
-    parser_collprop.add_argument('--coll',help='Path of Image Collection')
-    parser_collprop.add_argument('--p',help='"system:description=Description"/"system:provider_url=url"/"system:tags=tags"/"system:title=title')
-    parser_collprop.set_defaults(func=collprop_from_parser)
+    parser_delete_metadata = subparsers.add_parser('delete_metadata',help='Use with caution: delete any metadata from collection or image')
+    parser_delete_metadata.add_argument('--asset', help='This is the path to the earth engine asset whose permission you are changing collection/image', required=True)
+    parser_delete_metadata.add_argument('--property', help='Metadata name that you want to delete', required=True, default=False)
+    parser_delete_metadata.set_defaults(func=delete_metadata_from_parser)
 
     parser_cancel = subparsers.add_parser('cancel', help='Cancel all running tasks')
     parser_cancel.set_defaults(func=cancel_all_running_tasks_from_parser)

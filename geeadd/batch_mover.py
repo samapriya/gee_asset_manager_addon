@@ -1,26 +1,19 @@
-import fnmatch
-import logging
-import sys
-import fnmatch
-import logging
-import sys
+from __future__ import print_function
 import ee
-import subprocess
-import string
 import os
-import ee
+ee.Initialize()
 
-def mover(assetpath,destinationpath):
-	for line in subprocess.check_output("earthengine ls "+assetpath).split('\n'):
-                try:
-                    src= line
-                    dest=line.replace(assetpath,destinationpath)
-                    com=(str('earthengine mv ')+str(src)+' '+str(dest))
-                    process = subprocess.call(com)
-                except Exception:
-                        print(com)
-                        with open(errorlogmove.csv,'a') as csvfile:
-                                writer=csv.writer(csvfile,delimiter=',')
-                                writer.writerow([com])
-                                csvfile.close()
-                print("Assets Move Completed")
+def mover(collection_path,final_path):
+    assets_list = ee.data.getList(params={'id': collection_path})
+    assets_names = [os.path.basename(asset['id']) for asset in assets_list]
+    print('Moving a total of '+str(len(assets_names))+'.....')
+    for count,items in enumerate(assets_names):
+        print ('Moving '+str(count+1)+' of '+str(len(assets_names)), end='\r')
+        init=collection_path+'/'+items
+        final=final_path+'/'+items
+        try:
+            ee.data.renameAsset(init, final)
+        except Exception as e:
+            pass
+#batchcopy(collection_path='users/samapriya/bl',final_path='users/samapriya/b2')
+

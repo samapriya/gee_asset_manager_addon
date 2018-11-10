@@ -1,0 +1,24 @@
+2018-11-07 11:35:59,519 :: root :: ERROR :: Ingestion of image PS_UNMX_Grid_1_2018_05_01 has failed with message Internal error.
+2018-11-07 12:13:55,716 :: root :: ERROR :: Upload of PS_UNMX_Grid_4_2017_07_01 has failed.
+Traceback (most recent call last):
+  File "C:\Users\samapriya\Box Sync\IUB\Pycodes\Applications and Tools\Github_Main_Tools\geeadd_main\geeadd_2.6\geeadd\batch_uploader.py", line 94, in upload
+    use_multipart=multipart_upload)
+  File "C:\Python27\ArcGIS10.6\lib\site-packages\retrying.py", line 49, in wrapped_f
+    return Retrying(*dargs, **dkw).call(f, *args, **kw)
+  File "C:\Python27\ArcGIS10.6\lib\site-packages\retrying.py", line 206, in call
+    return attempt.get(self._wrap_exception)
+  File "C:\Python27\ArcGIS10.6\lib\site-packages\retrying.py", line 247, in get
+    six.reraise(self.value[0], self.value[1], self.value[2])
+  File "C:\Python27\ArcGIS10.6\lib\site-packages\retrying.py", line 200, in call
+    attempt = Attempt(fn(*args, **kwargs), attempt_number, False)
+  File "C:\Users\samapriya\Box Sync\IUB\Pycodes\Applications and Tools\Github_Main_Tools\geeadd_main\geeadd_2.6\geeadd\batch_uploader.py", line 270, in __upload_file_gee
+    resp = session.post(upload_url, data=datagen,headers=headers)
+  File "C:\Python27\ArcGIS10.6\lib\site-packages\requests\sessions.py", line 559, in post
+    return self.request('POST', url, data=data, json=json, **kwargs)
+  File "C:\Python27\ArcGIS10.6\lib\site-packages\requests\sessions.py", line 512, in request
+    resp = self.send(prep, **send_kwargs)
+  File "C:\Python27\ArcGIS10.6\lib\site-packages\requests\sessions.py", line 622, in send
+    r = adapter.send(request, **kwargs)
+  File "C:\Python27\ArcGIS10.6\lib\site-packages\requests\adapters.py", line 495, in send
+    raise ConnectionError(err, request=request)
+ConnectionError: ('Connection aborted.', error("(-1, 'Unexpected EOF')",))
