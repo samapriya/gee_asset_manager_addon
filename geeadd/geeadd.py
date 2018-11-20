@@ -12,7 +12,6 @@ from batch_remover import delete
 from batch_uploader import upload
 from config import setup_logging
 from batch_mover import mover
-from cleanup import cleanout
 from tabup import tabup
 from taskrep import genreport
 from acl_changer import access
