@@ -35,7 +35,11 @@ Google Earth Engine Batch Asset Manager with Addons is an extension of the one d
 	* [Cancel all tasks](#cancel-all-tasks)
 
 ## Installation
-We assume Earth Engine Python API is installed and EE authorised as desribed [here](https://developers.google.com/earth-engine/python_install). To install:
+We assume Earth Engine Python API is installed and EE authorised as desribed [here](https://developers.google.com/earth-engine/python_install).
+
+Quick installation **```pip install geeadd```**
+
+To install using github:
 ```
 git clone https://github.com/samapriya/gee_asset_manager_addon
 cd gee_asset_manager_addon && pip install -r requirements.txt
