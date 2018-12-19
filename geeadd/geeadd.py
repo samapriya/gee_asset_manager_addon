@@ -3,10 +3,11 @@
 import argparse,clipboard,time
 import logging,getpass
 import os
+import sys
 import ee
-import subprocess
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
-from ee import oauth
+lpath = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(lpath)
 from batch_copy import copy
 from batch_remover import delete
 from batch_uploader import upload

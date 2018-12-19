@@ -392,6 +392,10 @@ optional arguments:
 
 ### Changelog
 
+#### v0.2.8
+- Uses poster for streaming upload more stable with memory issues and large files
+- Poster dependency limits use to Py 2.7 will fix in the new version
+
 #### v0.2.6
 - Major improvement to move, batch copy, and task reporting
 - Major improvements to access tool to allow users read/write permission to entire Folder/collection.
