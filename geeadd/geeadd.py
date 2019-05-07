@@ -10,17 +10,14 @@ lpath = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(lpath)
 from batch_copy import copy
 from batch_remover import delete
-from batch_uploader import upload
 from config import setup_logging
 from batch_mover import mover
-from tabup import tabup
 from taskrep import genreport
 from acl_changer import access
 from ee_ls import lst
 from assetsizes import assetsize
 from ee_report import ee_report
 from ee_del_meta import delprop
-from zipfiles import zipshape
 
 
 suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
@@ -44,23 +41,6 @@ def cancel_all_running_tasks_from_parser(args):
 
 def delete_collection_from_parser(args):
     delete(args.id)
-
-def zipshape_from_parser(args):
-    zipshape(directory=args.input,export=args.output)
-
-def upload_from_parser(args):
-    upload(user=args.user,
-           source_path=args.source,
-           destination_path=args.dest,
-           metadata_path=args.metadata,
-           multipart_upload=args.large,
-           nodata_value=args.nodata,
-           bucket_name=args.bucket,
-           band_names=args.bands)
-def tabup_from_parser(args):
-    tabup(user=args.user,
-           source_path=args.source,
-           destination_path=args.dest)
 
 def _comma_separated_strings(string):
   """Parses an input consisting of comma-separated strings.
@@ -137,9 +117,6 @@ def lst_from_parser(args):
 def main(args=None):
     setup_logging()
     parser = argparse.ArgumentParser(description='Google Earth Engine Batch Asset Manager with Addons')
-    parser.add_argument('-s', '--service-account', help='Google Earth Engine service account.', required=False)
-    parser.add_argument('-k', '--private-key', help='Google Earth Engine private key file.', required=False)
-
     subparsers = parser.add_subparsers()
     parser_ee_user=subparsers.add_parser('ee_user',help='Allows you to associate/change GEE account to system')
     parser_ee_user.set_defaults(func=ee_user_from_parser)
@@ -151,36 +128,6 @@ def main(args=None):
     parser_create.add_argument('--typ', help='Specify type: collection or folder', required=True)
     parser_create.add_argument('--path', help='This is the path for the earth engine asset to be created full path is needsed eg: users/johndoe/collection', required=True)
     parser_create.set_defaults(func=create_from_parser)
-
-    parser_zipshape = subparsers.add_parser('zipshape', help='Zips all shapefiles and subsidary files into individual zip files')
-    required_named = parser_zipshape.add_argument_group('Required named arguments.')
-    required_named.add_argument('--input', help='Path to the input directory with all shape files', required=True)
-    required_named.add_argument('--output', help='Destination folder Full path where shp, shx, prj and dbf files if present in input will be zipped and stored', required=True)
-    parser_zipshape.set_defaults(func=zipshape_from_parser)
-
-    parser_upload = subparsers.add_parser('upload', help='Batch Asset Uploader upload images to collection')
-    required_named = parser_upload.add_argument_group('Required named arguments.')
-    required_named.add_argument('--source', help='Path to the directory with images for upload.', required=True)
-    required_named.add_argument('--dest', help='Destination. Full path for upload to Google Earth Engine, e.g. users/pinkiepie/myponycollection', required=True)
-    optional_named = parser_upload.add_argument_group('Optional named arguments')
-    optional_named.add_argument('-m', '--metadata', help='Path to CSV with metadata.')
-    optional_named.add_argument('--large', action='store_true', help='(Advanced) Use multipart upload. Might help if upload of large '
-                                                                     'files is failing on some systems. Might cause other issues.')
-    optional_named.add_argument('--nodata', type=int, help='The value to burn into the raster as NoData (missing data)')
-    optional_named.add_argument('--bands', type=_comma_separated_strings, help='Comma-separated list of names to use for the image bands. Spaces'
-                                                                               'or other special characters are not allowed.')
-
-    required_named.add_argument('-u', '--user', help='Google account name (gmail address).')
-    optional_named.add_argument('-b', '--bucket', help='Google Cloud Storage bucket name.')
-
-    parser_upload.set_defaults(func=upload_from_parser)
-
-    parser_tabup = subparsers.add_parser('tabup', help='Batch Table Uploader upload the shapefiles you zipped earlier.')
-    required_named = parser_tabup.add_argument_group('Required named arguments.')
-    required_named.add_argument('--source', help='Path to the directory with zipped folder for upload.', required=True)
-    required_named.add_argument('--dest', help='Destination. Full path for upload to Google Earth Engine, e.g. users/pinkiepie/myponycollection', required=True)
-    required_named.add_argument('-u', '--user', help='Google account name (gmail address).')
-    parser_tabup.set_defaults(func=tabup_from_parser)
 
     parser_lst = subparsers.add_parser('lst',help='List assets in a folder/collection or write as text file')
     required_named = parser_lst.add_argument_group('Required named arguments.')

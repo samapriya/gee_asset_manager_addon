@@ -14,6 +14,6 @@ def mover(collection_path,final_path):
         try:
             ee.data.renameAsset(init, final)
         except Exception as e:
-            pass
+            print(e)
 #batchcopy(collection_path='users/samapriya/bl',final_path='users/samapriya/b2')
 

@@ -14,5 +14,5 @@ def copy(collection_path,final_path):
         try:
             ee.data.copyAsset(init,final)
         except Exception as e:
-            pass
+            print(e)
 #batchcopy(collection_path='users/samapriya/Belem/BelemRE',final_path='users/samapriya/bl')
