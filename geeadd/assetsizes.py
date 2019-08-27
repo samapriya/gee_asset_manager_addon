@@ -28,8 +28,8 @@ def assetsize(asset):
         print('')
         print(str(asset)+" ===> "+str(humansize(collc.get('system:asset_size').getInfo())))
     elif header =="Folder":
-        b=subprocess.check_output("earthengine du "+asset+" -s",shell=True)
-        num=subprocess.check_output("earthengine ls "+asset,shell=True)
+        b=subprocess.check_output("earthengine --no-use_cloud_api du "+asset+" -s",shell=True)
+        num=subprocess.check_output("earthengine --no-use_cloud_api ls "+asset,shell=True)
         size=humansize(float(b.strip().split(' ')[0]))
         print('')
         print(str(asset)+" ===> "+str(size))

@@ -6,157 +6,153 @@ import os
 ##initialize earth engine
 ee.Initialize()
 
+
+suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
+def humansize(nbytes):
+    i = 0
+    while nbytes >= 1024 and i < len(suffixes)-1:
+        nbytes /= 1024.
+        i += 1
+    f = ('%.2f' % nbytes).rstrip('0').rstrip('.')
+    return '%s %s' % (f, suffixes[i])
+
+def object_sz(object):
+    sz=humansize(object.get('system:asset_size').getInfo())
+    return sz
+
+def collect_sz(object):
+    sz=humansize(object.reduceColumns(ee.Reducer.sum(), ['system:asset_size']).get('sum').getInfo())
+    return sz
+
 def lst(location, typ, items=None,output=None):
-    if items > 0 and typ =='print':
-        b=subprocess.check_output("earthengine ls -l -r "+'"'+location+'"'+" --max_items "+str(items),shell=True)
-        try:
-            for item in b.split('\n'):
-                a=item.replace("[","").replace("]","").split()
-                header=a[0]
-                tail=a[1]
+    if items is None and typ =='print':
+        assets_list = ee.data.getList(params={'id': location})
+        for things in assets_list:
+            header=things['type']
+            tail=things['id']
+            try:
                 if header=="ImageCollection":
                     collc=ee.ImageCollection(tail)
                     ast=collc.size().getInfo()
-                    size=collc.reduceColumns(ee.Reducer.sum(), ['system:asset_size']).get('sum').getInfo()
-                    sz=float(size)/1000000
-                    print("Image Collection "+str(tail)+" has "+str(ast)+" images a total of "+format(sz,'.2f')+" MB")
+                    sz=collect_sz(collc)
+                    print("Image Collection: "+str(tail)+" has "+str(ast)+" images a total of "+str(sz))
                 elif header=="Image":
                     collc=ee.Image(tail)
-                    size=collc.get('system:asset_size').getInfo()
-                    sz=float(size)/1000000
-                    print("Image "+str(tail)+" is "+format(sz,'.2f')+" MB")
+                    sz=object_sz(collc)
+                    print("Image: "+str(tail)+" is "+str(sz))
                 elif header=="Table":
                     collc=ee.FeatureCollection(tail)
-                    size=collc.get('system:asset_size').getInfo()
-                    sz=float(size)/1000000
-                    print("Table "+str(tail)+" is "+format(sz,'.2f')+" MB")
+                    sz=object_sz(collc)
+                    print("Table: "+str(tail)+" is "+str(sz))
                 elif header=="Folder": ##Folders are not added to the list but are print
-                    ast=int(b.count(tail))-1
-                    print("Folder "+str(tail) +" has "+format(sz,'.2f')+" assets")
-        except Exception:
-            return "worked"
-    elif items is None and typ =='print':
-        b=subprocess.check_output("earthengine ls -l -r "+'"'+location+'"',shell=True)
-        try:
-            for item in b.split('\n'):
-                a=item.replace("[","").replace("]","").split()
-                header=a[0]
-                tail=a[1]
-                if header=="ImageCollection":
-                    collc=ee.ImageCollection(tail)
-                    ast=collc.size().getInfo()
-                    size=collc.reduceColumns(ee.Reducer.sum(), ['system:asset_size']).get('sum').getInfo()
-                    sz=float(size)/1000000
-                    print("Image Collection "+str(tail)+" has "+str(ast)+" images a total of "+format(sz,'.2f')+" MB")
-                elif header=="Image":
-                    collc=ee.Image(tail)
-                    size=collc.get('system:asset_size').getInfo()
-                    sz=float(size)/1000000
-                    print("Image "+str(tail)+" is "+format(sz,'.2f')+" MB")
-                elif header=="Table":
-                    collc=ee.FeatureCollection(tail)
-                    size=collc.get('system:asset_size').getInfo()
-                    sz=float(size)/1000000
-                    print("Table "+str(tail)+" is "+format(sz,'.2f')+" MB")
-                elif header=="Folder": ##Folders are not added to the list but are print
-                    ast=int(b.count(tail))-1
-                    print("Folder "+str(tail) +" has "+format(sz,'.2f')+" assets")
-        except Exception:
-            return "worked"
+                    assets_list = ee.data.getList(params={'id': location})
+                    print("Folder: "+str(tail) +" has "+str(len(assets_list))+' items')
+            except Exception as e:
+                print(e)
+    elif items >0 and typ =='print':
+        assets_list = ee.data.getList(params={'id': location})
+        if int(len(assets_list))>int(items):
+            subset=assets_list[:int(items)]
+            for things in subset:
+                header=things['type']
+                tail=things['id']
+                try:
+                    if header=="ImageCollection":
+                        collc=ee.ImageCollection(tail)
+                        ast=collc.size().getInfo()
+                        sz=collect_sz(collc)
+                        print("Image Collection: "+str(tail)+" has "+str(ast)+" images a total of "+str(sz))
+                    elif header=="Image":
+                        collc=ee.Image(tail)
+                        sz=object_sz(collc)
+                        print("Image: "+str(tail)+" is "+str(sz))
+                    elif header=="Table":
+                        collc=ee.FeatureCollection(tail)
+                        sz=object_sz(collc)
+                        print("Table: "+str(tail)+" is "+str(sz))
+                    elif header=="Folder": ##Folders are not added to the list but are print
+                        assets_list = ee.data.getList(params={'id': location})
+                        print("Folder: "+str(tail) +" has "+str(len(assets_list))+' items')
+                except Exception as e:
+                    print(e)
     elif items is None and typ =='report':
         with open(output,"wb") as csvfile:
-            writer=csv.DictWriter(csvfile,fieldnames=["type", "path","No of Assets","size","unit"], delimiter=',')
+            writer=csv.DictWriter(csvfile,fieldnames=["type", "path","No of Assets","size"], delimiter=',')
             writer.writeheader()
-            b=subprocess.check_output("earthengine ls -l -r "+'"'+location+'"',shell=True)
-        try:
-            for item in b.split('\n'):
-                a=item.replace("[","").replace("]","").split()
-                header=a[0]
-                tail=a[1]
+        assets_list = ee.data.getList(params={'id': location})
+        for things in assets_list:
+            header=things['type']
+            tail=things['id']
+            try:
                 if header=="ImageCollection":
                     collc=ee.ImageCollection(tail)
-                    print("Processing Image Collection "+str(tail))
                     ast=collc.size().getInfo()
-                    size=collc.reduceColumns(ee.Reducer.sum(), ['system:asset_size']).get('sum').getInfo()
-                    sz=float(size)/1000000
-                    unit="MB"
+                    sz=collect_sz(collc)
+                    print("Image Collection: "+str(tail)+" has "+str(ast)+" images a total of "+str(sz))
                     with open(output,"a") as csvfile:
                         writer=csv.writer(csvfile,delimiter=',',lineterminator='\n')
-                        writer.writerow([header,tail,ast,format(sz,'.2f'),unit])
+                        writer.writerow([header,tail,ast,str(sz)])
                     csvfile.close()
                 elif header=="Image":
                     collc=ee.Image(tail)
-                    print("Processing Image "+str(tail))
-                    size=collc.get('system:asset_size').getInfo()
-                    ast="1"
-                    sz=float(size)/1000000
-                    unit="MB"
+                    sz=object_sz(collc)
+                    print("Image: "+str(tail)+" is "+str(sz))
                     with open(output,"a") as csvfile:
                         writer=csv.writer(csvfile,delimiter=',',lineterminator='\n')
-                        writer.writerow([header,tail,ast,format(sz,'.2f'),unit])
+                        writer.writerow([header,tail,ast,str(sz)])
                     csvfile.close()
                 elif header=="Table":
                     collc=ee.FeatureCollection(tail)
-                    print("Processing Table "+str(tail))
-                    ast="1"
-                    size=collc.get('system:asset_size').getInfo()
-                    sz=float(size)/1000000
-                    unit="MB"
+                    sz=object_sz(collc)
+                    print("Table: "+str(tail)+" is "+str(sz))
                     with open(output,"a") as csvfile:
                         writer=csv.writer(csvfile,delimiter=',',lineterminator='\n')
-                        writer.writerow([header,tail,ast,format(sz,'.2f'),unit])
+                        writer.writerow([header,tail,ast,str(sz)])
                     csvfile.close()
                 elif header=="Folder": ##Folders are not added to the list but are print
-                    ast=int(b.count(tail))-1
-                    print("Folder "+str(tail) +" has "+str(ast)+" assets")
-        except Exception:
-            return "worked"
+                    assets_list = ee.data.getList(params={'id': location})
+                    print("Folder: "+str(tail) +" has "+str(len(assets_list))+' items')
+            except Exception as e:
+                print(e)
     elif items > 0 and typ =='report':
         with open(output,"wb") as csvfile:
-            writer=csv.DictWriter(csvfile,fieldnames=["type", "path","No of Assets","size","unit"], delimiter=',')
+            writer=csv.DictWriter(csvfile,fieldnames=["type", "path","No of Assets","size"], delimiter=',')
             writer.writeheader()
-            b=subprocess.check_output("earthengine ls -l -r"+'"'+location+'"'+" --max_items "+str(items),shell=True)
-        try:
-            for item in b.split('\n'):
-                a=item.replace("[","").replace("]","").split()
-                header=a[0]
-                tail=a[1]
-                if header=="ImageCollection":
-                    collc=ee.ImageCollection(tail)
-                    print("Processing Image Collection "+str(tail))
-                    ast=collc.size().getInfo()
-                    size=collc.reduceColumns(ee.Reducer.sum(), ['system:asset_size']).get('sum').getInfo()
-                    sz=float(size)/1000000
-                    unit="MB"
-                    with open(output,"a") as csvfile:
-                        writer=csv.writer(csvfile,delimiter=',',lineterminator='\n')
-                        writer.writerow([header,tail,ast,format(sz,'.2f'),unit])
-                    csvfile.close()
-                elif header=="Image":
-                    collc=ee.Image(tail)
-                    print("Processing Image "+str(tail))
-                    size=collc.get('system:asset_size').getInfo()
-                    ast="1"
-                    sz=float(size)/1000000
-                    unit="MB"
-                    with open(output,"a") as csvfile:
-                        writer=csv.writer(csvfile,delimiter=',',lineterminator='\n')
-                        writer.writerow([header,tail,ast,format(sz,'.2f'),unit])
-                    csvfile.close()
-                elif header=="Table":
-                    collc=ee.FeatureCollection(tail)
-                    print("Processing Table "+str(tail))
-                    ast="1"
-                    size=collc.get('system:asset_size').getInfo()
-                    sz=float(size)/1000000
-                    unit="MB"
-                    with open(output,"a") as csvfile:
-                        writer=csv.writer(csvfile,delimiter=',',lineterminator='\n')
-                        writer.writerow([header,tail,ast,format(sz,'.2f'),unit])
-                    csvfile.close()
-                elif header=="Folder": ##Folders are not added to the list but are print
-                    ast=int(b.count(tail))-1
-                    print("Folder "+str(tail) +" has "+str(ast)+" assets")
-        except Exception:
-            return "worked"
+        assets_list = ee.data.getList(params={'id': location})
+        if int(len(assets_list))>int(items):
+            subset=assets_list[:int(items)]
+            for things in subset:
+                header=things['type']
+                tail=things['id']
+                try:
+                    if header=="ImageCollection":
+                        collc=ee.ImageCollection(tail)
+                        ast=collc.size().getInfo()
+                        sz=collect_sz(collc)
+                        print("Image Collection: "+str(tail)+" has "+str(ast)+" images a total of "+str(sz))
+                        with open(output,"a") as csvfile:
+                            writer=csv.writer(csvfile,delimiter=',',lineterminator='\n')
+                            writer.writerow([header,tail,ast,str(sz)])
+                        csvfile.close()
+                    elif header=="Image":
+                        collc=ee.Image(tail)
+                        sz=object_sz(collc)
+                        print("Image: "+str(tail)+" is "+str(sz))
+                        with open(output,"a") as csvfile:
+                            writer=csv.writer(csvfile,delimiter=',',lineterminator='\n')
+                            writer.writerow([header,tail,1,str(sz)])
+                        csvfile.close()
+                    elif header=="Table":
+                        collc=ee.FeatureCollection(tail)
+                        sz=object_sz(collc)
+                        print("Table: "+str(tail)+" is "+str(sz))
+                        with open(output,"a") as csvfile:
+                            writer=csv.writer(csvfile,delimiter=',',lineterminator='\n')
+                            writer.writerow([header,tail,1,str(sz)])
+                        csvfile.close()
+                    elif header=="Folder": ##Folders are not added to the list but are print
+                        assets_list = ee.data.getList(params={'id': location})
+                        print("Folder: "+str(tail) +" has "+str(len(assets_list))+' items')
+                except Exception as e:
+                    print(e)
 #lst(location="users/samapriya/Belem", typ="report",items=0,output=r"C:\planet_demo\rep.csv")

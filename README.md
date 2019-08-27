@@ -230,9 +230,15 @@ optional arguments:
 
 ### Changelog
 
+#### v0.3.1
+- Updated list and asset size functions
+- Updated function to generate earthengine asset report
+- General optimization and improvements to distribution
+- Better error handling
+
 #### v0.3.0
 - Removed upload function
-- Upload handled by [geeup](https://github.com/samapriya/geeup)
+- Upload handles by [geeup](https://github.com/samapriya/geeup)
 - General optimization and improvements to distribution
 - Better error handling
 
