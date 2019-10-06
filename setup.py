@@ -3,12 +3,12 @@ from setuptools import find_packages
 
 setup(
     name='geeadd',
-    version='0.3.2',
+    version='0.3.3',
     packages=['geeadd'],
     package_data={'geeadd': ['logconfig.json']},
     url='https://github.com/samapriya/gee_asset_manager_addon',
     install_requires=['earthengine_api >= 0.1.191','requests >= 2.10.0','retrying >= 1.3.3',
-                      'clipboard>=0.0.4','beautifulsoup4 >= 4.5.1','requests_toolbelt >= 0.7.0',
+                      'clipboard>=0.0.4','beautifulsoup4 >= 4.7.1','requests_toolbelt >= 0.7.0','lxml>=4.3.3',
                       'pytest >= 3.0.0','future >= 0.16.0','google-cloud-storage >= 1.1.1','oauth2client>=4.1.3'],
     license='Apache 2.0',
     long_description=open('README.md').read(),

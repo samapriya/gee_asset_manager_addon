@@ -18,6 +18,7 @@ Google Earth Engine Batch Asset Manager with Addons is an extension of the one d
     * [Asset Size](#asset-size)
     * [Earth Engine Asset Report](#earth-engine-asset-report)
     * [Task Query](#task-query)
+    * [App to Script](#app-to-script)
     * [Task Report](#task-report)
     * [Delete a collection with content:](#delete-a-collection-with-content)
     * [Assets Move](#assets-move)
@@ -106,6 +107,34 @@ usage: geeadd assetsize [-h] --asset ASSET
 optional arguments:
   -h, --help     show this help message and exit
   --asset ASSET  Earth Engine Asset for which to get size properties
+```
+
+### App to Script
+This tool writes out or prints the underlying earthengine code for any public earthengine app. The tool has an option to export the code into a javascript file that you can then paste into Google Earth Engine code editor.
+
+```
+geeadd app2script -h
+usage: geeadd app2script [-h] --url URL [--outfile OUTFILE]
+
+optional arguments:
+  -h, --help         show this help message and exit
+  --url URL          Earthengine app url
+
+Optional named arguments:
+  --outfile OUTFILE  Write the script out to a .js file: Open in any text
+                     editor
+```
+
+Simple setup can be
+
+```
+geeadd app2script --url "https://gena.users.earthengine.app/view/urban-lights"
+```
+
+or write to a javascript file which you can then open with any text editor and paste in earthengine code editor
+
+```
+geeadd app2script --url "https://gena.users.earthengine.app/view/urban-lights" --outfile "Full path to javascript.js"
 ```
 
 ### Earth Engine Asset Report
@@ -229,6 +258,10 @@ optional arguments:
 ```
 
 ### Changelog
+
+#### v0.3.3
+- General improvements
+- Added tool to get underlying code from earthengine app
 
 #### v0.3.1
 - Updated list and asset size functions

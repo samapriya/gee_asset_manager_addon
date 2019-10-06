@@ -18,7 +18,7 @@ from ee_ls import lst
 from assetsizes import assetsize
 from ee_report import ee_report
 from ee_del_meta import delprop
-
+from app2script import jsext
 
 suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
 def humansize(nbytes):
@@ -62,6 +62,9 @@ def quota():
 
 def quota_from_parser(args):
     quota()
+
+def app2script_from_parser(args):
+    jsext(url=args.url,outfile=args.outfile)
 
 def ee_report_from_parser(args):
     ee_report(output=args.outfile)
@@ -123,6 +126,12 @@ def main(args=None):
 
     parser_quota = subparsers.add_parser('quota', help='Print Earth Engine total quota and used quota')
     parser_quota.set_defaults(func=quota_from_parser)
+
+    parser_app2script = subparsers.add_parser('app2script',help='Get underlying script for public Google earthengine app')
+    parser_app2script.add_argument('--url', help='Earthengine app url', required=True)
+    optional_named = parser_app2script.add_argument_group('Optional named arguments')
+    optional_named.add_argument('--outfile', help='Write the script out to a .js file: Open in any text editor',default=None)
+    parser_app2script.set_defaults(func=app2script_from_parser)
 
     parser_create = subparsers.add_parser('create',help='Allows the user to create an asset collection or folder in Google Earth Engine')
     parser_create.add_argument('--typ', help='Specify type: collection or folder', required=True)
