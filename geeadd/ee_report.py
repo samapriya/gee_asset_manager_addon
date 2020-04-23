@@ -1,7 +1,8 @@
 from __future__ import print_function
+
 __copyright__ = """
 
-    Copyright 2019 Samapriya Roy
+    Copyright 2020 Samapriya Roy
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -17,105 +18,195 @@ __copyright__ = """
 
 """
 __license__ = "Apache 2.0"
+import ee
+import csv
+import random
+import subprocess
+from logzero import logger
 
-import ee,json,csv,subprocess
-ee.Initialize()
+# Empty Lists
+folder_paths = []
+image_list = []
+collection_list = []
+table_list = []
 
-suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
+suffixes = ["B", "KB", "MB", "GB", "TB", "PB"]
+
+
 def humansize(nbytes):
     i = 0
-    while nbytes >= 1024 and i < len(suffixes)-1:
-        nbytes /= 1024.
+    while nbytes >= 1024 and i < len(suffixes) - 1:
+        nbytes /= 1024.0
         i += 1
-    f = ('%.2f' % nbytes).rstrip('0').rstrip('.')
-    return '%s %s' % (f, suffixes[i])
+    f = ("%.2f" % nbytes).rstrip("0").rstrip(".")
+    return "%s %s" % (f, suffixes[i])
 
-def object_sz(object):
-    sz=humansize(object.get('system:asset_size').getInfo())
-    return sz
 
-def collect_sz(object):
-    sz=humansize(object.reduceColumns(ee.Reducer.sum(), ['system:asset_size']).get('sum').getInfo())
-    return sz
-
-def recprocess(header,location,output):
+def recprocess(gee_type, location):
     try:
-        if header=="ImageCollection":
-            collc=ee.ImageCollection(location)
-            own=ee.data.getAssetAcl(location)
-            o=",".join(own['owners'])
-            r=",".join(own['readers'])
-            w=",".join(own['writers'])
-            print("Processing Image Collection "+str(location))
-            ast=collc.size().getInfo()
-            sz=collect_sz(collc)
-            with open(output,"a") as csvfile:
-                writer=csv.writer(csvfile,delimiter=',',lineterminator='\n')
-                writer.writerow([header,location,ast,sz,o,r,w])
-            csvfile.close()
-        elif header=="Image":
-            collc=ee.Image(location)
-            own=ee.data.getAssetAcl(location)
-            o=",".join(own['owners'])
-            r=",".join(own['readers'])
-            w=",".join(own['writers'])
-            print("Processing Image "+str(location))
-            ast="1"
-            sz=object_sz(collc)
-            print("Processing Image "+str(location))
-            with open(output,"a") as csvfile:
-                writer=csv.writer(csvfile,delimiter=',',lineterminator='\n')
-                writer.writerow([header,location,ast,sz,o,r,w])
-            csvfile.close()
-        elif header=="Table":
-            collc=ee.FeatureCollection(location)
-            own=ee.data.getAssetAcl(location)
-            o=",".join(own['owners'])
-            r=",".join(own['readers'])
-            w=",".join(own['writers'])
-            print("Processing Table "+str(location))
-            ast="1"
-            sz=object_sz(collc)
-            with open(output,"a") as csvfile:
-                writer=csv.writer(csvfile,delimiter=',',lineterminator='\n')
-                writer.writerow([header,location,ast,sz,o,r,w])
-            csvfile.close()
+        if gee_type == "collection":
+            own = ee.data.getAssetAcl(location)
+            o = ",".join(own["owners"])
+            r = ",".join(own["readers"])
+            w = ",".join(own["writers"])
+            return [o, r, w]
+        elif gee_type == "image":
+            own = ee.data.getAssetAcl(location)
+            o = ",".join(own["owners"])
+            r = ",".join(own["readers"])
+            w = ",".join(own["writers"])
+            return [o, r, w]
+        elif gee_type == "table":
+            own = ee.data.getAssetAcl(location)
+            o = ",".join(own["owners"])
+            r = ",".join(own["readers"])
+            w = ",".join(own["writers"])
+            return [o, r, w]
+        elif gee_type == "folder":
+            own = ee.data.getAssetAcl(location)
+            o = ",".join(own["owners"])
+            r = ",".join(own["readers"])
+            w = ",".join(own["writers"])
+            # print(o,r,w)
+            return [o, r, w]
     except Exception as e:
         print(e)
 
 
+# Recursive folder paths
+def recursive(path):
+    if ee.data.getInfo(path)["type"].lower() == "folder":
+        children = ee.data.getList({"id": path})
+    folder_paths.append(path)
+    val = [child["type"].lower() == "folder" for child in children]
+    while len(val) > 0 and True in val:
+        for child in children:
+            if child["type"].lower() == "folder":
+                folder_paths.append(child["id"])
+                children = ee.data.getList({"id": child["id"]})
+        val = [child["type"].lower() == "folder" for child in children]
+    return folder_paths
+
+
+def assetsize(asset):
+    ee.Initialize()
+    header = ee.data.getInfo(asset)["type"]
+    if header == "IMAGE_COLLECTION":
+        collc = ee.ImageCollection(asset)
+        size = collc.aggregate_array("system:asset_size")
+        return [str(humansize(sum(size.getInfo()))), collc.size().getInfo()]
+    elif header == "IMAGE":
+        collc = ee.Image(asset)
+        return [str(humansize(collc.get("system:asset_size").getInfo())), 1]
+    elif header == "TABLE":
+        collc = ee.FeatureCollection(asset)
+        return [str(humansize(collc.get("system:asset_size").getInfo())), 1]
+    elif header == "FOLDER":
+        num = subprocess.check_output(
+            "earthengine --no-use_cloud_api ls " + asset, shell=True
+        ).decode("ascii")
+        return ["NA", len(num.split("\n")) - 1]
+
+
+# folder parse
+def fparse(path):
+    ee.Initialize()
+    if ee.data.getInfo(path)["type"].lower() == "folder":
+        gee_folder_path = recursive(path)
+        for folders in gee_folder_path:
+            children = ee.data.getList({"id": folders})
+            for child in children:
+                if child["type"].lower() == "imagecollection":
+                    collection_list.append(child["id"])
+                elif child["type"].lower() == "image":
+                    image_list.append(child["id"])
+                elif child["type"].lower() == "table":
+                    table_list.append(child["id"])
+    elif ee.data.getInfo(path)["type"].lower() == "image":
+        image_list.append(path)
+    elif ee.data.getInfo(path)["type"].lower() == "image_collection":
+        collection_list.append(path)
+    elif ee.data.getInfo(path)["type"].lower() == "table":
+        table_list.append(path)
+    else:
+        print(ee.data.getInfo(path)["type"].lower())
+    return [collection_list, table_list, image_list, folder_paths]
+
+
+##request type of asset, asset path and user to give permission
 def ee_report(output):
-    with open(output,"wb") as csvfile:
-        writer=csv.DictWriter(csvfile,fieldnames=["type", "path","No of Assets","size","owner","readers","writers"], delimiter=',')
+    choicelist = ['Go grab some tea.....','Go Stretch.....','Go take a walk.....','Go grab some coffee.....'] #adding something fun
+    logger.debug('This might take sometime. {}'.format(random.choice(choicelist)))
+    ee.Initialize()
+    with open(output, "w") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=["type", "path", "No of Assets", "size", "owner", "readers", "writers"],delimiter=",",
+            lineterminator="\n",
+        )
         writer.writeheader()
-    location=ee.data.getAssetRoots()[0]['id']
-    assets_list = ee.data.getList(params={'id': location})
-    for things in assets_list:
-        header=things['type']
-        tail=things['id']
-        try:
-            if header=="ImageCollection":
-                recprocess(header,collc,output)
-            elif header=="Image":
-                recprocess(header,collc,output)
-            elif header=="Table":
-                recprocess(header,collc,output)
-            elif header=="Folder": ##Folders are not added to the list but are print
-                flist = ee.data.getList(params={'id': tail})
-                print("Folder: "+str(tail) +" has "+str(len(flist))+' items')
-                for things in flist:
-                    header=things['type']
-                    tail=things['id']
-                    try:
-                        if header=="ImageCollection":
-                            recprocess(header,tail,output)
-                        elif header=="Image":
-                            recprocess(header,tail,output)
-                        elif header=="Table":
-                            recprocess(header,tail,output)
-                    except Exception as e:
-                        pass
-        except Exception as e:
-            pass
-if __name__ == '__main__':
-    ee_report(None)
+    collection_path = ee.data.getAssetRoots()
+
+    for roots in collection_path:
+        logger.debug('Processing your root folder: {}'.format(roots["id"].replace('projects/earthengine-legacy/assets/','')))
+        collection_list, table_list, image_list, folder_paths = fparse(roots["id"])
+        logger.debug(
+            "Processing a total of: {} folders {} collections {} images {} tables".format(
+                len(folder_paths),
+                len(collection_list),
+                len(image_list),
+                len(table_list),
+            )
+            +'\n'
+        )
+        for folder in folder_paths:
+            if not folder == roots["id"]:
+                gee_id = folder
+                gee_type = "folder"
+                logger.info("Processing Folder {}".format(gee_id))
+                total_size, total_count = assetsize(folder)
+                o, r, w = recprocess(gee_type, gee_id)
+                # print(gee_id,gee_type,total_size,total_count,o,r,w)
+                try:
+                    with open(output, "a") as csvfile:
+                        writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
+                        writer.writerow(
+                            [gee_type, gee_id, total_count, total_size, o, r, w]
+                        )
+                    csvfile.close()
+                except Exception as e:
+                    print(e)
+        for collection in collection_list:
+            gee_id = collection
+            gee_type = "collection"
+            logger.info("Processing Collection {}".format(gee_id))
+            total_size, total_count = assetsize(collection)
+            o, r, w = recprocess(gee_type, gee_id)
+            # print(gee_id,gee_type,total_size,total_count,o,r,w)
+            with open(output, "a") as csvfile:
+                writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
+                writer.writerow([gee_type, gee_id, total_count, total_size, o, r, w])
+            csvfile.close()
+        for table in table_list:
+            gee_id = table
+            gee_type = "table"
+            logger.info("Processing table {}".format(gee_id))
+            total_size, total_count = assetsize(table)
+            o, r, w = recprocess(gee_type, gee_id)
+            # print(gee_id,gee_type,total_size,total_count,o,r,w)
+            with open(output, "a") as csvfile:
+                writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
+                writer.writerow([gee_type, gee_id, total_count, total_size, o, r, w])
+            csvfile.close()
+        for image in image_list:
+            gee_id = image
+            gee_type = "image"
+            logger.info("Processing image {}".format(gee_id))
+            total_size, total_count = assetsize(image)
+            o, r, w = recprocess(gee_type, gee_id)
+            # print(gee_id,gee_type,total_size,total_count,o,r,w)
+            with open(output, "a") as csvfile:
+                writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
+                writer.writerow([gee_type, gee_id, total_count, total_size, o, r, w])
+            csvfile.close()
+
+
+

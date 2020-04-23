@@ -1,36 +1,80 @@
-import ee
-import os
-import json
 
-##initialize earth engine
-ee.Initialize()
+__copyright__ = """
+
+    Copyright 2020 Samapriya Roy
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+"""
+__license__ = "Apache 2.0"
+import ee
+import json
+import itertools
+
+# Empty Lists
+folder_paths=[]
+image_list=[]
+collection_list=[]
+table_list=[]
+
+# Recursive folder paths
+def recursive(path):
+    if ee.data.getInfo(path)['type'].lower()=='folder':
+        children = ee.data.getList({'id': path})
+    folder_paths.append(path)
+    val=[child['type'].lower()=='folder' for child in children]
+    while len(val)>0 and True in val:
+        for child in children:
+            if child['type'].lower()=='folder':
+                folder_paths.append(child['id'])
+                children = ee.data.getList({'id': child['id']})
+        val=[child['type'].lower()=='folder' for child in children]
+    print('Total folders: {}'.format(len(folder_paths)))
+    return folder_paths
+
+# folder parse
+def fparse(path):
+    ee.Initialize()
+    if ee.data.getInfo(path)['type'].lower()=='folder':
+        gee_folder_path=recursive(path)
+        for folders in gee_folder_path:
+            children = ee.data.getList({'id': folders})
+            for child in children:
+                if child['type'].lower()=='imagecollection':
+                    collection_list.append(child['id'])
+                elif child['type'].lower()=='image':
+                    image_list.append(child['id'])
+                elif child['type'].lower()=='table':
+                    table_list.append(child['id'])
+    elif ee.data.getInfo(path)['type'].lower()=='image':
+        image_list.append(path)
+    elif ee.data.getInfo(path)['type'].lower()=='image_collection':
+        collection_list.append(path)
+    elif ee.data.getInfo(path)['type'].lower()=='table':
+        table_list.append(path)
+    else:
+        print(ee.data.getInfo(path)['type'].lower())
+    return [collection_list,table_list,image_list,folder_paths]
+
 
 ##request type of asset, asset path and user to give permission
 def access(collection_path,user,role):
-    header=ee.data.getInfo(collection_path)['type']
-    if header=="ImageCollection":
-        lst=[]
-        lst.append(collection_path)
-        assets_names=lst
-    elif header=="Image":
-        lst=[]
-        lst.append(collection_path)
-        assets_names=lst
-    elif header=="Table":
-        lst=[]
-        lst.append(collection_path)
-        assets_names=lst
-    else:
-        assets_list = ee.data.getList(params={'id': collection_path})
-        assets_names = [os.path.basename(asset['id']) for asset in assets_list]
-    print('Changing permission for total of '+str(len(assets_names))+'.....')
-    for count,items in enumerate(assets_names):
-        if header=='Folder':
-            init=collection_path+'/'+items
-            print('Working on item '+str(init))
-        else:
-            init=items
-            print('Working on item '+str(init))
+    ee.Initialize()
+    asset_list=fparse(collection_path)
+    asset_names = list(itertools.chain(*asset_list))
+    print('Changing permission for total of '+str(len(asset_names))+' items.....')
+    for count,init in enumerate(asset_names):
+        print('Working on ===> {}'.format(init))
         acl = ee.data.getAssetAcl(init)
         if role=='reader':
             if not user in acl['readers']:
