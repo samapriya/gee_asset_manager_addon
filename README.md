@@ -63,7 +63,7 @@ sudo python setup.py develop or sudo python setup.py install
 
 As usual, to print help:
 
-![gee_main](https://user-images.githubusercontent.com/6677629/80054068-5fa4b700-84ec-11ea-93a2-f758bb76205a.png)
+![gee_main](https://user-images.githubusercontent.com/6677629/80064835-06964c80-8507-11ea-8b5d-70a985aaafab.png)
 
 To obtain help for a specific functionality, simply call it with _help_ switch, e.g.: `geeadd copy -h`.
 
