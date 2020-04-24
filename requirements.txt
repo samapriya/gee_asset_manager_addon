@@ -1,6 +1,5 @@
 logzero>=1.5.0
 requests>=2.22.0
 earthengine_api>=0.1.217
-prettytable>=0.7.2
 beautifulsoup4>=4.9.0
 GitPython>=3.1.1

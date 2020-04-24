@@ -23,11 +23,11 @@ import argparse
 import os
 import csv
 import sys
+import json
 import ee
 import subprocess
 import shutil
 from datetime import datetime
-from prettytable import PrettyTable
 from shutil import copyfile
 from git import Repo
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
@@ -41,7 +41,6 @@ from .ee_del_meta import delprop
 from .app2script import jsext
 
 now = datetime.now()
-x = PrettyTable()
 
 suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
 def humansize(nbytes):
@@ -220,7 +219,7 @@ def search(mname):
         if items.endswith(".csv"):
             copyfile(os.path.join(pth, items), os.path.join(lpath, items))
             print('Using Earth Engine Catalog with date: {}'.format(items.split('_')[1].split('.')[0])+'\n')
-
+    gee_bundle=[]
     for items in os.listdir(lpath):
         if items.endswith(".csv"):
             i = 1
@@ -228,33 +227,58 @@ def search(mname):
             for rows in input_file:
                 if mname.lower() in str(rows["title"]).lower():
                     try:
-                        x.field_names = ["index", "name", "id"]
-                        x.add_row([i, rows["title"], rows["id"]])
+                        if rows['type']=='image_collection':
+                            rows['id']="ee.ImageCollection('{}')".format(rows['id'])
+                        elif rows['type']=='image':
+                            rows['id']="ee.Image('{}')".format(rows['id'])
+                        elif rows['type']=='table':
+                            rows['id']="ee.FeatureCollection('{}')".format(rows['id'])
+                        item = {"index":i,"title":rows['title'],"ee_id_snippet": rows['id'],"start_date": rows['start_date'],"end_date": rows['end_date']}
+                        gee_bundle.append(item)
                         i = i + 1
                     except Exception as e:
                         print(e)
                 elif mname.lower() in str(rows["id"]).lower():
                     try:
-                        x.field_names = ["index", "name", "id"]
-                        x.add_row([i, rows["title"], rows["id"]])
+                        if rows['type']=='image_collection':
+                            rows['id']="ee.ImageCollection('{}')".format(rows['id'])
+                        elif rows['type']=='image':
+                            rows['id']="ee.Image('{}')".format(rows['id'])
+                        elif rows['type']=='table':
+                            rows['id']="ee.FeatureCollection('{}')".format(rows['id'])
+                        item = {"index":i,"title":rows['title'],"ee_id_snippet": rows['id'],"start_date": rows['start_date'],"end_date": rows['end_date']}
+                        gee_bundle.append(item)
                         i = i + 1
                     except Exception as e:
                         print(e)
                 elif mname.lower() in str(rows["provider"]).lower():
                     try:
-                        x.field_names = ["index", "name", "id"]
-                        x.add_row([i, rows["title"], rows["id"]])
+                        if rows['type']=='image_collection':
+                            rows['id']="ee.ImageCollection('{}')".format(rows['id'])
+                        elif rows['type']=='image':
+                            rows['id']="ee.Image('{}')".format(rows['id'])
+                        elif rows['type']=='table':
+                            rows['id']="ee.FeatureCollection('{}')".format(rows['id'])
+                        item = {"index":i,"title":rows['title'],"ee_id_snippet": rows['id'],"start_date": rows['start_date'],"end_date": rows['end_date']}
+                        gee_bundle.append(item)
                         i = i + 1
                     except Exception as e:
                         print(e)
                 elif mname.lower() in str(rows["tags"]).lower():
                     try:
-                        x.field_names = ["index", "name", "id"]
-                        x.add_row([i, rows["title"], rows["id"]])
+                        if rows['type']=='image_collection':
+                            rows['id']="ee.ImageCollection('{}')".format(rows['id'])
+                        elif rows['type']=='image':
+                            rows['id']="ee.Image('{}')".format(rows['id'])
+                        elif rows['type']=='table':
+                            rows['id']="ee.FeatureCollection('{}')".format(rows['id'])
+                        item = {"index":i,"title":rows['title'],"ee_id_snippet": rows['id'],"start_date": rows['start_date'],"end_date": rows['end_date']}
+                        gee_bundle.append(item)
                         i = i + 1
                     except Exception as e:
                         print(e)
-    print(x)
+    print('')
+    print(json.dumps(gee_bundle,indent=4, sort_keys=False))
 
 def search_from_parser(args):
     search(mname=args.keywords)

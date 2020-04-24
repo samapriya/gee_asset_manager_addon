@@ -268,6 +268,11 @@ Required named arguments.:
 
 ### Changelog
 
+### v0.4.1
+- Made enhancement [Issue 9](https://github.com/samapriya/gee_asset_manager_addon/issues/9).
+- Search tool now return earth engine asset snippet and start and end dates as JSON object.
+- Removed pretty table dependency.
+
 ### v0.4.0
 - Improved quota tools to get all quota and asset counts.
 - Added a search tool to search GEE catalog using keywords.
