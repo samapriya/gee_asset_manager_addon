@@ -20,15 +20,12 @@ __copyright__ = """
 __license__ = "Apache 2.0"
 import ee
 import os
-ee.Initialize()
-
-import ee
 import json
-import os
 
 
 # Image copy
 def image_move(initial,replace_string,replaced_string,fpath):
+    ee.Initialize()
     if replace_string==replaced_string:
         final=fpath
     else:
@@ -44,6 +41,7 @@ def image_move(initial,replace_string,replaced_string,fpath):
 
 # Table copy
 def table_move(initial,replace_string,replaced_string,fpath):
+    ee.Initialize()
     if replace_string==replaced_string:
         final=fpath
     else:
@@ -59,6 +57,7 @@ def table_move(initial,replace_string,replaced_string,fpath):
 
 # Collection copy
 def collection_move(initial,replace_string,replaced_string,fpath):
+    ee.Initialize()
     initial_list = ee.data.getList(params={'id': initial})
     assets_names = [os.path.basename(asset['id']) for asset in initial_list]
     if replace_string==replaced_string:
@@ -86,6 +85,7 @@ def collection_move(initial,replace_string,replaced_string,fpath):
 
 # Folder create
 def fcreate(folder_path,replace_string,replaced_string):
+    ee.Initialize()
     folder_path=folder_path.replace(replace_string,replaced_string)
     if ee.data.getInfo(folder_path):
         print('Folder exists: {}'.format(ee.data.getInfo(folder_path)['id']))
@@ -97,6 +97,7 @@ def fcreate(folder_path,replace_string,replaced_string):
 # Recursive folder paths
 folder_paths=[]
 def recursive(path):
+    ee.Initialize()
     if ee.data.getInfo(path)['type'].lower()=='folder':
         children = ee.data.getList({'id': path})
     folder_paths.append(path)
@@ -132,7 +133,7 @@ def mover(path,fpath):
         replace_string='/'.join(path.split('/')[:-1])
         replaced_string='/'.join(fpath.split('/')[:-1])
         image_move(path,replace_string,replaced_string,fpath)
-    elif ee.data.getInfo(path)['type'].lower()=='imagecollection':
+    elif ee.data.getInfo(path)['type'].lower()=='image_collection':
         replace_string='/'.join(path.split('/')[:-1])
         replaced_string='/'.join(fpath.split('/')[:-1])
         collection_move(path,replace_string,replaced_string,fpath)
@@ -140,4 +141,3 @@ def mover(path,fpath):
         replace_string='/'.join(path.split('/')[:-1])
         replaced_string='/'.join(fpath.split('/')[:-1])
         table_move(path,replace_string,replaced_string,fpath)
-#mover(path='projects/earthengine-legacy/assets/users/samapriya/ppop/Dar-Es-Salaam-AOI',fpath='projects/earthengine-legacy/assets/users/samapriya/Dar-Es-Salaam-AOI')

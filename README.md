@@ -267,6 +267,10 @@ Required named arguments.:
 
 ### Changelog
 
+### v0.4.2
+- Fixed relative import issue for earthengine.
+- Fixed image collection move tool to parse ee object type correctly as image_collection.
+
 ### v0.4.1
 - Made enhancement [Issue 9](https://github.com/samapriya/gee_asset_manager_addon/issues/9).
 - Search tool now return earth engine asset snippet and start and end dates as JSON object.
