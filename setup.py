@@ -3,10 +3,10 @@ from setuptools import find_packages
 
 setup(
     name='geeadd',
-    version='0.4.2',
+    version='0.4.3',
     packages=['geeadd'],
     url='https://github.com/samapriya/gee_asset_manager_addon',
-    install_requires=['earthengine_api>=0.1.217','requests>=2.22.0','logzero>=1.5.0',
+    install_requires=['earthengine-api>=0.1.217','requests>=2.22.0','logzero>=1.5.0',
                       'beautifulsoup4>=4.9.0','GitPython>=3.1.1'],
     license='Apache 2.0',
     long_description=open('README.md').read(),
