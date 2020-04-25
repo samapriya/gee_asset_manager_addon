@@ -267,6 +267,10 @@ Required named arguments.:
 
 ### Changelog
 
+### v0.4.4
+- Removed git dependency and used urllib instead based on [feedback](https://github.com/samapriya/gee_asset_manager_addon/issues/10)
+- Created conda forge release based on [Issue 10](https://github.com/samapriya/gee_asset_manager_addon/issues/10)
+
 ### v0.4.2
 - Fixed relative import issue for earthengine.
 - Fixed image collection move tool to parse ee object type correctly as image_collection.

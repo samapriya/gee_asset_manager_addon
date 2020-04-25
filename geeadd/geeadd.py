@@ -26,10 +26,11 @@ import sys
 import json
 import ee
 import subprocess
+import zipfile
 import shutil
+import urllib.request
 from datetime import datetime
 from shutil import copyfile
-from git import Repo
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 lpath = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(lpath)
@@ -186,6 +187,7 @@ def assetsize_from_parser(args):
     assetsize(asset=args.asset)
 
 def search(mname):
+    out_file_path = os.path.join(lpath, 'eed.zip')
     for f in os.listdir(lpath):
         if f.endswith(".csv"):
             try:
@@ -198,7 +200,7 @@ def search(mname):
     name = os.name
 
     # set base folder names and paths
-    folder_name = "eed"
+    folder_name = "Earth-Engine-Datasets-List-master"
     pth = os.path.join(lpath, folder_name)
 
     if os.path.exists(pth):
@@ -210,10 +212,16 @@ def search(mname):
             except:
                 print("Try using sudo privileges")
 
-    Repo.clone_from(
-        "https://github.com/samapriya/Earth-Engine-Datasets-List.git",
-        os.path.join(lpath, folder_name),
-    )
+    try:
+        urllib.request.urlretrieve('https://github.com/samapriya/Earth-Engine-Datasets-List/archive/master.zip', out_file_path)
+    except:
+        print("The URL is invalid. Please double check the URL.")
+
+    # Unzip the zip file
+    zip_ref = zipfile.ZipFile(out_file_path)
+    for file in zip_ref.namelist():
+        if zip_ref.getinfo(file).filename.endswith('.csv'):
+            zip_ref.extract(file, lpath)
 
     for items in os.listdir(os.path.join(lpath, folder_name)):
         if items.endswith(".csv"):
