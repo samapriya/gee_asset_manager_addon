@@ -10,7 +10,8 @@ Google Earth Engine Batch Asset Manager with Addons is an extension of the one d
 If you use this tool to download data for your research, and find this tool useful, star and cite it as below
 
 ```
-Samapriya Roy. (2020, April 25). samapriya/gee_asset_manager_addon: GEE Asset Manager with Addons (Version 0.4.4). Zenodo. http://doi.org/10.5281/zenodo.3766532
+Samapriya Roy. (2020, April 25). samapriya/gee_asset_manager_addon: GEE Asset Manager with Addons (Version 0.4.4). Zenodo.
+http://doi.org/10.5281/zenodo.3766532
 ```
 
 
