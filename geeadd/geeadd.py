@@ -28,6 +28,7 @@ import ee
 import subprocess
 import zipfile
 import shutil
+import pkg_resources
 import urllib.request
 from datetime import datetime
 from shutil import copyfile
@@ -42,6 +43,24 @@ from .ee_del_meta import delprop
 from .app2script import jsext
 
 now = datetime.now()
+
+# Get package version
+def geeadd_version():
+    print(pkg_resources.get_distribution("geeadd").version)
+def version_from_parser(args):
+    geeadd_version()
+
+# Go to the readMe
+def readme():
+    try:
+        a=webbrowser.open('https://samapriya.github.io/gee_asset_manager_addon/', new=2)
+        if a==False:
+            print('Your setup does not have a monitor to display the webpage')
+            print(' Go to {}'.format('https://samapriya.github.io/gee_asset_manager_addon/'))
+    except Exception as e:
+        print(e)
+def read_from_parser(args):
+    readme()
 
 suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
 def humansize(nbytes):
@@ -294,6 +313,12 @@ def search_from_parser(args):
 def main(args=None):
     parser = argparse.ArgumentParser(description='Google Earth Engine Batch Asset Manager with Addons')
     subparsers = parser.add_subparsers()
+
+    parser_version = subparsers.add_parser('version', help='Prints porder version and exists')
+    parser_version.set_defaults(func=version_from_parser)
+
+    parser_read = subparsers.add_parser('readme',help='Go the web based porder readme page')
+    parser_read.set_defaults(func=read_from_parser)
 
     parser_quota = subparsers.add_parser('quota', help='Print Earth Engine total quota and used quota')
     parser_quota.set_defaults(func=quota_from_parser)

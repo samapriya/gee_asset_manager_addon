@@ -31,7 +31,7 @@ def delprop(collection_path,property):
     if header=="IMAGE_COLLECTION":
         assets_list = ee.data.getList(params={'id': collection_path})
         assets_names = [os.path.basename(asset['id']) for asset in assets_list]
-    print('Changing permission for total of '+str(len(assets_names))+' assets.....')
+    print('Deleting metadata for total of '+str(len(assets_names))+' assets.....')
     for count,items in enumerate(assets_names):
         if header=='IMAGE_COLLECTION':
             nullgrid={property:None}

@@ -23,13 +23,13 @@ from bs4 import BeautifulSoup
 
 
 def jsext(url,outfile):
-    source = requests.get(url).text
-    soup = BeautifulSoup(source ,'lxml')
-
-    for article in soup.find_all('script'):
-        try:
-            if (article.text.strip()).startswith('init'):
-                url=article.text.strip().split('"')[3]
+    source = requests.get(url)
+    html_content=source.text
+    soup = BeautifulSoup(html_content ,'html.parser')
+    try:
+        for articles in soup.find_all('script'):
+            if not articles.string==None and articles.string.strip().startswith('init'):
+                url=articles.string.strip().split('"')[3]
                 if url.startswith('https'):
                     iscript=requests.get(url).json()
                     pt=iscript['path']
@@ -46,8 +46,8 @@ def jsext(url,outfile):
                             clean_lines = [l.strip('\n') for l in lines if l.strip()]
                         with open(outfile, "w",encoding='utf-8') as f:
                             f.writelines('\n'.join(clean_lines))
-        except Exception as e:
-            print(e)
-#jsext(url='https://globalfires.earthengine.app/view/gfedv4s-monthly-ba-animated')
+    except Exception as e:
+        print(e)
+#jsext(url='https://bullocke.users.earthengine.app/view/amazon',outfile=None)
 #jsext(url='https://bullocke.users.earthengine.app/view/amazon')
 

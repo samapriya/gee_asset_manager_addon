@@ -201,7 +201,7 @@ Required named arguments.:
 ```
 
 ### Assets Move
-This script allows us to recursively move assets from one collection to the other.
+This script allows us to recursively move entire folders, collections, images or table from one location to the other.
 
 ```
 > geeadd move -h
@@ -216,7 +216,7 @@ Required named arguments.:
 ```
 
 ### Assets Access
-This tool allows you to set asset acess for either folder , collection or image recursively meaning you can add collection access properties for multiple assets at the same time.
+This tool allows you to set asset access for either folder , collection or image recursively meaning you can add collection access properties for multiple assets at the same time.
 
 ```
 > geeadd access -h
@@ -266,6 +266,12 @@ Required named arguments.:
 ```
 
 ### Changelog
+
+### v0.4.5
+- Now inclues license in sdist
+- Fixed issue with app2script tool and string and text parsing.
+- Added readme and version tools.
+- Added readme docs and deployed environment.
 
 ### v0.4.4
 - Removed git dependency and used urllib instead based on [feedback](https://github.com/samapriya/gee_asset_manager_addon/issues/10)
