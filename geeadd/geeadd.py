@@ -25,6 +25,7 @@ import csv
 import sys
 import json
 import ee
+import webbrowser
 import subprocess
 import zipfile
 import shutil
