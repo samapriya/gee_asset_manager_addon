@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 setup(
     name='geeadd',
-    version='0.4.5',
+    version='0.4.6',
     packages=['geeadd'],
     data_files=[("",["LICENSE"])],
     url='https://github.com/samapriya/gee_asset_manager_addon',

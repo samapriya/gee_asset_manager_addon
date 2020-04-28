@@ -267,6 +267,10 @@ Required named arguments.:
 
 ### Changelog
 
+### v0.4.6
+- Now inclues asset_url and thumbnail_url for search.
+- Formatting and general improvements.
+
 ### v0.4.5
 - Now inclues license in sdist
 - Fixed issue with app2script tool and string and text parsing.

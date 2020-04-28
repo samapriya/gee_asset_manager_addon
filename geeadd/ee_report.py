@@ -135,18 +135,38 @@ def fparse(path):
 
 ##request type of asset, asset path and user to give permission
 def ee_report(output):
-    choicelist = ['Go grab some tea.....','Go Stretch.....','Go take a walk.....','Go grab some coffee.....'] #adding something fun
-    logger.debug('This might take sometime. {}'.format(random.choice(choicelist)))
+    choicelist = [
+        "Go grab some tea.....",
+        "Go Stretch.....",
+        "Go take a walk.....",
+        "Go grab some coffee.....",
+    ]  # adding something fun
+    logger.debug("This might take sometime. {}".format(random.choice(choicelist)))
     ee.Initialize()
     with open(output, "w") as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=["type", "path", "No of Assets", "size", "owner", "readers", "writers"],delimiter=",",
+        writer = csv.DictWriter(
+            csvfile,
+            fieldnames=[
+                "type",
+                "path",
+                "No of Assets",
+                "size",
+                "owner",
+                "readers",
+                "writers",
+            ],
+            delimiter=",",
             lineterminator="\n",
         )
         writer.writeheader()
     collection_path = ee.data.getAssetRoots()
 
     for roots in collection_path:
-        logger.debug('Processing your root folder: {}'.format(roots["id"].replace('projects/earthengine-legacy/assets/','')))
+        logger.debug(
+            "Processing your root folder: {}".format(
+                roots["id"].replace("projects/earthengine-legacy/assets/", "")
+            )
+        )
         collection_list, table_list, image_list, folder_paths = fparse(roots["id"])
         logger.debug(
             "Processing a total of: {} folders {} collections {} images {} tables".format(
@@ -155,7 +175,7 @@ def ee_report(output):
                 len(image_list),
                 len(table_list),
             )
-            +'\n'
+            + "\n"
         )
         for folder in folder_paths:
             if not folder == roots["id"]:
@@ -207,6 +227,3 @@ def ee_report(output):
                 writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
                 writer.writerow([gee_type, gee_id, total_count, total_size, o, r, w])
             csvfile.close()
-
-
-

@@ -1,4 +1,3 @@
-
 __copyright__ = """
 
     Copyright 2020 Samapriya Roy
@@ -22,92 +21,93 @@ import json
 import itertools
 
 # Empty Lists
-folder_paths=[]
-image_list=[]
-collection_list=[]
-table_list=[]
+folder_paths = []
+image_list = []
+collection_list = []
+table_list = []
 
 # Recursive folder paths
 def recursive(path):
-    if ee.data.getInfo(path)['type'].lower()=='folder':
-        children = ee.data.getList({'id': path})
+    if ee.data.getInfo(path)["type"].lower() == "folder":
+        children = ee.data.getList({"id": path})
     folder_paths.append(path)
-    val=[child['type'].lower()=='folder' for child in children]
-    while len(val)>0 and True in val:
+    val = [child["type"].lower() == "folder" for child in children]
+    while len(val) > 0 and True in val:
         for child in children:
-            if child['type'].lower()=='folder':
-                folder_paths.append(child['id'])
-                children = ee.data.getList({'id': child['id']})
-        val=[child['type'].lower()=='folder' for child in children]
-    print('Total folders: {}'.format(len(folder_paths)))
+            if child["type"].lower() == "folder":
+                folder_paths.append(child["id"])
+                children = ee.data.getList({"id": child["id"]})
+        val = [child["type"].lower() == "folder" for child in children]
+    print("Total folders: {}".format(len(folder_paths)))
     return folder_paths
+
 
 # folder parse
 def fparse(path):
     ee.Initialize()
-    if ee.data.getInfo(path)['type'].lower()=='folder':
-        gee_folder_path=recursive(path)
+    if ee.data.getInfo(path)["type"].lower() == "folder":
+        gee_folder_path = recursive(path)
         for folders in gee_folder_path:
-            children = ee.data.getList({'id': folders})
+            children = ee.data.getList({"id": folders})
             for child in children:
-                if child['type'].lower()=='imagecollection':
-                    collection_list.append(child['id'])
-                elif child['type'].lower()=='image':
-                    image_list.append(child['id'])
-                elif child['type'].lower()=='table':
-                    table_list.append(child['id'])
-    elif ee.data.getInfo(path)['type'].lower()=='image':
+                if child["type"].lower() == "imagecollection":
+                    collection_list.append(child["id"])
+                elif child["type"].lower() == "image":
+                    image_list.append(child["id"])
+                elif child["type"].lower() == "table":
+                    table_list.append(child["id"])
+    elif ee.data.getInfo(path)["type"].lower() == "image":
         image_list.append(path)
-    elif ee.data.getInfo(path)['type'].lower()=='image_collection':
+    elif ee.data.getInfo(path)["type"].lower() == "image_collection":
         collection_list.append(path)
-    elif ee.data.getInfo(path)['type'].lower()=='table':
+    elif ee.data.getInfo(path)["type"].lower() == "table":
         table_list.append(path)
     else:
-        print(ee.data.getInfo(path)['type'].lower())
-    return [collection_list,table_list,image_list,folder_paths]
+        print(ee.data.getInfo(path)["type"].lower())
+    return [collection_list, table_list, image_list, folder_paths]
 
 
 ##request type of asset, asset path and user to give permission
-def access(collection_path,user,role):
+def access(collection_path, user, role):
     ee.Initialize()
-    asset_list=fparse(collection_path)
+    asset_list = fparse(collection_path)
     asset_names = list(itertools.chain(*asset_list))
-    print('Changing permission for total of '+str(len(asset_names))+' items.....')
-    for count,init in enumerate(asset_names):
-        print('Working on ===> {}'.format(init))
+    print("Changing permission for total of " + str(len(asset_names)) + " items.....")
+    for count, init in enumerate(asset_names):
+        print("Working on ===> {}".format(init))
         acl = ee.data.getAssetAcl(init)
-        if role=='reader':
-            if not user in acl['readers']:
-                baselist=acl['readers']
+        if role == "reader":
+            if not user in acl["readers"]:
+                baselist = acl["readers"]
                 baselist.append(user)
-                acl['readers']=baselist
-                acl['owners']=[]
+                acl["readers"] = baselist
+                acl["owners"] = []
                 try:
                     ee.data.setAssetAcl(init, json.dumps(acl))
                 except Exception as e:
                     print(e)
             else:
-                print('user already has read access to this asset:SKIPPING')
-        if role=='writer':
-            if not user in acl['writers']:
-                baselist=acl['writers']
+                print("user already has read access to this asset:SKIPPING")
+        if role == "writer":
+            if not user in acl["writers"]:
+                baselist = acl["writers"]
                 baselist.append(user)
-                acl['readers']=baselist
-                acl['owners']=[]
+                acl["readers"] = baselist
+                acl["owners"] = []
                 try:
                     ee.data.setAssetAcl(init, json.dumps(acl))
                 except Exception as e:
                     print(e)
             else:
-                print('user already has write access to this asset:SKIPPING')
-        if role=='delete':
-            if not user in acl['readers']:
-                print('user does not have permission:SKIPPING')
+                print("user already has write access to this asset:SKIPPING")
+        if role == "delete":
+            if not user in acl["readers"]:
+                print("user does not have permission:SKIPPING")
             else:
-                baselist=acl['readers']
+                baselist = acl["readers"]
                 baselist.remove(user)
-                acl['readers']=baselist
-                acl['owners']=[]
+                acl["readers"] = baselist
+                acl["owners"] = []
                 try:
                     ee.data.setAssetAcl(init, json.dumps(acl))
                 except Exception as e:
