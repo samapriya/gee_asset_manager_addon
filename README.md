@@ -1,4 +1,4 @@
-# Google Earth Engine Batch Asset Manager with Addons
+# [Google Earth Engine Batch Asset Manager with Addons](https://samapriya.github.io/gee_asset_manager_addon/)
 
 [![PyPI version](https://badge.fury.io/py/geeadd.svg)](https://badge.fury.io/py/geeadd)
 ![Build Status](https://img.shields.io/badge/dynamic/json.svg?label=downloads&url=https%3A%2F%2Fpypistats.org%2Fapi%2Fpackages%2Fgeeadd%2Frecent%3Fperiod%3Dmonth&query=%24.data.last_month&colorB=blue&suffix=%2fmonth)
@@ -20,6 +20,8 @@ http://doi.org/10.5281/zenodo.3772053
 * [Getting started](#getting-started)
 * [Uploading](#uploading)
 * [Usage examples](#usage-examples)
+    * [version](#version)
+    * [readme](#readme)
     * [quota](#quota)
     * [search](#search)
     * [App to Script](#app-to-script)
@@ -68,6 +70,20 @@ To obtain help for a specific functionality, simply call it with _help_ switch, 
 
 
 ## Usage examples
+
+### version
+This prints the tool version and escapes. Simple use would be
+
+```
+geeadd version
+```
+
+### readme
+Now open the readme webpage in your browser using
+
+```
+geeadd readme
+```
 
 ### quota
 This tool is the very basic of tools in the toolbox which gives you your current quota. This gives you the total used and remaining quota in all your legacy folders or user root folders. It requires no additional arguments just that your earthengine api is enabled.
