@@ -162,7 +162,7 @@ def cancel_tasks_from_parser(args):
 def delete(ids):
     try:
         print("Recursively deleting path: {}".format(ids))
-        subprocess.call("earthengine --no-use_cloud_api rm -r " + ids)
+        subprocess.call("earthengine --no-use_cloud_api rm -r " + ids,shell=True)
     except Exception as e:
         print(e)
 

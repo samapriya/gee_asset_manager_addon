@@ -267,6 +267,10 @@ Required named arguments.:
 
 ### Changelog
 
+### v0.4.7
+- Fixed issue with delete tool and shell call.
+- Fixed issue with copy and move function for single collections
+
 ### v0.4.6
 - Now inclues asset_url and thumbnail_url for search.
 - Formatting and general improvements.

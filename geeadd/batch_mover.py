@@ -26,7 +26,7 @@ import json
 # Image copy
 def image_move(initial, replace_string, replaced_string, fpath):
     ee.Initialize()
-    if replace_string == replaced_string:
+    if replace_string == replaced_string or replace_string == None:
         final = fpath
     else:
         final = initial.replace(replace_string, replaced_string)
@@ -43,7 +43,7 @@ def image_move(initial, replace_string, replaced_string, fpath):
 # Table copy
 def table_move(initial, replace_string, replaced_string, fpath):
     ee.Initialize()
-    if replace_string == replaced_string:
+    if replace_string == replaced_string or replace_string == None:
         final = fpath
     else:
         final = initial.replace(replace_string, replaced_string)
@@ -62,7 +62,7 @@ def collection_move(initial, replace_string, replaced_string, fpath):
     ee.Initialize()
     initial_list = ee.data.getList(params={"id": initial})
     assets_names = [os.path.basename(asset["id"]) for asset in initial_list]
-    if replace_string == replaced_string:
+    if replace_string == replaced_string or replace_string == None:
         collection_path = fpath
     else:
         collection_path = initial.replace(replace_string, replaced_string)
@@ -119,30 +119,33 @@ def recursive(path):
 # Copy function
 def mover(path, fpath):
     ee.Initialize()
-    replace_string = path.split("/")[-1]
-    replaced_string = fpath.split("/")[-1]
-    if ee.data.getInfo(path)["type"].lower() == "folder":
-        gee_folder_path = recursive(path)
-        for folders in gee_folder_path:
-            fcreate(folders, replace_string, replaced_string)
-            children = ee.data.getList({"id": folders})
-            for child in children:
-                if child["type"].lower() == "imagecollection":
-                    collection_move(child["id"], replace_string, replaced_string, fpath)
-                elif child["type"].lower() == "image":
-                    image_move(child["id"], replace_string, replaced_string, fpath)
-                elif child["type"].lower() == "table":
-                    table_move(child["id"], replace_string, replaced_string, fpath)
-            print("")
-    elif ee.data.getInfo(path)["type"].lower() == "image":
-        replace_string = "/".join(path.split("/")[:-1])
-        replaced_string = "/".join(fpath.split("/")[:-1])
-        image_move(path, replace_string, replaced_string, fpath)
-    elif ee.data.getInfo(path)["type"].lower() == "image_collection":
-        replace_string = "/".join(path.split("/")[:-1])
-        replaced_string = "/".join(fpath.split("/")[:-1])
-        collection_move(path, replace_string, replaced_string, fpath)
-    elif ee.data.getInfo(path)["type"].lower() == "table":
-        replace_string = "/".join(path.split("/")[:-1])
-        replaced_string = "/".join(fpath.split("/")[:-1])
-        table_move(path, replace_string, replaced_string, fpath)
+    if not ee.data.getInfo(path)==None:
+        replace_string = path.split("/")[-1]
+        replaced_string = fpath.split("/")[-1]
+        if ee.data.getInfo(path)["type"].lower() == "folder":
+            gee_folder_path = recursive(path)
+            for folders in gee_folder_path:
+                fcreate(folders, replace_string, replaced_string)
+                children = ee.data.getList({"id": folders})
+                for child in children:
+                    if child["type"].lower() == "imagecollection":
+                        collection_move(child["id"], replace_string, replaced_string, fpath)
+                    elif child["type"].lower() == "image":
+                        image_move(child["id"], replace_string, replaced_string, fpath)
+                    elif child["type"].lower() == "table":
+                        table_move(child["id"], replace_string, replaced_string, fpath)
+                print("")
+        elif ee.data.getInfo(path)["type"].lower() == "image":
+            replace_string = None
+            replaced_string = "/".join(fpath.split("/")[:-1])
+            image_move(path, replace_string, replaced_string, fpath)
+        elif ee.data.getInfo(path)["type"].lower() == "image_collection":
+            replace_string = None
+            replaced_string = "/".join(fpath.split("/")[:-1])
+            collection_move(path, replace_string, replaced_string, fpath)
+        elif ee.data.getInfo(path)["type"].lower() == "table":
+            replace_string = None
+            replaced_string = "/".join(fpath.split("/")[:-1])
+            table_move(path, replace_string, replaced_string, fpath)
+    else:
+        print('Initial path {} not found'.format(path))
