@@ -83,6 +83,8 @@ def collection_copy(initial, replace_string, replaced_string, fpath):
 # Folder create
 def fcreate(folder_path, replace_string, replaced_string):
     folder_path = folder_path.replace(replace_string, replaced_string)
+    print('')
+    print('Creating folder {}'.format(folder_path))
     if ee.data.getInfo(folder_path):
         print("Folder exists: {}".format(ee.data.getInfo(folder_path)["id"]))
     else:
@@ -113,10 +115,10 @@ def recursive(path):
 def copy(path, fpath):
     ee.Initialize()
     if not ee.data.getInfo(path) == None:
-        replace_string = path.split("/")[-1]
-        replaced_string = fpath.split("/")[-1]
         if ee.data.getInfo(path)["type"].lower() == "folder":
             gee_folder_path = recursive(path)
+            replace_string=path
+            replaced_string=fpath
             for folders in gee_folder_path:
                 fcreate(folders, replace_string, replaced_string)
                 children = ee.data.getList({"id": folders})

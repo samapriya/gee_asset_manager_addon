@@ -120,9 +120,9 @@ def recursive(path):
 def mover(path, fpath):
     ee.Initialize()
     if not ee.data.getInfo(path)==None:
-        replace_string = path.split("/")[-1]
-        replaced_string = fpath.split("/")[-1]
         if ee.data.getInfo(path)["type"].lower() == "folder":
+            replace_string=path
+            replaced_string=fpath
             gee_folder_path = recursive(path)
             for folders in gee_folder_path:
                 fcreate(folders, replace_string, replaced_string)
