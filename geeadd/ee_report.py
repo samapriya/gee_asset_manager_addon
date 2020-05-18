@@ -75,22 +75,22 @@ def recprocess(gee_type, location):
 
 # Recursive folder paths
 def recursive(path):
-    if ee.data.getInfo(path)["type"].lower() == "folder":
-        children = ee.data.getList({"id": path})
-    folder_paths.append(path)
-    val = [child["type"].lower() == "folder" for child in children]
+    if ee.data.getAsset(path)["type"].lower() == "folder":
+        children = ee.data.listAssets({"parent": path})
+    folder_paths.append(path.replace('projects/earthengine-legacy/assets/',''))
+    val = [child["type"].lower() == "folder" for child in children['assets']]
     while len(val) > 0 and True in val:
-        for child in children:
+        for child in children['assets']:
             if child["type"].lower() == "folder":
                 folder_paths.append(child["id"])
-                children = ee.data.getList({"id": child["id"]})
-        val = [child["type"].lower() == "folder" for child in children]
+                children = ee.data.listAssets({"parent": "projects/earthengine-legacy/assets/{}".format(child["id"])})
+        val = [child["type"].lower() == "folder" for child in children['assets']]
     return folder_paths
 
 
 def assetsize(asset):
     ee.Initialize()
-    header = ee.data.getInfo(asset)["type"]
+    header = ee.data.getAsset(asset)["type"]
     if header == "IMAGE_COLLECTION":
         collc = ee.ImageCollection(asset)
         size = collc.aggregate_array("system:asset_size")
@@ -111,25 +111,25 @@ def assetsize(asset):
 # folder parse
 def fparse(path):
     ee.Initialize()
-    if ee.data.getInfo(path)["type"].lower() == "folder":
+    if ee.data.getAsset(path)["type"].lower() == "folder":
         gee_folder_path = recursive(path)
         for folders in gee_folder_path:
-            children = ee.data.getList({"id": folders})
-            for child in children:
-                if child["type"].lower() == "imagecollection":
+            children = ee.data.listAssets({"parent": "projects/earthengine-legacy/assets/{}".format(folders)})
+            for child in children['assets']:
+                if child["type"].lower() == "image_collection":
                     collection_list.append(child["id"])
                 elif child["type"].lower() == "image":
                     image_list.append(child["id"])
                 elif child["type"].lower() == "table":
                     table_list.append(child["id"])
-    elif ee.data.getInfo(path)["type"].lower() == "image":
+    elif ee.data.getAsset(path)["type"].lower() == "image":
         image_list.append(path)
-    elif ee.data.getInfo(path)["type"].lower() == "image_collection":
+    elif ee.data.getAsset(path)["type"].lower() == "image_collection":
         collection_list.append(path)
-    elif ee.data.getInfo(path)["type"].lower() == "table":
+    elif ee.data.getAsset(path)["type"].lower() == "table":
         table_list.append(path)
     else:
-        print(ee.data.getInfo(path)["type"].lower())
+        print(ee.data.getAsset(path)["type"].lower())
     return [collection_list, table_list, image_list, folder_paths]
 
 
@@ -168,62 +168,62 @@ def ee_report(output):
             )
         )
         collection_list, table_list, image_list, folder_paths = fparse(roots["id"])
-        logger.debug(
-            "Processing a total of: {} folders {} collections {} images {} tables".format(
-                len(folder_paths),
-                len(collection_list),
-                len(image_list),
-                len(table_list),
-            )
-            + "\n"
+    logger.debug(
+        "Processing a total of: {} folders {} collections {} images {} tables".format(
+            len(folder_paths),
+            len(collection_list),
+            len(image_list),
+            len(table_list),
         )
-        for folder in folder_paths:
-            if not folder == roots["id"]:
-                gee_id = folder
-                gee_type = "folder"
-                logger.info("Processing Folder {}".format(gee_id))
-                total_size, total_count = assetsize(folder)
-                o, r, w = recprocess(gee_type, gee_id)
-                # print(gee_id,gee_type,total_size,total_count,o,r,w)
-                try:
-                    with open(output, "a") as csvfile:
-                        writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
-                        writer.writerow(
-                            [gee_type, gee_id, total_count, total_size, o, r, w]
-                        )
-                    csvfile.close()
-                except Exception as e:
-                    print(e)
-        for collection in collection_list:
-            gee_id = collection
-            gee_type = "collection"
-            logger.info("Processing Collection {}".format(gee_id))
-            total_size, total_count = assetsize(collection)
+        + "\n"
+    )
+    for folder in folder_paths:
+        if not folder == roots["id"]:
+            gee_id = folder
+            gee_type = "folder"
+            logger.info("Processing Folder {}".format(gee_id))
+            total_size, total_count = assetsize(folder)
             o, r, w = recprocess(gee_type, gee_id)
             # print(gee_id,gee_type,total_size,total_count,o,r,w)
-            with open(output, "a") as csvfile:
-                writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
-                writer.writerow([gee_type, gee_id, total_count, total_size, o, r, w])
-            csvfile.close()
-        for table in table_list:
-            gee_id = table
-            gee_type = "table"
-            logger.info("Processing table {}".format(gee_id))
-            total_size, total_count = assetsize(table)
-            o, r, w = recprocess(gee_type, gee_id)
-            # print(gee_id,gee_type,total_size,total_count,o,r,w)
-            with open(output, "a") as csvfile:
-                writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
-                writer.writerow([gee_type, gee_id, total_count, total_size, o, r, w])
-            csvfile.close()
-        for image in image_list:
-            gee_id = image
-            gee_type = "image"
-            logger.info("Processing image {}".format(gee_id))
-            total_size, total_count = assetsize(image)
-            o, r, w = recprocess(gee_type, gee_id)
-            # print(gee_id,gee_type,total_size,total_count,o,r,w)
-            with open(output, "a") as csvfile:
-                writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
-                writer.writerow([gee_type, gee_id, total_count, total_size, o, r, w])
-            csvfile.close()
+            try:
+                with open(output, "a") as csvfile:
+                    writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
+                    writer.writerow(
+                        [gee_type, gee_id, total_count, total_size, o, r, w]
+                    )
+                csvfile.close()
+            except Exception as e:
+                print(e)
+    for collection in collection_list:
+        gee_id = collection
+        gee_type = "collection"
+        logger.info("Processing Collection {}".format(gee_id))
+        total_size, total_count = assetsize(collection)
+        o, r, w = recprocess(gee_type, gee_id)
+        # print(gee_id,gee_type,total_size,total_count,o,r,w)
+        with open(output, "a") as csvfile:
+            writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
+            writer.writerow([gee_type, gee_id, total_count, total_size, o, r, w])
+        csvfile.close()
+    for table in table_list:
+        gee_id = table
+        gee_type = "table"
+        logger.info("Processing table {}".format(gee_id))
+        total_size, total_count = assetsize(table)
+        o, r, w = recprocess(gee_type, gee_id)
+        # print(gee_id,gee_type,total_size,total_count,o,r,w)
+        with open(output, "a") as csvfile:
+            writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
+            writer.writerow([gee_type, gee_id, total_count, total_size, o, r, w])
+        csvfile.close()
+    for image in image_list:
+        gee_id = image
+        gee_type = "image"
+        logger.info("Processing image {}".format(gee_id))
+        total_size, total_count = assetsize(image)
+        o, r, w = recprocess(gee_type, gee_id)
+        # print(gee_id,gee_type,total_size,total_count,o,r,w)
+        with open(output, "a") as csvfile:
+            writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
+            writer.writerow([gee_type, gee_id, total_count, total_size, o, r, w])
+        csvfile.close()

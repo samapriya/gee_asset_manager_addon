@@ -29,8 +29,10 @@ import webbrowser
 import subprocess
 import zipfile
 import shutil
+import requests
 import pkg_resources
 import urllib.request
+from bs4 import BeautifulSoup
 from datetime import datetime
 from shutil import copyfile
 
@@ -48,11 +50,17 @@ now = datetime.now()
 
 # Get package version
 def geeadd_version():
-    print(pkg_resources.get_distribution("geeadd").version)
+    url='https://pypi.org/project/geeadd/'
+    source = requests.get(url)
+    html_content = source.text
+    soup = BeautifulSoup(html_content, "html.parser")
+    company = soup.find('h1')
+    if not pkg_resources.get_distribution("geeadd").version == company.string.strip().split(' ')[-1]:
+        print("\n"+"=========================================================================")
+        print('Current version of geeadd is {} upgrade to lastest version: {}'.format(pkg_resources.get_distribution("geeadd").version,company.string.strip().split(' ')[-1]))
+        print("=========================================================================")
 
-
-def version_from_parser(args):
-    geeadd_version()
+geeadd_version()
 
 
 # Go to the readMe
@@ -95,12 +103,12 @@ def cancel_tasks(tasks):
             print("Attempting to cancel all tasks")
             all_tasks = [
                 task
-                for task in ee.data.getTaskList()
-                if task["state"] == "RUNNING" or task["state"] == "READY"
+                for task in ee.data.listOperations()
+                if task["metadata"]["state"] == "RUNNING" or task["metadata"]["state"] == "READY"
             ]
             if len(all_tasks) > 0:
                 for task in all_tasks:
-                    ee.data.cancelTask(task["id"])
+                    ee.data.cancelOperation(task["name"])
                 print(
                     "Request completed task ID or task type {} cancelled".format(tasks)
                 )
@@ -112,11 +120,11 @@ def cancel_tasks(tasks):
         try:
             print("Attempting to cancel running tasks")
             running_tasks = [
-                task for task in ee.data.getTaskList() if task["state"] == "RUNNING"
+                task for task in ee.data.listOperations() if task["metadata"]["state"] == "RUNNING"
             ]
             if len(running_tasks) > 0:
                 for task in running_tasks:
-                    ee.data.cancelTask(task["id"])
+                    ee.data.cancelOperation(task["name"])
                 print(
                     "Request completed task ID or task type {} cancelled".format(tasks)
                 )
@@ -128,11 +136,11 @@ def cancel_tasks(tasks):
         try:
             print("Attempting to cancel queued tasks or ready tasks")
             ready_tasks = [
-                task for task in ee.data.getTaskList() if task["state"] == "READY"
+                task for task in ee.data.listOperations() if task["metadata"]["state"] == "READY"
             ]
             if len(ready_tasks) > 0:
                 for task in ready_tasks:
-                    ee.data.cancelTask(task["id"])
+                    ee.data.cancelOperation(task["name"])
                 print(
                     "Request completed task ID or task type {} cancelled".format(tasks)
                 )
@@ -143,16 +151,16 @@ def cancel_tasks(tasks):
     elif tasks is not None:
         try:
             print("Attempting to cancel task with given task ID {}".format(tasks))
-            get_status = ee.data.getTaskStatus(tasks)[0]
-            if get_status["state"] == "RUNNING" or get_status["state"] == "READY":
+            get_status = ee.data.getOperation('projects/earthengine-legacy/operations/{}'.format(tasks))
+            if get_status["metadata"]["state"] == "RUNNING" or get_status["metadata"]["state"] == "READY":
                 ee.data.cancelTask(task["id"])
                 print(
                     "Request completed task ID or task type {} cancelled".format(tasks)
                 )
-            elif get_status["state"] == "UNKNOWN":
-                print("No task found with given task ID {}".format(tasks))
+            else:
+                print('Task in status {}'.format(get_status["metadata"]["state"]))
         except Exception as e:
-            print(e)
+            print("No task found with given task ID {}".format(tasks))
 
 
 def cancel_tasks_from_parser(args):
@@ -224,10 +232,10 @@ def app2script_from_parser(args):
 
 def tasks():
     ee.Initialize()
-    statuses = ee.data.getTaskList()
+    statuses = ee.data.listOperations()
     st = []
     for status in statuses:
-        st.append(status["state"])
+        st.append(status["metadata"]["state"])
     print("Tasks Running: " + str(st.count("RUNNING")))
     print("Tasks Ready: " + str(st.count("READY")))
     print("Tasks Completed: " + str(st.count("COMPLETED")))
@@ -241,7 +249,7 @@ def tasks_from_parser(args):
 
 def assetsize(asset):
     ee.Initialize()
-    header = ee.data.getInfo(asset)["type"]
+    header = ee.data.getAsset(asset)["type"]
     if header == "IMAGE_COLLECTION":
         collc = ee.ImageCollection(asset)
         size = collc.aggregate_array("system:asset_size")
@@ -434,11 +442,6 @@ def main(args=None):
     )
     subparsers = parser.add_subparsers()
 
-    parser_version = subparsers.add_parser(
-        "version", help="Prints porder version and exists"
-    )
-    parser_version.set_defaults(func=version_from_parser)
-
     parser_read = subparsers.add_parser(
         "readme", help="Go the web based porder readme page"
     )
@@ -501,7 +504,7 @@ def main(args=None):
     )
     parser_tasks.set_defaults(func=tasks_from_parser)
 
-    parser_cancel = subparsers.add_parser("cancel", help="Cancel all running tasks")
+    parser_cancel = subparsers.add_parser("cancel", help="Cancel all, running or ready tasks or task ID")
     required_named = parser_cancel.add_argument_group("Required named arguments.")
     required_named.add_argument(
         "--tasks",

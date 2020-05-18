@@ -20,7 +20,6 @@ http://doi.org/10.5281/zenodo.3772053
 * [Getting started](#getting-started)
 * [Uploading](#uploading)
 * [Usage examples](#usage-examples)
-    * [version](#version)
     * [readme](#readme)
     * [quota](#quota)
     * [search](#search)
@@ -70,13 +69,6 @@ To obtain help for a specific functionality, simply call it with _help_ switch, 
 
 
 ## Usage examples
-
-### version
-This prints the tool version and escapes. Simple use would be
-
-```
-geeadd version
-```
 
 ### readme
 Now open the readme webpage in your browser using
@@ -282,6 +274,11 @@ Required named arguments.:
 ```
 
 ### Changelog
+
+### v0.4.9
+- Fixed [issue 11](https://github.com/samapriya/gee_asset_manager_addon/issues/11).
+- Updated to recent API calls based on Issue and general improvements
+- Added auto version check from pypi.
 
 ### v0.4.7
 - Fixed issue with delete tool and shell call.

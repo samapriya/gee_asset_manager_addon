@@ -30,9 +30,10 @@ def image_move(initial, replace_string, replaced_string, fpath):
         final = fpath
     else:
         final = initial.replace(replace_string, replaced_string)
-    if ee.data.getInfo(final):
-        print("Image already move: {}".format(final))
-    else:
+    try:
+        if ee.data.getAsset(final):
+            print("Image already moved: {}".format(final))
+    except Exception:
         print("Moving image to {}".format(final))
         try:
             ee.data.renameAsset(initial, final)
@@ -47,9 +48,10 @@ def table_move(initial, replace_string, replaced_string, fpath):
         final = fpath
     else:
         final = initial.replace(replace_string, replaced_string)
-    if ee.data.getInfo(final):
-        print("Table already moved: {}".format(final))
-    else:
+    try:
+        if ee.data.getAsset(final):
+            print("Table already moved: {}".format(final))
+    except Exception:
         print("Moving table to {}".format(final))
         try:
             ee.data.renameAsset(initial, final)
@@ -60,19 +62,24 @@ def table_move(initial, replace_string, replaced_string, fpath):
 # Collection copy
 def collection_move(initial, replace_string, replaced_string, fpath):
     ee.Initialize()
-    initial_list = ee.data.getList(params={"id": initial})
-    assets_names = [os.path.basename(asset["id"]) for asset in initial_list]
+    initial_list = ee.data.listAssets({"parent": "projects/earthengine-legacy/assets/{}".format(initial)})
+    assets_names = [os.path.basename(asset["name"]) for asset in initial_list['assets']]
     if replace_string == replaced_string or replace_string == None:
         collection_path = fpath
     else:
         collection_path = initial.replace(replace_string, replaced_string)
-    if ee.data.getInfo(collection_path):
-        print("Collection exists: {}".format(ee.data.getInfo(collection_path)["id"]))
-    else:
-        print("Collection does not exist: Creating {}".format(collection_path))
-        ee.data.createAsset({"type": ee.data.ASSET_TYPE_IMAGE_COLL}, collection_path)
-    final_list = ee.data.getList(params={"id": collection_path})
-    final_names = [os.path.basename(asset["id"]) for asset in final_list]
+    try:
+        if ee.data.getAsset(collection_path):
+            print('testing this')
+            print("Collection exists: {}".format(ee.data.getAsset(collection_path)["id"]))
+    except Exception as e:
+            print("Collection does not exist: Creating {}".format(collection_path))
+            try:
+                ee.data.createAsset({"type": ee.data.ASSET_TYPE_IMAGE_COLL_CLOUD}, collection_path)
+            except Exception:
+                ee.data.createAsset({"type": ee.data.ASSET_TYPE_IMAGE_COLL}, collection_path)
+    final_list = ee.data.listAssets({"parent": "projects/earthengine-legacy/assets/{}".format(collection_path)})
+    final_names = [os.path.basename(asset["name"]) for asset in final_list['assets']]
     diff = set(assets_names) - set(final_names)
     print("Moving a total of " + str(len(diff)) + " images.....")
     for count, items in enumerate(diff):
@@ -87,13 +94,19 @@ def collection_move(initial, replace_string, replaced_string, fpath):
 
 # Folder create
 def fcreate(folder_path, replace_string, replaced_string):
-    ee.Initialize()
     folder_path = folder_path.replace(replace_string, replaced_string)
-    if ee.data.getInfo(folder_path):
-        print("Folder exists: {}".format(ee.data.getInfo(folder_path)["id"]))
-    else:
+    print('')
+    print('Creating folder {}'.format(folder_path))
+    try:
+        if ee.data.getAsset(folder_path):
+            print("Folder exists: {}".format(ee.data.getAsset(folder_path)["id"]))
+    except Exception as e:
         print("Folder does not exist: Creating {}".format(folder_path))
-        ee.data.createAsset({"type": ee.data.ASSET_TYPE_FOLDER}, folder_path)
+        try:
+            ee.data.createAsset({"type": ee.data.ASSET_TYPE_FOLDER_CLOUD}, "projects/earthengine-legacy/assets/{}".format(folder_path))
+        except Exception as e:
+            print(e)
+            ee.data.createAsset({"type": ee.data.ASSET_TYPE_FOLDER}, folder_path)
 
 
 # Recursive folder paths
@@ -101,17 +114,16 @@ folder_paths = []
 
 
 def recursive(path):
-    ee.Initialize()
-    if ee.data.getInfo(path)["type"].lower() == "folder":
-        children = ee.data.getList({"id": path})
-    folder_paths.append(path)
-    val = [child["type"].lower() == "folder" for child in children]
+    if ee.data.getAsset(path)["type"].lower() == "folder":
+        children = ee.data.listAssets({"parent": "projects/earthengine-legacy/assets/{}".format(path)})
+    folder_paths.append(path.replace('projects/earthengine-legacy/assets/',''))
+    val = [child["type"].lower() == "folder" for child in children['assets']]
     while len(val) > 0 and True in val:
-        for child in children:
+        for child in children['assets']:
             if child["type"].lower() == "folder":
                 folder_paths.append(child["id"])
-                children = ee.data.getList({"id": child["id"]})
-        val = [child["type"].lower() == "folder" for child in children]
+                children = ee.data.listAssets({"parent": "projects/earthengine-legacy/assets/{}".format(child["id"])})
+        val = [child["type"].lower() == "folder" for child in children['assets']]
     print("Total folders: {}".format(len(folder_paths)))
     return folder_paths
 
@@ -119,33 +131,35 @@ def recursive(path):
 # Copy function
 def mover(path, fpath):
     ee.Initialize()
-    if not ee.data.getInfo(path)==None:
-        if ee.data.getInfo(path)["type"].lower() == "folder":
-            replace_string=path
-            replaced_string=fpath
-            gee_folder_path = recursive(path)
-            for folders in gee_folder_path:
-                fcreate(folders, replace_string, replaced_string)
-                children = ee.data.getList({"id": folders})
-                for child in children:
-                    if child["type"].lower() == "imagecollection":
-                        collection_move(child["id"], replace_string, replaced_string, fpath)
-                    elif child["type"].lower() == "image":
-                        image_move(child["id"], replace_string, replaced_string, fpath)
-                    elif child["type"].lower() == "table":
-                        table_move(child["id"], replace_string, replaced_string, fpath)
-                print("")
-        elif ee.data.getInfo(path)["type"].lower() == "image":
-            replace_string = None
-            replaced_string = "/".join(fpath.split("/")[:-1])
-            image_move(path, replace_string, replaced_string, fpath)
-        elif ee.data.getInfo(path)["type"].lower() == "image_collection":
-            replace_string = None
-            replaced_string = "/".join(fpath.split("/")[:-1])
-            collection_move(path, replace_string, replaced_string, fpath)
-        elif ee.data.getInfo(path)["type"].lower() == "table":
-            replace_string = None
-            replaced_string = "/".join(fpath.split("/")[:-1])
-            table_move(path, replace_string, replaced_string, fpath)
-    else:
+    try:
+        if not ee.data.getAsset(path) == None:
+            if ee.data.getAsset(path)["type"].lower() == "folder":
+                replace_string=path
+                replaced_string=fpath
+                gee_folder_path = recursive(path)
+                for folders in gee_folder_path:
+                    fcreate(folders, replace_string, replaced_string)
+                    children = ee.data.listAssets({"parent": "projects/earthengine-legacy/assets/{}".format(folders)})
+                    for child in children['assets']:
+                        if child["type"].lower() == "image_collection":
+                            collection_move(child["id"], replace_string, replaced_string, fpath)
+                        elif child["type"].lower() == "image":
+                            image_move(child["id"], replace_string, replaced_string, fpath)
+                        elif child["type"].lower() == "table":
+                            table_move(child["id"], replace_string, replaced_string, fpath)
+                    print("")
+            elif ee.data.getInfo(path)["type"].lower() == "image":
+                replace_string = None
+                replaced_string = "/".join(fpath.split("/")[:-1])
+                image_move(path, replace_string, replaced_string, fpath)
+            elif ee.data.getInfo(path)["type"].lower() == "image_collection":
+                replace_string = None
+                replaced_string = "/".join(fpath.split("/")[:-1])
+                collection_move(path, replace_string, replaced_string, fpath)
+            elif ee.data.getInfo(path)["type"].lower() == "table":
+                replace_string = None
+                replaced_string = "/".join(fpath.split("/")[:-1])
+                table_move(path, replace_string, replaced_string, fpath)
+    except Exception as e:
+        print(e)
         print('Initial path {} not found'.format(path))

@@ -28,16 +28,16 @@ table_list = []
 
 # Recursive folder paths
 def recursive(path):
-    if ee.data.getInfo(path)["type"].lower() == "folder":
-        children = ee.data.getList({"id": path})
-    folder_paths.append(path)
-    val = [child["type"].lower() == "folder" for child in children]
+    if ee.data.getAsset(path)["type"].lower() == "folder":
+        children = ee.data.listAssets({"parent": "projects/earthengine-legacy/assets/{}".format(path)})
+    folder_paths.append(path.replace('projects/earthengine-legacy/assets/',''))
+    val = [child["type"].lower() == "folder" for child in children['assets']]
     while len(val) > 0 and True in val:
-        for child in children:
+        for child in children['assets']:
             if child["type"].lower() == "folder":
                 folder_paths.append(child["id"])
-                children = ee.data.getList({"id": child["id"]})
-        val = [child["type"].lower() == "folder" for child in children]
+                children = ee.data.listAssets({"parent": "projects/earthengine-legacy/assets/{}".format(child["id"])})
+        val = [child["type"].lower() == "folder" for child in children['assets']]
     print("Total folders: {}".format(len(folder_paths)))
     return folder_paths
 
@@ -45,25 +45,25 @@ def recursive(path):
 # folder parse
 def fparse(path):
     ee.Initialize()
-    if ee.data.getInfo(path)["type"].lower() == "folder":
+    if ee.data.getAsset(path)["type"].lower() == "folder":
         gee_folder_path = recursive(path)
         for folders in gee_folder_path:
-            children = ee.data.getList({"id": folders})
-            for child in children:
-                if child["type"].lower() == "imagecollection":
+            children = ee.data.listAssets({"parent": "projects/earthengine-legacy/assets/{}".format(folders)})
+            for child in children['assets']:
+                if child["type"].lower() == "image_collection":
                     collection_list.append(child["id"])
                 elif child["type"].lower() == "image":
                     image_list.append(child["id"])
                 elif child["type"].lower() == "table":
                     table_list.append(child["id"])
-    elif ee.data.getInfo(path)["type"].lower() == "image":
+    elif ee.data.getAsset(path)["type"].lower() == "image":
         image_list.append(path)
-    elif ee.data.getInfo(path)["type"].lower() == "image_collection":
+    elif ee.data.getAsset(path)["type"].lower() == "image_collection":
         collection_list.append(path)
-    elif ee.data.getInfo(path)["type"].lower() == "table":
+    elif ee.data.getAsset(path)["type"].lower() == "table":
         table_list.append(path)
     else:
-        print(ee.data.getInfo(path)["type"].lower())
+        print(ee.data.getAsset(path)["type"].lower())
     return [collection_list, table_list, image_list, folder_paths]
 
 
