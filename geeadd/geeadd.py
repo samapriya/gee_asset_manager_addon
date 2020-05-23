@@ -50,15 +50,29 @@ now = datetime.now()
 
 # Get package version
 def geeadd_version():
-    url='https://pypi.org/project/geeadd/'
+    url = "https://pypi.org/project/geeadd/"
     source = requests.get(url)
     html_content = source.text
     soup = BeautifulSoup(html_content, "html.parser")
-    company = soup.find('h1')
-    if not pkg_resources.get_distribution("geeadd").version == company.string.strip().split(' ')[-1]:
-        print("\n"+"=========================================================================")
-        print('Current version of geeadd is {} upgrade to lastest version: {}'.format(pkg_resources.get_distribution("geeadd").version,company.string.strip().split(' ')[-1]))
-        print("=========================================================================")
+    company = soup.find("h1")
+    if (
+        not pkg_resources.get_distribution("geeadd").version
+        == company.string.strip().split(" ")[-1]
+    ):
+        print(
+            "\n"
+            + "========================================================================="
+        )
+        print(
+            "Current version of geeadd is {} upgrade to lastest version: {}".format(
+                pkg_resources.get_distribution("geeadd").version,
+                company.string.strip().split(" ")[-1],
+            )
+        )
+        print(
+            "========================================================================="
+        )
+
 
 geeadd_version()
 
@@ -104,7 +118,8 @@ def cancel_tasks(tasks):
             all_tasks = [
                 task
                 for task in ee.data.listOperations()
-                if task["metadata"]["state"] == "RUNNING" or task["metadata"]["state"] == "READY"
+                if task["metadata"]["state"] == "RUNNING"
+                or task["metadata"]["state"] == "READY"
             ]
             if len(all_tasks) > 0:
                 for task in all_tasks:
@@ -120,7 +135,9 @@ def cancel_tasks(tasks):
         try:
             print("Attempting to cancel running tasks")
             running_tasks = [
-                task for task in ee.data.listOperations() if task["metadata"]["state"] == "RUNNING"
+                task
+                for task in ee.data.listOperations()
+                if task["metadata"]["state"] == "RUNNING"
             ]
             if len(running_tasks) > 0:
                 for task in running_tasks:
@@ -136,7 +153,9 @@ def cancel_tasks(tasks):
         try:
             print("Attempting to cancel queued tasks or ready tasks")
             ready_tasks = [
-                task for task in ee.data.listOperations() if task["metadata"]["state"] == "READY"
+                task
+                for task in ee.data.listOperations()
+                if task["metadata"]["state"] == "READY"
             ]
             if len(ready_tasks) > 0:
                 for task in ready_tasks:
@@ -151,14 +170,19 @@ def cancel_tasks(tasks):
     elif tasks is not None:
         try:
             print("Attempting to cancel task with given task ID {}".format(tasks))
-            get_status = ee.data.getOperation('projects/earthengine-legacy/operations/{}'.format(tasks))
-            if get_status["metadata"]["state"] == "RUNNING" or get_status["metadata"]["state"] == "READY":
+            get_status = ee.data.getOperation(
+                "projects/earthengine-legacy/operations/{}".format(tasks)
+            )
+            if (
+                get_status["metadata"]["state"] == "RUNNING"
+                or get_status["metadata"]["state"] == "READY"
+            ):
                 ee.data.cancelTask(task["id"])
                 print(
                     "Request completed task ID or task type {} cancelled".format(tasks)
                 )
             else:
-                print('Task in status {}'.format(get_status["metadata"]["state"]))
+                print("Task in status {}".format(get_status["metadata"]["state"]))
         except Exception as e:
             print("No task found with given task ID {}".format(tasks))
 
@@ -170,7 +194,9 @@ def cancel_tasks_from_parser(args):
 def delete(ids):
     try:
         print("Recursively deleting path: {}".format(ids))
-        subprocess.call("earthengine --no-use_cloud_api rm -r " + ids,shell=True)
+        subprocess.call(
+            "earthengine rm -r {}".format(ids), shell=True, stdout=subprocess.PIPE
+        )
     except Exception as e:
         print(e)
 
@@ -504,7 +530,9 @@ def main(args=None):
     )
     parser_tasks.set_defaults(func=tasks_from_parser)
 
-    parser_cancel = subparsers.add_parser("cancel", help="Cancel all, running or ready tasks or task ID")
+    parser_cancel = subparsers.add_parser(
+        "cancel", help="Cancel all, running or ready tasks or task ID"
+    )
     required_named = parser_cancel.add_argument_group("Required named arguments.")
     required_named.add_argument(
         "--tasks",

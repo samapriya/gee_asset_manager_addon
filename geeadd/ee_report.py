@@ -77,14 +77,14 @@ def recprocess(gee_type, location):
 def recursive(path):
     if ee.data.getAsset(path)["type"].lower() == "folder":
         children = ee.data.listAssets({"parent": path})
-    folder_paths.append(path.replace('projects/earthengine-legacy/assets/',''))
-    val = [child["type"].lower() == "folder" for child in children['assets']]
+    folder_paths.append(path)
+    val = [child["type"].lower() == "folder" for child in children["assets"]]
     while len(val) > 0 and True in val:
-        for child in children['assets']:
+        for child in children["assets"]:
             if child["type"].lower() == "folder":
-                folder_paths.append(child["id"])
-                children = ee.data.listAssets({"parent": "projects/earthengine-legacy/assets/{}".format(child["id"])})
-        val = [child["type"].lower() == "folder" for child in children['assets']]
+                folder_paths.append(child["name"])
+                children = ee.data.listAssets({"parent": child["name"]})
+        val = [child["type"].lower() == "folder" for child in children["assets"]]
     return folder_paths
 
 
@@ -114,8 +114,8 @@ def fparse(path):
     if ee.data.getAsset(path)["type"].lower() == "folder":
         gee_folder_path = recursive(path)
         for folders in gee_folder_path:
-            children = ee.data.listAssets({"parent": "projects/earthengine-legacy/assets/{}".format(folders)})
-            for child in children['assets']:
+            children = ee.data.listAssets({"parent": folders})
+            for child in children["assets"]:
                 if child["type"].lower() == "image_collection":
                     collection_list.append(child["id"])
                 elif child["type"].lower() == "image":
@@ -162,18 +162,11 @@ def ee_report(output):
     collection_path = ee.data.getAssetRoots()
 
     for roots in collection_path:
-        logger.debug(
-            "Processing your root folder: {}".format(
-                roots["id"].replace("projects/earthengine-legacy/assets/", "")
-            )
-        )
+        logger.debug("Processing your root folder: {}".format(roots["id"]))
         collection_list, table_list, image_list, folder_paths = fparse(roots["id"])
     logger.debug(
         "Processing a total of: {} folders {} collections {} images {} tables".format(
-            len(folder_paths),
-            len(collection_list),
-            len(image_list),
-            len(table_list),
+            len(folder_paths), len(collection_list), len(image_list), len(table_list),
         )
         + "\n"
     )

@@ -275,6 +275,11 @@ Required named arguments.:
 
 ### Changelog
 
+### v0.5.0
+- Updated to use earthengine-api>= 0.1.222
+- Copy and move tool improvements to facilitate cloud alpha support.
+- Updated task check tool to account for operations based handling.
+
 ### v0.4.9
 - Fixed [issue 11](https://github.com/samapriya/gee_asset_manager_addon/issues/11).
 - Updated to recent API calls based on Issue and general improvements
@@ -285,7 +290,7 @@ Required named arguments.:
 - Fixed issue with copy and move function for single collections
 
 ### v0.4.6
-- Now inclues asset_url and thumbnail_url for search.
+- Now includes asset_url and thumbnail_url for search.
 - Formatting and general improvements.
 
 ### v0.4.5
