@@ -78,14 +78,18 @@ geeadd readme
 ```
 
 ### quota
-This tool is the very basic of tools in the toolbox which gives you your current quota. This gives you the total used and remaining quota in all your legacy folders or user root folders. It requires no additional arguments just that your earthengine api is enabled.
+This tool is the very basic of tools in the toolbox which gives you your current quota. This gives you the total used and remaining quota in all your legacy folders or user root folders. It requires no additional arguments just that your earthengine api is enabled. Quota can now also handle Google Earth Engine with Google Cloud Projects enabled so you can pass project path as an argument.
 
 ```
 > geeadd quota -h
-usage: geeadd quota [-h]
+usage: geeadd quota [-h] [--project PROJECT]
 
 optional arguments:
-  -h, --help  show this help message and exit
+  -h, --help         show this help message and exit
+
+Optional named arguments:
+  --project PROJECT  Project Name usually in format projects/project-
+                     name/assets/
 ```
 
 ### search
@@ -274,6 +278,10 @@ Required named arguments.:
 ```
 
 ### Changelog
+
+### v0.5.1
+- Updated quota tool to handle GCP projects inside GEE
+- Updated Folder size reporting
 
 ### v0.5.0
 - Updated to use earthengine-api>= 0.1.222

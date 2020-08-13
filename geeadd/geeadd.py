@@ -205,31 +205,50 @@ def delete_collection_from_parser(args):
     delete(ids=args.id)
 
 
-def quota():
+def quota(project):
     ee.Initialize()
-    for roots in ee.data.getAssetRoots():
-        quota = ee.data.getAssetRootQuota(roots["id"])
-        print("")
-        print(
-            "Root assets path: {}".format(
-                roots["id"].replace("projects/earthengine-legacy/assets/", "")
+    if project is not None:
+        try:
+            if not project.endswith('/'):
+                project = project+'/'
+            else:
+                project = project
+            project_detail= ee.data.getAsset(project)
+            print("")
+            if 'sizeBytes' in project_detail['quota']:
+                print('Used {} of {}'.format(humansize(int(project_detail['quota']['sizeBytes'])),(humansize(int(project_detail['quota']['maxSizeBytes'])))))
+            else:
+                print('Used 0 of {}'.format(humansize(int(project_detail['quota']['maxSizeBytes']))))
+            if 'assetCount' in project_detail['quota']:
+                print('Used {:,} assets of {:,} total'.format(int(project_detail['quota']['assetCount']),int(project_detail['quota']['maxAssetCount'])))
+            else:
+                print('Used 0 assets of {:,} total'.format(int(project_detail['quota']['maxAssetCount'])))
+        except Exception as e:
+            print(e)
+    else:
+        for roots in ee.data.getAssetRoots():
+            quota = ee.data.getAssetRootQuota(roots["id"])
+            print("")
+            print(
+                "Root assets path: {}".format(
+                    roots["id"].replace("projects/earthengine-legacy/assets/", "")
+                )
             )
-        )
-        print(
-            "Used {} of {}".format(
-                humansize(quota["asset_size"]["usage"]),
-                humansize(quota["asset_size"]["limit"]),
+            print(
+                "Used {} of {}".format(
+                    humansize(quota["asset_size"]["usage"]),
+                    humansize(quota["asset_size"]["limit"]),
+                )
             )
-        )
-        print(
-            "Used {:,} assets of {:,} total".format(
-                quota["asset_count"]["usage"], quota["asset_count"]["limit"]
+            print(
+                "Used {:,} assets of {:,} total".format(
+                    quota["asset_count"]["usage"], quota["asset_count"]["limit"]
+                )
             )
-        )
 
 
 def quota_from_parser(args):
-    quota()
+    quota(project=args.project)
 
 
 def ee_report_from_parser(args):
@@ -299,16 +318,21 @@ def assetsize(asset):
             + str(humansize(collc.get("system:asset_size").getInfo()))
         )
     elif header == "FOLDER":
-        b = subprocess.check_output(
-            "earthengine --no-use_cloud_api du " + asset + " -s", shell=True
-        ).decode("ascii")
-        num = subprocess.check_output(
-            "earthengine --no-use_cloud_api ls " + asset, shell=True
-        ).decode("ascii")
-        size = humansize(float(b.strip().split(" ")[0]))
+        b = subprocess.Popen(
+            "earthengine du {} -s".format(asset), shell=True,stdout=subprocess.PIPE
+        )
+        out, err = b.communicate()
+        val=[item for item in out.decode("ascii").split(" ") if item.isdigit()]
+        size = humansize(float(val[0]))
+        num = subprocess.Popen("earthengine ls {}".format(asset), shell=True, stdout=subprocess.PIPE
+        )
+        out, err = num.communicate()
+        out=out.decode("ascii")
+        num = [i for i in out.split("\n") if i if len(i)>1 if not i.startswith("Running")]
         print("")
+        # print(num.split("\n"))
         print(str(asset) + " ===> " + str(size))
-        print("Total number of items in folder: {}".format(len(num.split("\n")) - 1))
+        print("Total number of items in folder: {}".format(len(num)))
 
 
 def assetsize_from_parser(args):
@@ -475,6 +499,12 @@ def main(args=None):
 
     parser_quota = subparsers.add_parser(
         "quota", help="Print Earth Engine total quota and used quota"
+    )
+    optional_named = parser_quota.add_argument_group("Optional named arguments")
+    optional_named.add_argument(
+        "--project",
+        help="Project Name usually in format projects/project-name/assets/",
+        default=None,
     )
     parser_quota.set_defaults(func=quota_from_parser)
 
