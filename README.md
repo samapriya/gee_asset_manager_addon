@@ -2,8 +2,9 @@
 
 [![PyPI version](https://badge.fury.io/py/geeadd.svg)](https://badge.fury.io/py/geeadd)
 [![Downloads](https://pepy.tech/badge/geeadd/month)](https://pepy.tech/project/geeadd/month)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3831538.svg)](https://doi.org/10.5281/zenodo.3831538)
-
+![CI geeadd](https://github.com/samapriya/gee_asset_manager_addon/workflows/CI%20geeadd/badge.svg)
 
 Google Earth Engine Batch Asset Manager with Addons is an extension of the one developed by Lukasz [here](https://github.com/tracek/gee_asset_manager) and additional tools were added to include functionality for moving assets, conversion of objects to fusion table, cleaning folders, querying tasks. The ambition is apart from helping user with batch actions on assets along with interacting and extending capabilities of existing GEE CLI. It is developed case by case basis to include more features in the future as it becomes available or as need arises.
 
@@ -33,6 +34,8 @@ http://doi.org/10.5281/zenodo.3831538
     * [Assets Access](#assets-access)
     * [Delete](#delete)
     * [Delete Metadata](#delete-metadata)
+
+# [Read the Docs Here](https://samapriya.github.io/gee_asset_manager_addon/)
 
 ## Installation
 We assume Earth Engine Python API is installed and EE authorised as desribed [here](https://developers.google.com/earth-engine/python_install). From v0.3.4 onwards geeadd will only run on Python 3. Also with the new changes to the Earth Engine API library, the tool was completely modified to work with earthengine-api v0.1.127 and higher. Authenticate your earth engine client by using the following in your command line or terminal setup.
