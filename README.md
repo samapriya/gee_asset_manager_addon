@@ -35,7 +35,7 @@ http://doi.org/10.5281/zenodo.4049729
     * [Delete](#delete)
     * [Delete Metadata](#delete-metadata)
 
-# [Read the Docs Here](https://samapriya.github.io/gee_asset_manager_addon/)
+# [Click to Read the Online Docs Here](https://samapriya.github.io/gee_asset_manager_addon/)
 
 ## Installation
 We assume Earth Engine Python API is installed and EE authorised as desribed [here](https://developers.google.com/earth-engine/python_install). From v0.3.4 onwards geeadd will only run on Python 3. Also with the new changes to the Earth Engine API library, the tool was completely modified to work with earthengine-api v0.1.127 and higher. Authenticate your earth engine client by using the following in your command line or terminal setup.
