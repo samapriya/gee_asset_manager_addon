@@ -3,7 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/geeadd.svg)](https://badge.fury.io/py/geeadd)
 [![Downloads](https://pepy.tech/badge/geeadd/month)](https://pepy.tech/project/geeadd/month)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3831538.svg)](https://doi.org/10.5281/zenodo.3831538)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4049729.svg)](https://doi.org/10.5281/zenodo.4049729)
 ![CI geeadd](https://github.com/samapriya/gee_asset_manager_addon/workflows/CI%20geeadd/badge.svg)
 
 Google Earth Engine Batch Asset Manager with Addons is an extension of the one developed by Lukasz [here](https://github.com/tracek/gee_asset_manager) and additional tools were added to include functionality for moving assets, conversion of objects to fusion table, cleaning folders, querying tasks. The ambition is apart from helping user with batch actions on assets along with interacting and extending capabilities of existing GEE CLI. It is developed case by case basis to include more features in the future as it becomes available or as need arises.
@@ -11,8 +11,8 @@ Google Earth Engine Batch Asset Manager with Addons is an extension of the one d
 If you use this tool to download data for your research, and find this tool useful, star and cite it as below
 
 ```
-Samapriya Roy. (2020, May 18). samapriya/gee_asset_manager_addon: GEE Asset Manager with Addons (Version 0.4.9). Zenodo.
-http://doi.org/10.5281/zenodo.3831538
+Samapriya Roy. (2020, September 25). samapriya/gee_asset_manager_addon: GEE Asset Manager with Addons (Version 0.5.2). Zenodo.
+http://doi.org/10.5281/zenodo.4049729
 ```
 
 
