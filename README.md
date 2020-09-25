@@ -175,7 +175,7 @@ Required named arguments.:
 ```
 
 ### Task Query
-This script counts all currently running, cancelled, ready and failed tasks and requires no arguments.
+This script counts all currently running, cancelled, pending and failed tasks and requires no arguments.
 
 ```
 > geeadd tasks -h
@@ -196,7 +196,7 @@ optional arguments:
   -h, --help     show this help message and exit
 
 Required named arguments.:
-  --tasks TASKS  You can provide tasks as running or ready or all or even a
+  --tasks TASKS  You can provide tasks as running or pending or all or even a
                  single task id
 ```
 
@@ -281,6 +281,10 @@ Required named arguments.:
 ```
 
 ### Changelog
+
+### v0.5.2
+- Updated copy tool to allow for non mirrored copy
+- Updated task and task cancel tools to account for states Pending and Cancelling
 
 ### v0.5.1
 - Updated quota tool to handle GCP projects inside GEE

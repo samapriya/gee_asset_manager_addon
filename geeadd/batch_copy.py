@@ -61,6 +61,8 @@ def collection_copy(initial, replace_string, replaced_string, fpath):
     assets_names = [os.path.basename(asset["name"]) for asset in initial_list["assets"]]
     if replace_string == replaced_string or replace_string == None:
         collection_path = fpath
+    elif initial.split('/')[-1] != fpath.split('/')[-1]:
+         collection_path = fpath
     else:
         collection_path = initial.replace(replace_string, replaced_string)
     try:
@@ -79,7 +81,7 @@ def collection_copy(initial, replace_string, replaced_string, fpath):
                 {"type": ee.data.ASSET_TYPE_IMAGE_COLL}, collection_path
             )
 
-    # print(collection_path)
+    collection_path=ee.data.getAsset(collection_path)['name']
     final_list = ee.data.listAssets({"parent": collection_path})
     final_names = [os.path.basename(asset["name"]) for asset in final_list["assets"]]
     diff = set(assets_names) - set(final_names)

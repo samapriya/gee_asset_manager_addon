@@ -119,7 +119,7 @@ def cancel_tasks(tasks):
                 task
                 for task in ee.data.listOperations()
                 if task["metadata"]["state"] == "RUNNING"
-                or task["metadata"]["state"] == "READY"
+                or task["metadata"]["state"] == "PENDING"
             ]
             if len(all_tasks) > 0:
                 for task in all_tasks:
@@ -128,7 +128,7 @@ def cancel_tasks(tasks):
                     "Request completed task ID or task type {} cancelled".format(tasks)
                 )
             elif len(all_tasks) == 0:
-                print("No Running or Ready tasks found")
+                print("No Running or Pending tasks found")
         except Exception as e:
             print(e)
     elif tasks == "running":
@@ -143,28 +143,28 @@ def cancel_tasks(tasks):
                 for task in running_tasks:
                     ee.data.cancelOperation(task["name"])
                 print(
-                    "Request completed task ID or task type {} cancelled".format(tasks)
+                    "Request completed task ID or task type: {} cancelled".format(tasks)
                 )
             elif len(running_tasks) == 0:
                 print("No Running tasks found")
         except Exception as e:
             print(e)
-    elif tasks == "ready":
+    elif tasks == "pending":
         try:
-            print("Attempting to cancel queued tasks or ready tasks")
+            print("Attempting to cancel queued tasks or pending tasks")
             ready_tasks = [
                 task
                 for task in ee.data.listOperations()
-                if task["metadata"]["state"] == "READY"
+                if task["metadata"]["state"] == "PENDING"
             ]
             if len(ready_tasks) > 0:
                 for task in ready_tasks:
                     ee.data.cancelOperation(task["name"])
                 print(
-                    "Request completed task ID or task type {} cancelled".format(tasks)
+                    "Request completed task ID or task type: {} cancelled".format(tasks)
                 )
             elif len(ready_tasks) == 0:
-                print("No Ready tasks found")
+                print("No Pending tasks found")
         except Exception as e:
             print(e)
     elif tasks is not None:
@@ -175,11 +175,11 @@ def cancel_tasks(tasks):
             )
             if (
                 get_status["metadata"]["state"] == "RUNNING"
-                or get_status["metadata"]["state"] == "READY"
+                or get_status["metadata"]["state"] == "PENDING"
             ):
                 ee.data.cancelTask(task["id"])
                 print(
-                    "Request completed task ID or task type {} cancelled".format(tasks)
+                    "Request completed task ID or task type: {} cancelled".format(tasks)
                 )
             else:
                 print("Task in status {}".format(get_status["metadata"]["state"]))
@@ -282,10 +282,10 @@ def tasks():
     for status in statuses:
         st.append(status["metadata"]["state"])
     print("Tasks Running: " + str(st.count("RUNNING")))
-    print("Tasks Ready: " + str(st.count("READY")))
-    print("Tasks Completed: " + str(st.count("COMPLETED")))
+    print("Tasks Pending: " + str(st.count("PENDING")))
+    print("Tasks Completed: " + str(st.count("SUCCEEDED")))
     print("Tasks Failed: " + str(st.count("FAILED")))
-    print("Tasks Cancelled: " + str(st.count("CANCELLED")))
+    print("Tasks Cancelled: " + str(st.count("CANCELLED")+st.count("CANCELLING")))
 
 
 def tasks_from_parser(args):
@@ -556,7 +556,7 @@ def main(args=None):
 
     parser_tasks = subparsers.add_parser(
         "tasks",
-        help="Queries current task status [completed,running,ready,failed,cancelled]",
+        help="Queries current task status [completed,running,pending,failed,cancelled]",
     )
     parser_tasks.set_defaults(func=tasks_from_parser)
 
@@ -566,7 +566,7 @@ def main(args=None):
     required_named = parser_cancel.add_argument_group("Required named arguments.")
     required_named.add_argument(
         "--tasks",
-        help="You can provide tasks as running or ready or all or even a single task id",
+        help="You can provide tasks as running or pending or all or even a single task id",
         required=True,
         default=None,
     )
