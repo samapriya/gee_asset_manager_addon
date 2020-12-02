@@ -282,6 +282,9 @@ Required named arguments.:
 
 ### Changelog
 
+### v0.5.3
+- Updated app2script tool to handle change in element
+
 ### v0.5.2
 - Updated copy tool to allow for non mirrored copy
 - Updated task and task cancel tools to account for states Pending and Cancelling

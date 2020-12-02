@@ -30,7 +30,7 @@ def jsext(url, outfile):
             if not articles.string == None and articles.string.strip().startswith(
                 "init"
             ):
-                url = articles.string.strip().split('"')[3]
+                url = articles.string.strip().split('"')[1]
                 if url.startswith("https"):
                     iscript = requests.get(url).json()
                     pt = iscript["path"]
