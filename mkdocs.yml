@@ -1,0 +1,114 @@
+site_name: geeadd docs
+site_description: Google Earth Engine Asset Manager with Addons
+
+site_author: Samapriya Roy
+site_url: https://github.com/samapriya
+
+# Repository
+repo_name: gee_asset_manager_addon
+repo_url: https://github.com/samapriya/gee_asset_manager_addon
+
+# Copyright
+copyright: 'Copyright &copy; 2021 - 2022 Samapriya Roy'
+
+
+# Configuration
+theme:
+  name: 'material'
+
+  # 404 page
+  static_templates:
+    - 404.html
+
+  # Don't include MkDocs' JavaScript
+  include_search_page: false
+  search_index_only: true
+
+  # Default values, taken from mkdocs_theme.yml
+  language: en
+  palette:
+    scheme: default
+    primary: red
+    accent: blue
+  font:
+    text: Google Sans
+    code: Regular
+  favicon: assets/favicon.png
+  icon:
+    logo: logo
+
+# Options
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/samapriya
+    - icon: fontawesome/brands/medium
+      link: https://medium.com/@samapriyaroy
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/samapriyaroy
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/in/samapriya
+
+# Extensions
+markdown_extensions:
+  - admonition
+  - abbr
+  - attr_list
+  - def_list
+  - footnotes
+  - meta
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: squidfunk
+      repo: mkdocs-material
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+
+
+# Page tree
+nav:
+  - Introduction: index.md
+  - License: license.md
+  - General Installation: installation.md
+  - geeadd tools:
+    - Quota tool: projects/quota.md
+    - GEE app source: projects/app2script.md
+    - Search GEE data catalog: projects/search.md
+  - Asset management tools:
+    - Copy Assets: projects/copy.md
+    - Move Assets: projects/move.md
+    - Change asset permissions: projects/access.md
+    - Delete assets: projects/delete.md
+  - Additional tools:
+    - Asset Size: projects/size.md
+    - Asset Report: projects/report.md
+    - Task status: projects/task_status.md
+    - Cancel tasks: projects/cancel_tasks.md
+    - Delete asset metadata: projects/delete_metadata.md
+  - Changelog: changelog.md
