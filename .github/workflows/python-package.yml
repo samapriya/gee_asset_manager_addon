@@ -30,16 +30,19 @@ jobs:
         if runner.os =='Windows'
           python -m pip install --upgrade pip
           pip install -U pip setuptools
+          pip install google-auth==1.27.1
           pip install flake8 pytest pipwin pandas wheel
           pip install poetry
           pipwin refresh
         if runner.os !='Windows'
           python -m pip install --upgrade pip
           pip install -U pip setuptools
+          pip install google-auth==1.27.1
           pip install flake8 pytest pipwin pandas wheel
           pip install poetry
           pipwin refresh
     - name: Test package
       run: |
+        pip install google-auth==1.27.1
         python setup.py install
         geeadd -h
