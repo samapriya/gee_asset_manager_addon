@@ -25,12 +25,20 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
+      continue-on-error: true
       run: |
-        python -m pip install --upgrade pip
-        pip install -U pip setuptools
-        pip install flake8 pytest pipwin pandas wheel
-        pip install poetry
-        pipwin refresh
+        if runner.os =='Windows'
+          python -m pip install --upgrade pip
+          pip install -U pip setuptools
+          pip install flake8 pytest pipwin pandas wheel
+          pip install poetry
+          pipwin refresh
+        if runner.os !='Windows'
+          python -m pip install --upgrade pip
+          pip install -U pip setuptools
+          pip install flake8 pytest pipwin pandas wheel
+          pip install poetry
+          pipwin refresh
     - name: Test package
       run: |
         python setup.py install
