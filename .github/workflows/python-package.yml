@@ -44,5 +44,6 @@ jobs:
     - name: Test package
       run: |
         pip install google-auth==1.27.1
+        pip install google-api-core
         python setup.py install
         geeadd -h
