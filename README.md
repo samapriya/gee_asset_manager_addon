@@ -112,6 +112,14 @@ Required named arguments.:
                        on
 ```
 
+The search tool also includes the capability to search within the community datasets catalog since v0.5.4.
+
+```
+geeadd search --keywords ph --source community
+```
+
+![community_search](https://user-images.githubusercontent.com/6677629/111101250-852d1b80-8517-11eb-9173-eef523216f08.gif)
+
 ### App to Script
 This tool writes out or prints the underlying earthengine code for any public earthengine app. The tool has an option to export the code into a javascript file that you can then paste into Google Earth Engine code editor.
 
@@ -282,6 +290,11 @@ Required named arguments.:
 
 ### Changelog
 
+### v0.5.4
+- Updated search tool to use updated endpoint
+- Search tool no longer downloads zip or parses CSV
+- Minor improvements
+-
 ### v0.5.3
 - Updated app2script tool to handle change in element
 

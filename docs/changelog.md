@@ -1,5 +1,10 @@
 # Changelog
 
+### v0.5.4
+- Updated search tool to use updated endpoint
+- Search tool no longer downloads zip or parses CSV
+- Minor improvements
+
 ### v0.5.2
 - Updated copy tool to allow for non mirrored copy
 - Updated task and task cancel tools to account for states Pending and Cancelling

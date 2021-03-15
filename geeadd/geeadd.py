@@ -2,7 +2,7 @@
 
 __copyright__ = """
 
-    Copyright 2020 Samapriya Roy
+    Copyright 2021 Samapriya Roy
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -339,151 +339,187 @@ def assetsize_from_parser(args):
     assetsize(asset=args.asset)
 
 
-def search(mname):
-    out_file_path = os.path.join(lpath, "eed.zip")
-    for f in os.listdir(lpath):
-        if f.endswith(".csv"):
-            try:
-                os.unlink(os.path.join(lpath, f))
-            except WindowsError:
-                with open(os.path.join(lpath, f), mode="w") as outfile:
-                    outfile.close()
-
-    # get os type
-    name = os.name
-
-    # set base folder names and paths
-    folder_name = "Earth-Engine-Datasets-List-master"
-    pth = os.path.join(lpath, folder_name)
-
-    if os.path.exists(pth):
-        if name == "nt":
-            os.system("rmdir " + '"' + pth + '" /s /q')
-        elif name == "posix":
-            try:
-                shutil.rmtree(pth)
-            except:
-                print("Try using sudo privileges")
-
-    try:
-        urllib.request.urlretrieve(
-            "https://github.com/samapriya/Earth-Engine-Datasets-List/archive/master.zip",
-            out_file_path,
-        )
-    except:
-        print("The URL is invalid. Please double check the URL.")
-
-    # Unzip the zip file
-    zip_ref = zipfile.ZipFile(out_file_path)
-    for file in zip_ref.namelist():
-        if zip_ref.getinfo(file).filename.endswith(".csv"):
-            zip_ref.extract(file, lpath)
-
-    for items in os.listdir(os.path.join(lpath, folder_name)):
-        if items.endswith(".csv"):
-            copyfile(os.path.join(pth, items), os.path.join(lpath, items))
-            print(
-                "Using Earth Engine Catalog with date: {}".format(
-                    items.split("_")[1].split(".")[0]
-                )
-                + "\n"
-            )
+def search(mname,source):
     gee_bundle = []
-    for items in os.listdir(lpath):
-        if items.endswith(".csv"):
-            i = 1
-            input_file = csv.DictReader(open(os.path.join(lpath, items)))
-            for rows in input_file:
-                if mname.lower() in str(rows["title"]).lower():
-                    try:
-                        if rows["type"] == "image_collection":
-                            rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
-                        elif rows["type"] == "image":
-                            rows["id"] = "ee.Image('{}')".format(rows["id"])
-                        elif rows["type"] == "table":
-                            rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
-                        item = {
-                            "index": i,
-                            "title": rows["title"],
-                            "ee_id_snippet": rows["id"],
-                            "start_date": rows["start_date"],
-                            "end_date": rows["end_date"],
-                            "asset_url": rows["asset_url"],
-                            "thumbnail_url": rows["thumbnail_url"],
-                        }
-                        gee_bundle.append(item)
-                        i = i + 1
-                    except Exception as e:
-                        print(e)
-                elif mname.lower() in str(rows["id"]).lower():
-                    try:
-                        if rows["type"] == "image_collection":
-                            rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
-                        elif rows["type"] == "image":
-                            rows["id"] = "ee.Image('{}')".format(rows["id"])
-                        elif rows["type"] == "table":
-                            rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
-                        item = {
-                            "index": i,
-                            "title": rows["title"],
-                            "ee_id_snippet": rows["id"],
-                            "start_date": rows["start_date"],
-                            "end_date": rows["end_date"],
-                            "asset_url": rows["asset_url"],
-                            "thumbnail_url": rows["thumbnail_url"],
-                        }
-                        gee_bundle.append(item)
-                        i = i + 1
-                    except Exception as e:
-                        print(e)
-                elif mname.lower() in str(rows["provider"]).lower():
-                    try:
-                        if rows["type"] == "image_collection":
-                            rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
-                        elif rows["type"] == "image":
-                            rows["id"] = "ee.Image('{}')".format(rows["id"])
-                        elif rows["type"] == "table":
-                            rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
-                        item = {
-                            "index": i,
-                            "title": rows["title"],
-                            "ee_id_snippet": rows["id"],
-                            "start_date": rows["start_date"],
-                            "end_date": rows["end_date"],
-                            "asset_url": rows["asset_url"],
-                            "thumbnail_url": rows["thumbnail_url"],
-                        }
-                        gee_bundle.append(item)
-                        i = i + 1
-                    except Exception as e:
-                        print(e)
-                elif mname.lower() in str(rows["tags"]).lower():
-                    try:
-                        if rows["type"] == "image_collection":
-                            rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
-                        elif rows["type"] == "image":
-                            rows["id"] = "ee.Image('{}')".format(rows["id"])
-                        elif rows["type"] == "table":
-                            rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
-                        item = {
-                            "index": i,
-                            "title": rows["title"],
-                            "ee_id_snippet": rows["id"],
-                            "start_date": rows["start_date"],
-                            "end_date": rows["end_date"],
-                            "asset_url": rows["asset_url"],
-                            "thumbnail_url": rows["thumbnail_url"],
-                        }
-                        gee_bundle.append(item)
-                        i = i + 1
-                    except Exception as e:
-                        print(e)
+    if source is not None and source =='community':
+        r= requests.get('https://raw.githubusercontent.com/samapriya/awesome-gee-community-datasets/master/community_datasets.json')
+        community_list = r.json()
+        print('Looking within {} community datasets'.format(len(community_list)))
+        i = 1
+        for rows in community_list:
+            if mname.lower() in str(rows["title"]).lower():
+                try:
+                    if rows["type"] == "image_collection":
+                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
+                    elif rows["type"] == "image":
+                        rows["id"] = "ee.Image('{}')".format(rows["id"])
+                    elif rows["type"] == "table":
+                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
+                    item = {
+                        "index": i,
+                        "title": rows["title"],
+                        "ee_id_snippet": rows["id"],
+                        "provider": rows["provider"],
+                        "sample_code": rows["sample_code"],
+                    }
+
+                    gee_bundle.append(item)
+                    i = i + 1
+                except Exception as e:
+                    print(e)
+            elif mname.lower() in str(rows["id"]).lower():
+                try:
+                    if rows["type"] == "image_collection":
+                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
+                    elif rows["type"] == "image":
+                        rows["id"] = "ee.Image('{}')".format(rows["id"])
+                    elif rows["type"] == "table":
+                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
+                    item = {
+                        "index": i,
+                        "title": rows["title"],
+                        "ee_id_snippet": rows["id"],
+                        "provider": rows["provider"],
+                        "sample_code": rows["sample_code"],
+                    }
+                    gee_bundle.append(item)
+                    i = i + 1
+                except Exception as e:
+                    print(e)
+            elif mname.lower() in str(rows["provider"]).lower():
+                try:
+                    if rows["type"] == "image_collection":
+                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
+                    elif rows["type"] == "image":
+                        rows["id"] = "ee.Image('{}')".format(rows["id"])
+                    elif rows["type"] == "table":
+                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
+                    item = {
+                        "index": i,
+                        "title": rows["title"],
+                        "ee_id_snippet": rows["id"],
+                        "provider": rows["provider"],
+                        "sample_code": rows["sample_code"],
+                    }
+                    gee_bundle.append(item)
+                    i = i + 1
+                except Exception as e:
+                    print(e)
+            elif mname.lower() in str(rows["tags"]).lower():
+                try:
+                    if rows["type"] == "image_collection":
+                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
+                    elif rows["type"] == "image":
+                        rows["id"] = "ee.Image('{}')".format(rows["id"])
+                    elif rows["type"] == "table":
+                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
+                    item = {
+                        "index": i,
+                        "title": rows["title"],
+                        "ee_id_snippet": rows["id"],
+                        "provider": rows["provider"],
+                        "sample_code": rows["sample_code"],
+                    }
+                    gee_bundle.append(item)
+                    i = i + 1
+                except Exception as e:
+                    print(e)
+    elif source is None:
+        r= requests.get('https://raw.githubusercontent.com/samapriya/Earth-Engine-Datasets-List/master/gee_catalog.json')
+        catalog_list = r.json()
+        print('Looking within {} gee catalog datasets'.format(len(catalog_list)))
+        i=1
+        for rows in catalog_list:
+            if mname.lower() in str(rows["title"]).lower():
+                try:
+                    if rows["type"] == "image_collection":
+                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
+                    elif rows["type"] == "image":
+                        rows["id"] = "ee.Image('{}')".format(rows["id"])
+                    elif rows["type"] == "table":
+                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
+                    item = {
+                        "index": i,
+                        "title": rows["title"],
+                        "ee_id_snippet": rows["id"],
+                        "start_date": rows["start_date"],
+                        "end_date": rows["end_date"],
+                        "asset_url": rows["asset_url"],
+                        "thumbnail_url": rows["thumbnail_url"],
+                    }
+                    gee_bundle.append(item)
+                    i = i + 1
+                except Exception as e:
+                    print(e)
+            elif mname.lower() in str(rows["id"]).lower():
+                try:
+                    if rows["type"] == "image_collection":
+                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
+                    elif rows["type"] == "image":
+                        rows["id"] = "ee.Image('{}')".format(rows["id"])
+                    elif rows["type"] == "table":
+                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
+                    item = {
+                        "index": i,
+                        "title": rows["title"],
+                        "ee_id_snippet": rows["id"],
+                        "start_date": rows["start_date"],
+                        "end_date": rows["end_date"],
+                        "asset_url": rows["asset_url"],
+                        "thumbnail_url": rows["thumbnail_url"],
+                    }
+                    gee_bundle.append(item)
+                    i = i + 1
+                except Exception as e:
+                    print(e)
+            elif mname.lower() in str(rows["provider"]).lower():
+                try:
+                    if rows["type"] == "image_collection":
+                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
+                    elif rows["type"] == "image":
+                        rows["id"] = "ee.Image('{}')".format(rows["id"])
+                    elif rows["type"] == "table":
+                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
+                    item = {
+                        "index": i,
+                        "title": rows["title"],
+                        "ee_id_snippet": rows["id"],
+                        "start_date": rows["start_date"],
+                        "end_date": rows["end_date"],
+                        "asset_url": rows["asset_url"],
+                        "thumbnail_url": rows["thumbnail_url"],
+                    }
+                    gee_bundle.append(item)
+                    i = i + 1
+                except Exception as e:
+                    print(e)
+            elif mname.lower() in str(rows["tags"]).lower():
+                try:
+                    if rows["type"] == "image_collection":
+                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
+                    elif rows["type"] == "image":
+                        rows["id"] = "ee.Image('{}')".format(rows["id"])
+                    elif rows["type"] == "table":
+                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
+                    item = {
+                        "index": i,
+                        "title": rows["title"],
+                        "ee_id_snippet": rows["id"],
+                        "start_date": rows["start_date"],
+                        "end_date": rows["end_date"],
+                        "asset_url": rows["asset_url"],
+                        "thumbnail_url": rows["thumbnail_url"],
+                    }
+                    gee_bundle.append(item)
+                    i = i + 1
+                except Exception as e:
+                    print(e)
     print("")
     print(json.dumps(gee_bundle, indent=4, sort_keys=False))
 
 
 def search_from_parser(args):
-    search(mname=args.keywords)
+    search(mname=args.keywords,source=args.source)
 
 
 def main(args=None):
@@ -529,6 +565,12 @@ def main(args=None):
         "--keywords",
         help="Keywords to search for can be id, provider, tag and so on",
         required=True,
+    )
+    optional_named = parser_search.add_argument_group("Optional named arguments")
+    optional_named.add_argument(
+        "--source",
+        help="Type community to search within the Community Dataset Catalog",
+        default=None,
     )
     parser_search.set_defaults(func=search_from_parser)
 
@@ -642,7 +684,11 @@ def main(args=None):
 
     args = parser.parse_args()
 
-    args.func(args)
+    try:
+        func = args.func
+    except AttributeError:
+        parser.error("too few arguments")
+    func(args)
 
 
 if __name__ == "__main__":
