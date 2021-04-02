@@ -1,7 +1,7 @@
 # [Google Earth Engine Batch Asset Manager with Addons](https://samapriya.github.io/gee_asset_manager_addon/)
 
 [![PyPI version](https://badge.fury.io/py/geeadd.svg)](https://badge.fury.io/py/geeadd)
-[![Downloads](https://pepy.tech/badge/geeadd/month)](https://pepy.tech/project/geeadd/month)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/geeadd)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4604084.svg)](https://doi.org/10.5281/zenodo.4604084)
 ![CI geeadd](https://github.com/samapriya/gee_asset_manager_addon/workflows/CI%20geeadd/badge.svg)
