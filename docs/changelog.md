@@ -1,5 +1,11 @@
 # Changelog
 
+### v0.5.5
+- added folder migration tools
+- improved recursive folder search & copy, move and permissions tools
+- major improvements to copy and move tools for better migration of nested Folders
+- Minor improvements and cleanup
+
 ### v0.5.4
 - Updated search tool to use updated endpoint
 - Search tool no longer downloads zip or parses CSV

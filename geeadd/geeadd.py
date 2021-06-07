@@ -48,6 +48,22 @@ from .app2script import jsext
 
 now = datetime.now()
 
+class Solution:
+    def compareVersion(self, version1, version2):
+        versions1 = [int(v) for v in version1.split(".")]
+        versions2 = [int(v) for v in version2.split(".")]
+        for i in range(max(len(versions1), len(versions2))):
+            v1 = versions1[i] if i < len(versions1) else 0
+            v2 = versions2[i] if i < len(versions2) else 0
+            if v1 > v2:
+                return 1
+            elif v1 < v2:
+                return -1
+        return 0
+
+
+ob1 = Solution()
+
 # Get package version
 def geeadd_version():
     url = "https://pypi.org/project/geeadd/"
@@ -55,10 +71,11 @@ def geeadd_version():
     html_content = source.text
     soup = BeautifulSoup(html_content, "html.parser")
     company = soup.find("h1")
-    if (
-        not pkg_resources.get_distribution("geeadd").version
-        == company.string.strip().split(" ")[-1]
-    ):
+    vcheck = ob1.compareVersion(
+        company.string.strip().split(" ")[-1],
+        pkg_resources.get_distribution("geeadd").version,
+    )
+    if vcheck == 1:
         print(
             "\n"
             + "========================================================================="
@@ -72,7 +89,20 @@ def geeadd_version():
         print(
             "========================================================================="
         )
-
+    elif vcheck == -1:
+        print(
+            "\n"
+            + "========================================================================="
+        )
+        print(
+            "Possibly running staging code {} compared to pypi release {}".format(
+                pkg_resources.get_distribution("geeadd").version,
+                company.string.strip().split(" ")[-1],
+            )
+        )
+        print(
+            "========================================================================="
+        )
 
 geeadd_version()
 
