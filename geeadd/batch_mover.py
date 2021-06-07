@@ -2,7 +2,7 @@ from __future__ import print_function
 
 __copyright__ = """
 
-    Copyright 2020 Samapriya Roy
+    Copyright 2021 Samapriya Roy
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ __copyright__ = """
 __license__ = "Apache 2.0"
 import ee
 import os
-import json
 
 
 # Image copy
@@ -61,7 +60,6 @@ def table_move(initial, replace_string, replaced_string, fpath):
 
 # Collection copy
 def collection_move(initial, replace_string, replaced_string, fpath):
-    ee.Initialize()
     initial_list = ee.data.listAssets({"parent": initial})
     assets_names = [os.path.basename(asset["name"]) for asset in initial_list["assets"]]
     if replace_string == replaced_string or replace_string == None:
@@ -70,7 +68,6 @@ def collection_move(initial, replace_string, replaced_string, fpath):
         collection_path = initial.replace(replace_string, replaced_string)
     try:
         if ee.data.getAsset(collection_path):
-            print("testing this")
             print(
                 "Collection exists: {}".format(ee.data.getAsset(collection_path)["id"])
             )
@@ -84,6 +81,8 @@ def collection_move(initial, replace_string, replaced_string, fpath):
             ee.data.createAsset(
                 {"type": ee.data.ASSET_TYPE_IMAGE_COLL}, collection_path
             )
+
+    collection_path = ee.data.getAsset(collection_path)["name"]
     final_list = ee.data.listAssets({"parent": collection_path})
     final_names = [os.path.basename(asset["name"]) for asset in final_list["assets"]]
     diff = set(assets_names) - set(final_names)
@@ -113,22 +112,26 @@ def fcreate(folder_path, replace_string, replaced_string):
 
 
 # Recursive folder paths
-folder_paths = []
+folder_list = []
+
+
+def get_folder(path):
+    parser = ee.data.getAsset(path)
+    if parser["type"].lower() == "folder":
+        folder_list.append(parser["name"])
+        recursive(parser["name"])
 
 
 def recursive(path):
-    if ee.data.getAsset(path)["type"].lower() == "folder":
+    path = ee.data.getAsset(path)
+    if path["type"].lower() == "folder":
+        path = path["name"]
+        folder_list.append(path)
         children = ee.data.listAssets({"parent": path})
-    folder_paths.append(path)
-    val = [child["type"].lower() == "folder" for child in children["assets"]]
-    while len(val) > 0 and True in val:
         for child in children["assets"]:
-            if child["type"].lower() == "folder":
-                folder_paths.append(child["name"])
-                children = ee.data.listAssets({"parent": child["name"]})
-        val = [child["type"].lower() == "folder" for child in children["assets"]]
-    print("Total folders: {}".format(len(folder_paths)))
-    return folder_paths
+            if not child["name"] in folder_list:
+                get_folder(child["name"])
+    return folder_list
 
 
 # Copy function
@@ -137,7 +140,9 @@ def mover(path, fpath):
     try:
         if not ee.data.getAsset(path) == None:
             if ee.data.getAsset(path)["type"].lower() == "folder":
-                gee_folder_path = recursive(ee.data.getAsset(path)["name"])
+                gee_folder_path = recursive(path)
+                gee_folder_path = sorted(list(set(gee_folder_path)))
+                print("Total folders: {}".format(len(set(folder_list))))
                 # Get the initial path
                 initial_path_suffix = path.split("/")[-1]
                 replace_string = (
@@ -186,13 +191,49 @@ def mover(path, fpath):
                 image_move(path, replace_string, replaced_string, fpath)
             elif ee.data.getAsset(path)["type"].lower() == "image_collection":
                 path = ee.data.getAsset(path)["name"]
-                replace_string = "/".join(
-                    ee.data.getAsset(path)["name"].split("/")[:-1]
-                )
-                replaced_string = ee.data.getAsset(
-                    "/".join(fpath.split("/")[:-1]) + "/"
-                )["name"]
-                collection_move(path, replace_string, replaced_string, fpath)
+                initial_list = ee.data.listAssets({"parent": path})
+                assets_names = [
+                    os.path.basename(asset["name"]) for asset in initial_list["assets"]
+                ]
+                collection_path = fpath
+                try:
+                    if ee.data.getAsset(collection_path):
+                        print(
+                            "Collection exists: {}".format(
+                                ee.data.getAsset(collection_path)["id"]
+                            )
+                        )
+                except Exception as e:
+                    print(
+                        "Collection does not exist: Creating {}".format(collection_path)
+                    )
+                    try:
+                        ee.data.createAsset(
+                            {"type": ee.data.ASSET_TYPE_IMAGE_COLL_CLOUD},
+                            collection_path,
+                        )
+                    except Exception:
+                        ee.data.createAsset(
+                            {"type": ee.data.ASSET_TYPE_IMAGE_COLL}, collection_path
+                        )
+
+                collection_path = ee.data.getAsset(collection_path)["name"]
+                final_list = ee.data.listAssets({"parent": collection_path})
+                final_names = [
+                    os.path.basename(asset["name"]) for asset in final_list["assets"]
+                ]
+                diff = set(assets_names) - set(final_names)
+                print("Moving a total of " + str(len(diff)) + " images.....")
+                for count, items in enumerate(diff):
+                    print(
+                        "Moving " + str(count + 1) + " of " + str(len(diff)), end="\r"
+                    )
+                    init = path + "/" + items
+                    fin = collection_path + "/" + items
+                    try:
+                        ee.data.renameAsset(init, fin)
+                    except Exception as e:
+                        print(e)
             elif ee.data.getAsset(path)["type"].lower() == "table":
                 path = ee.data.getAsset(path)["name"]
                 replace_string = None

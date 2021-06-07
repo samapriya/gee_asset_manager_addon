@@ -1,6 +1,6 @@
 __copyright__ = """
 
-    Copyright 2020 Samapriya Roy
+    Copyright 2021 Samapriya Roy
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -21,25 +21,32 @@ import json
 import itertools
 
 # Empty Lists
-folder_paths = []
+
 image_list = []
 collection_list = []
 table_list = []
 
 # Recursive folder paths
+folder_list = []
+
+
+def get_folder(path):
+    parser = ee.data.getAsset(path)
+    if parser["type"].lower() == "folder":
+        folder_list.append(parser["name"])
+        recursive(parser["name"])
+
+
 def recursive(path):
-    if ee.data.getAsset(path)["type"].lower() == "folder":
-        children = ee.data.listAssets({"parent": "projects/earthengine-legacy/assets/{}".format(path)})
-    folder_paths.append(path.replace('projects/earthengine-legacy/assets/',''))
-    val = [child["type"].lower() == "folder" for child in children['assets']]
-    while len(val) > 0 and True in val:
-        for child in children['assets']:
-            if child["type"].lower() == "folder":
-                folder_paths.append(child["id"])
-                children = ee.data.listAssets({"parent": "projects/earthengine-legacy/assets/{}".format(child["id"])})
-        val = [child["type"].lower() == "folder" for child in children['assets']]
-    print("Total folders: {}".format(len(folder_paths)))
-    return folder_paths
+    path = ee.data.getAsset(path)
+    if path["type"].lower() == "folder":
+        path = path["name"]
+        folder_list.append(path)
+        children = ee.data.listAssets({"parent": path})
+        for child in children["assets"]:
+            if not child["name"] in folder_list:
+                get_folder(child["name"])
+    return folder_list
 
 
 # folder parse
@@ -47,9 +54,10 @@ def fparse(path):
     ee.Initialize()
     if ee.data.getAsset(path)["type"].lower() == "folder":
         gee_folder_path = recursive(path)
+        gee_folder_path = sorted(list(set(gee_folder_path)))
         for folders in gee_folder_path:
-            children = ee.data.listAssets({"parent": "projects/earthengine-legacy/assets/{}".format(folders)})
-            for child in children['assets']:
+            children = ee.data.listAssets({"parent": ee.data.getAsset(folders)['name']})
+            for child in children["assets"]:
                 if child["type"].lower() == "image_collection":
                     collection_list.append(child["id"])
                 elif child["type"].lower() == "image":
@@ -64,17 +72,16 @@ def fparse(path):
         table_list.append(path)
     else:
         print(ee.data.getAsset(path)["type"].lower())
-    return [collection_list, table_list, image_list, folder_paths]
+    return [collection_list, table_list, image_list, folder_list]
 
 
 ##request type of asset, asset path and user to give permission
 def access(collection_path, user, role):
     ee.Initialize()
     asset_list = fparse(collection_path)
-    asset_names = list(itertools.chain(*asset_list))
+    asset_names = list(set(itertools.chain(*asset_list)))
     print("Changing permission for total of " + str(len(asset_names)) + " items.....")
     for count, init in enumerate(asset_names):
-        print("Working on ===> {}".format(init))
         acl = ee.data.getAssetAcl(init)
         if role == "reader":
             if not user in acl["readers"]:
@@ -84,10 +91,11 @@ def access(collection_path, user, role):
                 acl["owners"] = []
                 try:
                     ee.data.setAssetAcl(init, json.dumps(acl))
+                    print(f"Added {user} as reader for {init}")
                 except Exception as e:
                     print(e)
             else:
-                print("user already has read access to this asset:SKIPPING")
+                print(f"{user} already has read access to {init} asset:SKIPPING")
         if role == "writer":
             if not user in acl["writers"]:
                 baselist = acl["writers"]
@@ -96,13 +104,14 @@ def access(collection_path, user, role):
                 acl["owners"] = []
                 try:
                     ee.data.setAssetAcl(init, json.dumps(acl))
+                    print(f"Added {user} as writer for {init}")
                 except Exception as e:
                     print(e)
             else:
-                print("user already has write access to this asset:SKIPPING")
+                print(f"{user} already has write access to {init} asset:SKIPPING")
         if role == "delete":
             if not user in acl["readers"]:
-                print("user does not have permission:SKIPPING")
+                print(f"user {user} does not have permission:SKIPPING")
             else:
                 baselist = acl["readers"]
                 baselist.remove(user)
@@ -110,5 +119,6 @@ def access(collection_path, user, role):
                 acl["owners"] = []
                 try:
                     ee.data.setAssetAcl(init, json.dumps(acl))
+                    print(f"Removed permissions for {user} to {init}")
                 except Exception as e:
                     print(e)
