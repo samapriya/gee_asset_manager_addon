@@ -1,5 +1,12 @@
 #! /usr/bin/env python
 
+from .acl_changer import access
+from .app2script import jsext
+from .batch_copy import copy
+from .batch_mover import mover
+from .ee_del_meta import delprop
+from .ee_report import ee_report
+
 __copyright__ = """
 
     Copyright 2021 Samapriya Roy
@@ -20,33 +27,29 @@ __copyright__ = """
 __license__ = "Apache 2.0"
 
 import argparse
-import os
 import csv
-import sys
 import json
-import ee
-import webbrowser
-import subprocess
-import zipfile
+import os
 import shutil
-import requests
-import pkg_resources
+import subprocess
+import sys
 import urllib.request
-from bs4 import BeautifulSoup
+import webbrowser
+import zipfile
 from datetime import datetime
 from shutil import copyfile
+
+import ee
+import pkg_resources
+import requests
+from bs4 import BeautifulSoup
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 lpath = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(lpath)
-from .batch_copy import copy
-from .batch_mover import mover
-from .acl_changer import access
-from .ee_report import ee_report
-from .ee_del_meta import delprop
-from .app2script import jsext
 
 now = datetime.now()
+
 
 class Solution:
     def compareVersion(self, version1, version2):
@@ -65,6 +68,8 @@ class Solution:
 ob1 = Solution()
 
 # Get package version
+
+
 def geeadd_version():
     url = "https://pypi.org/project/geeadd/"
     source = requests.get(url)
@@ -103,6 +108,7 @@ def geeadd_version():
         print(
             "========================================================================="
         )
+
 
 geeadd_version()
 
@@ -155,7 +161,8 @@ def cancel_tasks(tasks):
                 for task in all_tasks:
                     ee.data.cancelOperation(task["name"])
                 print(
-                    "Request completed task ID or task type {} cancelled".format(tasks)
+                    "Request completed task ID or task type {} cancelled".format(
+                        tasks)
                 )
             elif len(all_tasks) == 0:
                 print("No Running or Pending tasks found")
@@ -173,7 +180,8 @@ def cancel_tasks(tasks):
                 for task in running_tasks:
                     ee.data.cancelOperation(task["name"])
                 print(
-                    "Request completed task ID or task type: {} cancelled".format(tasks)
+                    "Request completed task ID or task type: {} cancelled".format(
+                        tasks)
                 )
             elif len(running_tasks) == 0:
                 print("No Running tasks found")
@@ -191,7 +199,8 @@ def cancel_tasks(tasks):
                 for task in ready_tasks:
                     ee.data.cancelOperation(task["name"])
                 print(
-                    "Request completed task ID or task type: {} cancelled".format(tasks)
+                    "Request completed task ID or task type: {} cancelled".format(
+                        tasks)
                 )
             elif len(ready_tasks) == 0:
                 print("No Pending tasks found")
@@ -209,10 +218,12 @@ def cancel_tasks(tasks):
             ):
                 ee.data.cancelTask(task["id"])
                 print(
-                    "Request completed task ID or task type: {} cancelled".format(tasks)
+                    "Request completed task ID or task type: {} cancelled".format(
+                        tasks)
                 )
             else:
-                print("Task in status {}".format(get_status["metadata"]["state"]))
+                print("Task in status {}".format(
+                    get_status["metadata"]["state"]))
         except Exception as e:
             print("No task found with given task ID {}".format(tasks))
 
@@ -243,16 +254,20 @@ def quota(project):
                 project = project+'/'
             else:
                 project = project
-            project_detail= ee.data.getAsset(project)
+            project_detail = ee.data.getAsset(project)
             print("")
             if 'sizeBytes' in project_detail['quota']:
-                print('Used {} of {}'.format(humansize(int(project_detail['quota']['sizeBytes'])),(humansize(int(project_detail['quota']['maxSizeBytes'])))))
+                print('Used {} of {}'.format(humansize(int(project_detail['quota']['sizeBytes'])), (humansize(
+                    int(project_detail['quota']['maxSizeBytes'])))))
             else:
-                print('Used 0 of {}'.format(humansize(int(project_detail['quota']['maxSizeBytes']))))
+                print('Used 0 of {}'.format(
+                    humansize(int(project_detail['quota']['maxSizeBytes']))))
             if 'assetCount' in project_detail['quota']:
-                print('Used {:,} assets of {:,} total'.format(int(project_detail['quota']['assetCount']),int(project_detail['quota']['maxAssetCount'])))
+                print('Used {:,} assets of {:,} total'.format(int(
+                    project_detail['quota']['assetCount']), int(project_detail['quota']['maxAssetCount'])))
             else:
-                print('Used 0 assets of {:,} total'.format(int(project_detail['quota']['maxAssetCount'])))
+                print('Used 0 assets of {:,} total'.format(
+                    int(project_detail['quota']['maxAssetCount'])))
         except Exception as e:
             print(e)
     else:
@@ -261,7 +276,8 @@ def quota(project):
             print("")
             print(
                 "Root assets path: {}".format(
-                    roots["id"].replace("projects/earthengine-legacy/assets/", "")
+                    roots["id"].replace(
+                        "projects/earthengine-legacy/assets/", "")
                 )
             )
             print(
@@ -282,7 +298,7 @@ def quota_from_parser(args):
 
 
 def ee_report_from_parser(args):
-    ee_report(output=args.outfile)
+    ee_report(output=args.outfile, path=args.path)
 
 
 def move_from_parser(args):
@@ -305,21 +321,47 @@ def app2script_from_parser(args):
     jsext(url=args.url, outfile=args.outfile)
 
 
-def tasks():
+def tasks(state):
     ee.Initialize()
-    statuses = ee.data.listOperations()
-    st = []
-    for status in statuses:
-        st.append(status["metadata"]["state"])
-    print("Tasks Running: " + str(st.count("RUNNING")))
-    print("Tasks Pending: " + str(st.count("PENDING")))
-    print("Tasks Completed: " + str(st.count("SUCCEEDED")))
-    print("Tasks Failed: " + str(st.count("FAILED")))
-    print("Tasks Cancelled: " + str(st.count("CANCELLED")+st.count("CANCELLING")))
+    if state is not None:
+        task_bundle = []
+        operations = [status
+                      for status in ee.data.listOperations() if status["metadata"]["state"] == state.upper()]
+        for operation in operations:
+            task_id = operation['name'].split('/')[-1]
+            description = operation['metadata']['description'].split(
+                ':')[-1].strip().replace('"', '')
+            op_type = operation['metadata']['type']
+            attempt_count = str(operation['metadata']['attempt'])
+            start = datetime.strptime(
+                operation['metadata']["startTime"], "%Y-%m-%dT%H:%M:%S.%fZ")
+            end = datetime.strptime(
+                operation['metadata']["updateTime"], "%Y-%m-%dT%H:%M:%S.%fZ")
+            time_difference = end-start
+            item = {
+                "task_id": task_id,
+                "operation_type": op_type,
+                "description/path": description,
+                "run_time": str(time_difference),
+                "attempt": attempt_count
+            }
+            task_bundle.append(item)
+        print(json.dumps(task_bundle, indent=2))
+    else:
+        statuses = ee.data.listOperations()
+        st = []
+        for status in statuses:
+            st.append(status["metadata"]["state"])
+        print(f"Tasks Running: {st.count('RUNNING')}")
+        print(f"Tasks Pending: {st.count('PENDING')}")
+        print(f"Tasks Completed: {st.count('SUCCEEDED')}")
+        print(f"Tasks Failed: {st.count('FAILED')}")
+        print(
+            f"Tasks Cancelled: {st.count('CANCELLED') + st.count('CANCELLING')}")
 
 
 def tasks_from_parser(args):
-    tasks()
+    tasks(state=args.state)
 
 
 def assetsize(asset):
@@ -330,7 +372,8 @@ def assetsize(asset):
         size = collc.aggregate_array("system:asset_size")
         print("")
         print(str(asset) + " ===> " + str(humansize(sum(size.getInfo()))))
-        print("Total number of items in collection: {}".format(collc.size().getInfo()))
+        print("Total number of items in collection: {}".format(
+            collc.size().getInfo()))
     elif header == "IMAGE":
         collc = ee.Image(asset)
         print("")
@@ -349,16 +392,18 @@ def assetsize(asset):
         )
     elif header == "FOLDER":
         b = subprocess.Popen(
-            "earthengine du {} -s".format(asset), shell=True,stdout=subprocess.PIPE
+            "earthengine du {} -s".format(asset), shell=True, stdout=subprocess.PIPE
         )
         out, err = b.communicate()
-        val=[item for item in out.decode("ascii").split(" ") if item.isdigit()]
+        val = [item for item in out.decode(
+            "ascii").split(" ") if item.isdigit()]
         size = humansize(float(val[0]))
         num = subprocess.Popen("earthengine ls {}".format(asset), shell=True, stdout=subprocess.PIPE
-        )
+                               )
         out, err = num.communicate()
-        out=out.decode("ascii")
-        num = [i for i in out.split("\n") if i if len(i)>1 if not i.startswith("Running")]
+        out = out.decode("ascii")
+        num = [i for i in out.split("\n") if i if len(
+            i) > 1 if not i.startswith("Running")]
         print("")
         # print(num.split("\n"))
         print(str(asset) + " ===> " + str(size))
@@ -369,10 +414,11 @@ def assetsize_from_parser(args):
     assetsize(asset=args.asset)
 
 
-def search(mname,source):
+def search(mname, source):
     gee_bundle = []
-    if source is not None and source =='community':
-        r= requests.get('https://raw.githubusercontent.com/samapriya/awesome-gee-community-datasets/master/community_datasets.json')
+    if source is not None and source == 'community':
+        r = requests.get(
+            'https://raw.githubusercontent.com/samapriya/awesome-gee-community-datasets/master/community_datasets.json')
         community_list = r.json()
         print('Looking within {} community datasets'.format(len(community_list)))
         i = 1
@@ -380,11 +426,13 @@ def search(mname,source):
             if mname.lower() in str(rows["title"]).lower():
                 try:
                     if rows["type"] == "image_collection":
-                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
+                        rows["id"] = "ee.ImageCollection('{}')".format(
+                            rows["id"])
                     elif rows["type"] == "image":
                         rows["id"] = "ee.Image('{}')".format(rows["id"])
                     elif rows["type"] == "table":
-                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
+                        rows["id"] = "ee.FeatureCollection('{}')".format(
+                            rows["id"])
                     item = {
                         "index": i,
                         "title": rows["title"],
@@ -400,11 +448,13 @@ def search(mname,source):
             elif mname.lower() in str(rows["id"]).lower():
                 try:
                     if rows["type"] == "image_collection":
-                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
+                        rows["id"] = "ee.ImageCollection('{}')".format(
+                            rows["id"])
                     elif rows["type"] == "image":
                         rows["id"] = "ee.Image('{}')".format(rows["id"])
                     elif rows["type"] == "table":
-                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
+                        rows["id"] = "ee.FeatureCollection('{}')".format(
+                            rows["id"])
                     item = {
                         "index": i,
                         "title": rows["title"],
@@ -419,11 +469,13 @@ def search(mname,source):
             elif mname.lower() in str(rows["provider"]).lower():
                 try:
                     if rows["type"] == "image_collection":
-                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
+                        rows["id"] = "ee.ImageCollection('{}')".format(
+                            rows["id"])
                     elif rows["type"] == "image":
                         rows["id"] = "ee.Image('{}')".format(rows["id"])
                     elif rows["type"] == "table":
-                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
+                        rows["id"] = "ee.FeatureCollection('{}')".format(
+                            rows["id"])
                     item = {
                         "index": i,
                         "title": rows["title"],
@@ -438,11 +490,13 @@ def search(mname,source):
             elif mname.lower() in str(rows["tags"]).lower():
                 try:
                     if rows["type"] == "image_collection":
-                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
+                        rows["id"] = "ee.ImageCollection('{}')".format(
+                            rows["id"])
                     elif rows["type"] == "image":
                         rows["id"] = "ee.Image('{}')".format(rows["id"])
                     elif rows["type"] == "table":
-                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
+                        rows["id"] = "ee.FeatureCollection('{}')".format(
+                            rows["id"])
                     item = {
                         "index": i,
                         "title": rows["title"],
@@ -455,19 +509,22 @@ def search(mname,source):
                 except Exception as e:
                     print(e)
     elif source is None:
-        r= requests.get('https://raw.githubusercontent.com/samapriya/Earth-Engine-Datasets-List/master/gee_catalog.json')
+        r = requests.get(
+            'https://raw.githubusercontent.com/samapriya/Earth-Engine-Datasets-List/master/gee_catalog.json')
         catalog_list = r.json()
         print('Looking within {} gee catalog datasets'.format(len(catalog_list)))
-        i=1
+        i = 1
         for rows in catalog_list:
             if mname.lower() in str(rows["title"]).lower():
                 try:
                     if rows["type"] == "image_collection":
-                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
+                        rows["id"] = "ee.ImageCollection('{}')".format(
+                            rows["id"])
                     elif rows["type"] == "image":
                         rows["id"] = "ee.Image('{}')".format(rows["id"])
                     elif rows["type"] == "table":
-                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
+                        rows["id"] = "ee.FeatureCollection('{}')".format(
+                            rows["id"])
                     item = {
                         "index": i,
                         "title": rows["title"],
@@ -484,11 +541,13 @@ def search(mname,source):
             elif mname.lower() in str(rows["id"]).lower():
                 try:
                     if rows["type"] == "image_collection":
-                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
+                        rows["id"] = "ee.ImageCollection('{}')".format(
+                            rows["id"])
                     elif rows["type"] == "image":
                         rows["id"] = "ee.Image('{}')".format(rows["id"])
                     elif rows["type"] == "table":
-                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
+                        rows["id"] = "ee.FeatureCollection('{}')".format(
+                            rows["id"])
                     item = {
                         "index": i,
                         "title": rows["title"],
@@ -505,11 +564,13 @@ def search(mname,source):
             elif mname.lower() in str(rows["provider"]).lower():
                 try:
                     if rows["type"] == "image_collection":
-                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
+                        rows["id"] = "ee.ImageCollection('{}')".format(
+                            rows["id"])
                     elif rows["type"] == "image":
                         rows["id"] = "ee.Image('{}')".format(rows["id"])
                     elif rows["type"] == "table":
-                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
+                        rows["id"] = "ee.FeatureCollection('{}')".format(
+                            rows["id"])
                     item = {
                         "index": i,
                         "title": rows["title"],
@@ -526,11 +587,13 @@ def search(mname,source):
             elif mname.lower() in str(rows["tags"]).lower():
                 try:
                     if rows["type"] == "image_collection":
-                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
+                        rows["id"] = "ee.ImageCollection('{}')".format(
+                            rows["id"])
                     elif rows["type"] == "image":
                         rows["id"] = "ee.Image('{}')".format(rows["id"])
                     elif rows["type"] == "table":
-                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
+                        rows["id"] = "ee.FeatureCollection('{}')".format(
+                            rows["id"])
                     item = {
                         "index": i,
                         "title": rows["title"],
@@ -549,7 +612,7 @@ def search(mname,source):
 
 
 def search_from_parser(args):
-    search(mname=args.keywords,source=args.source)
+    search(mname=args.keywords, source=args.source)
 
 
 def main(args=None):
@@ -559,14 +622,15 @@ def main(args=None):
     subparsers = parser.add_subparsers()
 
     parser_read = subparsers.add_parser(
-        "readme", help="Go the web based porder readme page"
+        "readme", help="Go the web based geeadd readme page"
     )
     parser_read.set_defaults(func=read_from_parser)
 
     parser_quota = subparsers.add_parser(
         "quota", help="Print Earth Engine total quota and used quota"
     )
-    optional_named = parser_quota.add_argument_group("Optional named arguments")
+    optional_named = parser_quota.add_argument_group(
+        "Optional named arguments")
     optional_named.add_argument(
         "--project",
         help="Project Name usually in format projects/project-name/assets/",
@@ -577,9 +641,12 @@ def main(args=None):
     parser_app2script = subparsers.add_parser(
         "app2script", help="Get underlying script for public Google earthengine app"
     )
-    required_named = parser_app2script.add_argument_group("Required named arguments.")
-    required_named.add_argument("--url", help="Earthengine app url", required=True)
-    optional_named = parser_app2script.add_argument_group("Optional named arguments")
+    required_named = parser_app2script.add_argument_group(
+        "Required named arguments.")
+    required_named.add_argument(
+        "--url", help="Earthengine app url", required=True)
+    optional_named = parser_app2script.add_argument_group(
+        "Optional named arguments")
     optional_named.add_argument(
         "--outfile",
         help="Write the script out to a .js file: Open in any text editor",
@@ -590,13 +657,15 @@ def main(args=None):
     parser_search = subparsers.add_parser(
         "search", help="Search public GEE catalog using keywords"
     )
-    required_named = parser_search.add_argument_group("Required named arguments.")
+    required_named = parser_search.add_argument_group(
+        "Required named arguments.")
     required_named.add_argument(
         "--keywords",
         help="Keywords to search for can be id, provider, tag and so on",
         required=True,
     )
-    optional_named = parser_search.add_argument_group("Optional named arguments")
+    optional_named = parser_search.add_argument_group(
+        "Optional named arguments")
     optional_named.add_argument(
         "--source",
         help="Type community to search within the Community Dataset Catalog",
@@ -608,9 +677,17 @@ def main(args=None):
         "ee_report",
         help="Prints a detailed report of all Earth Engine Assets includes Asset Type, Path,Number of Assets,size(MB),unit,owner,readers,writers",
     )
-    required_named = parser_ee_report.add_argument_group("Required named arguments.")
+    required_named = parser_ee_report.add_argument_group(
+        "Required named arguments.")
     required_named.add_argument(
         "--outfile", help="This it the location of your report csv file ", required=True
+    )
+    optional_named = parser_ee_report.add_argument_group(
+        "Optional named arguments")
+    optional_named.add_argument(
+        "--path",
+        help="Path to any folder including project folders",
+        default=None,
     )
     parser_ee_report.set_defaults(func=ee_report_from_parser)
 
@@ -618,7 +695,8 @@ def main(args=None):
         "assetsize",
         help="Prints any asset size (folders,collections,images or tables) in Human Readable form & Number of assets included",
     )
-    required_named = parser_assetsize.add_argument_group("Required named arguments.")
+    required_named = parser_assetsize.add_argument_group(
+        "Required named arguments.")
     required_named.add_argument(
         "--asset",
         help="Earth Engine Asset for which to get size properties",
@@ -630,12 +708,19 @@ def main(args=None):
         "tasks",
         help="Queries current task status [completed,running,pending,failed,cancelled]",
     )
+    optional_named = parser_tasks.add_argument_group(
+        "Optional named arguments")
+    optional_named.add_argument(
+        "--state",
+        help="Query by state type SUCCEEDED|PENDING|RUNNING|FAILED",
+    )
     parser_tasks.set_defaults(func=tasks_from_parser)
 
     parser_cancel = subparsers.add_parser(
         "cancel", help="Cancel all, running or ready tasks or task ID"
     )
-    required_named = parser_cancel.add_argument_group("Required named arguments.")
+    required_named = parser_cancel.add_argument_group(
+        "Required named arguments.")
     required_named.add_argument(
         "--tasks",
         help="You can provide tasks as running or pending or all or even a single task id",
@@ -647,7 +732,8 @@ def main(args=None):
     parser_copy = subparsers.add_parser(
         "copy", help="Copies entire folders, collections, images or tables"
     )
-    required_named = parser_copy.add_argument_group("Required named arguments.")
+    required_named = parser_copy.add_argument_group(
+        "Required named arguments.")
     required_named.add_argument("--initial", help="Existing path of assets")
     required_named.add_argument("--final", help="New path for assets")
     parser_copy.set_defaults(func=copy_from_parser)
@@ -655,7 +741,8 @@ def main(args=None):
     parser_move = subparsers.add_parser(
         "move", help="Moves entire folders, collections, images or tables"
     )
-    required_named = parser_move.add_argument_group("Required named arguments.")
+    required_named = parser_move.add_argument_group(
+        "Required named arguments.")
     required_named.add_argument("--initial", help="Existing path of assets")
     required_named.add_argument("--final", help="New path for assets")
     parser_move.set_defaults(func=move_from_parser)
@@ -664,7 +751,8 @@ def main(args=None):
         "access",
         help="Sets Permissions for entire folders, collections, images or tables",
     )
-    required_named = parser_access.add_argument_group("Required named arguments.")
+    required_named = parser_access.add_argument_group(
+        "Required named arguments.")
     required_named.add_argument(
         "--asset",
         help="This is the path to the earth engine asset whose permission you are changing folder/collection/image",
@@ -684,7 +772,8 @@ def main(args=None):
     parser_delete = subparsers.add_parser(
         "delete", help="Deletes folders or collections recursively"
     )
-    required_named = parser_delete.add_argument_group("Required named arguments.")
+    required_named = parser_delete.add_argument_group(
+        "Required named arguments.")
     required_named.add_argument(
         "--id",
         help="Full path to asset for deletion. Recursively removes all folders, collections and images.",

@@ -1,5 +1,10 @@
 # Changelog
 
+### v0.5.6
+- fixed ee_report tool to allow for report exports for all EE asset types
+- updated task search and task by state search
+- general cleanup and improvements
+
 ### v0.5.5
 - added folder migration tools
 - improved recursive folder search & copy, move and permissions tools
