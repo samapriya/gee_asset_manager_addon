@@ -108,16 +108,18 @@ def assetsize(asset):
             "earthengine du {} -s".format(asset), shell=True, stdout=subprocess.PIPE
         )
         out, err = b.communicate()
-        val = [item for item in out.decode(
-            "ascii").split(" ") if item.isdigit()]
+        val = [item for item in out.decode("ascii").split(" ") if item.isdigit()]
         size = humansize(float(val[0]))
-        num = subprocess.Popen("earthengine ls {}".format(asset), shell=True, stdout=subprocess.PIPE
-                               )
+        num = subprocess.Popen(
+            "earthengine ls {}".format(asset), shell=True, stdout=subprocess.PIPE
+        )
         out, err = num.communicate()
         out = out.decode("ascii")
-        num = [i for i in out.split("\n") if i if len(
-            i) > 1 if not i.startswith("Running")]
+        num = [
+            i for i in out.split("\n") if i if len(i) > 1 if not i.startswith("Running")
+        ]
         return [str(size), str(len(num))]
+
 
 # folder parse
 
@@ -155,8 +157,7 @@ def ee_report(output, path):
         "Go grab some coffee.....",
     ]  # adding something fun
     path_list = []
-    logger.debug("This might take sometime. {}".format(
-        random.choice(choicelist)))
+    logger.debug("This might take sometime. {}".format(random.choice(choicelist)))
     ee.Initialize()
     with open(output, "w") as csvfile:
         writer = csv.DictWriter(
@@ -175,41 +176,40 @@ def ee_report(output, path):
         )
         writer.writeheader()
     if path is not None:
-        if not path.endswith('/') and path.endswith('assets'):
-            path = path+'/'
+        if not path.endswith("/") and path.endswith("assets"):
+            path = path + "/"
         parser = ee.data.getAsset(path)
-        if parser["type"].lower() == "folder" and path.startswith('user'):
+        if parser["type"].lower() == "folder" and path.startswith("user"):
             path = parser["name"]
         path_list.append(path)
         logger.debug(f"Processing your folder: {path}")
-        collection_list, table_list, image_list, folder_paths = fparse(
-            path)
+        collection_list, table_list, image_list, folder_paths = fparse(path)
     else:
         collection_path = ee.data.getAssetRoots()
         for roots in collection_path:
-            path_list.append(roots['id'])
+            path_list.append(roots["id"])
             logger.debug("Processing your root folder: {}".format(roots["id"]))
-            collection_list, table_list, image_list, folder_paths = fparse(
-                roots["id"])
+            collection_list, table_list, image_list, folder_paths = fparse(roots["id"])
     logger.debug(
         "Processing a total of: {} folders {} collections {} images {} tables".format(
-            len(folder_paths), len(collection_list), len(
-                image_list), len(table_list),
+            len(folder_paths),
+            len(collection_list),
+            len(image_list),
+            len(table_list),
         )
         + "\n"
     )
     if folder_paths:
         for folder in folder_paths:
             if not folder in path_list:
-                gee_id = ee.data.getAsset(folder)['name']
+                gee_id = ee.data.getAsset(folder)["name"]
                 gee_type = "folder"
                 logger.info("Processing Folder {}".format(gee_id))
                 total_size, total_count = assetsize(gee_id)
                 o, r, w = recprocess(gee_type, gee_id)
                 try:
                     with open(output, "a") as csvfile:
-                        writer = csv.writer(
-                            csvfile, delimiter=",", lineterminator="\n")
+                        writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
                         writer.writerow(
                             [gee_type, gee_id, total_count, total_size, o, r, w]
                         )
@@ -218,43 +218,37 @@ def ee_report(output, path):
                     print(e)
     if collection_list:
         for collection in collection_list:
-            gee_id = ee.data.getAsset(collection)['name']
+            gee_id = ee.data.getAsset(collection)["name"]
             gee_type = "collection"
             logger.info("Processing Collection {}".format(gee_id))
             total_size, total_count = assetsize(gee_id)
             o, r, w = recprocess(gee_type, gee_id)
             # print(gee_id,gee_type,total_size,total_count,o,r,w)
             with open(output, "a") as csvfile:
-                writer = csv.writer(csvfile, delimiter=",",
-                                    lineterminator="\n")
-                writer.writerow(
-                    [gee_type, gee_id, total_count, total_size, o, r, w])
+                writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
+                writer.writerow([gee_type, gee_id, total_count, total_size, o, r, w])
             csvfile.close()
     if table_list:
         for table in table_list:
-            gee_id = ee.data.getAsset(table)['name']
+            gee_id = ee.data.getAsset(table)["name"]
             gee_type = "table"
             logger.info("Processing table {}".format(gee_id))
             total_size, total_count = assetsize(gee_id)
             o, r, w = recprocess(gee_type, gee_id)
             # print(gee_id,gee_type,total_size,total_count,o,r,w)
             with open(output, "a") as csvfile:
-                writer = csv.writer(csvfile, delimiter=",",
-                                    lineterminator="\n")
-                writer.writerow(
-                    [gee_type, gee_id, total_count, total_size, o, r, w])
+                writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
+                writer.writerow([gee_type, gee_id, total_count, total_size, o, r, w])
             csvfile.close()
     if image_list:
         for image in image_list:
-            gee_id = ee.data.getAsset(image)['name']
+            gee_id = ee.data.getAsset(image)["name"]
             gee_type = "image"
             logger.info("Processing image {}".format(gee_id))
             total_size, total_count = assetsize(gee_id)
             o, r, w = recprocess(gee_type, gee_id)
             # print(gee_id,gee_type,total_size,total_count,o,r,w)
             with open(output, "a") as csvfile:
-                writer = csv.writer(csvfile, delimiter=",",
-                                    lineterminator="\n")
-                writer.writerow(
-                    [gee_type, gee_id, total_count, total_size, o, r, w])
+                writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
+                writer.writerow([gee_type, gee_id, total_count, total_size, o, r, w])
             csvfile.close()

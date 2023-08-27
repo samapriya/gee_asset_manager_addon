@@ -21,23 +21,54 @@ Zenodo. https://doi.org/10.5281/zenodo.7047403
 
 
 ## Table of contents
-* [Installation](#installation)
-* [Getting started](#getting-started)
-* [Uploading](#uploading)
-* [Usage examples](#usage-examples)
-    * [readme](#readme)
-    * [quota](#quota)
-    * [search](#search)
-    * [App to Script](#app-to-script)
-    * [Earth Engine Asset Report](#earth-engine-asset-report)
-    * [Asset Size](#asset-size)
-    * [Task Query](#task-query)
-    * [Cancel tasks](#cancel-tasks)
-    * [Assets Copy](#assets-copy)
-    * [Assets Move](#assets-move)
-    * [Assets Access](#assets-access)
-    * [Delete](#delete)
-    * [Delete Metadata](#delete-metadata)
+- [Google Earth Engine Batch Asset Manager with Addons](#google-earth-engine-batch-asset-manager-with-addons)
+  - [Table of contents](#table-of-contents)
+- [Click to Read the Online Docs Here](#click-to-read-the-online-docs-here)
+  - [Installation](#installation)
+  - [Getting started](#getting-started)
+  - [Usage examples](#usage-examples)
+    - [readme](#readme)
+    - [quota](#quota)
+    - [search](#search)
+    - [App to Script](#app-to-script)
+    - [Earth Engine Asset Report](#earth-engine-asset-report)
+    - [Asset Size](#asset-size)
+    - [Task Query](#task-query)
+    - [Cancel tasks](#cancel-tasks)
+    - [Assets Copy](#assets-copy)
+    - [Assets Move](#assets-move)
+    - [Assets Access](#assets-access)
+    - [Delete](#delete)
+    - [Delete metadata](#delete-metadata)
+    - [Changelog](#changelog)
+    - [v0.6.0](#v060)
+    - [v0.5.6](#v056)
+    - [v0.5.5](#v055)
+    - [v0.5.4](#v054)
+    - [v0.5.3](#v053)
+    - [v0.5.2](#v052)
+    - [v0.5.1](#v051)
+    - [v0.5.0](#v050)
+    - [v0.4.9](#v049)
+    - [v0.4.7](#v047)
+    - [v0.4.6](#v046)
+    - [v0.4.5](#v045)
+    - [v0.4.4](#v044)
+    - [v0.4.2](#v042)
+    - [v0.4.1](#v041)
+    - [v0.4.0](#v040)
+      - [v0.3.3](#v033)
+      - [v0.3.1](#v031)
+      - [v0.3.0](#v030)
+      - [v0.2.8](#v028)
+      - [v0.2.6](#v026)
+      - [v0.2.5](#v025)
+      - [v0.2.3](#v023)
+      - [v0.2.2](#v022)
+      - [v0.2.1](#v021)
+      - [v0.2.0](#v020)
+      - [v0.1.9](#v019)
+      - [v0.1.8](#v018)
 
 # [Click to Read the Online Docs Here](https://samapriya.github.io/gee_asset_manager_addon/)
 
@@ -293,6 +324,14 @@ Required named arguments.:
 ```
 
 ### Changelog
+
+### v0.6.0
+- Updated to use API v1 with some updates to avoid breaking changes
+- Updated some core tools like size update and quota updation
+- The geeadd access tool is now user type agnostic and you can simply pass if the user is service account, group or email
+- Better handling of acl delete function
+- Added some function descriptions & general improvements
+- Reduced client initialization steps
 
 ### v0.5.6
 - fixed ee_report tool to allow for report exports for all EE asset types

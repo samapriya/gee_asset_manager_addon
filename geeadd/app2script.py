@@ -17,11 +17,18 @@ __copyright__ = """
 """
 __license__ = "Apache 2.0"
 import requests
-import csv
 from bs4 import BeautifulSoup
 
 
 def jsext(url, outfile):
+    """
+    Retrieve the application script from an Earth Engine app.
+
+    Args:
+        url (str): URL of the Earth Engine app.
+        outfile (str, optional): Output file path for saving the JavaScript code.
+
+    """
     source = requests.get(url)
     html_content = source.text
     soup = BeautifulSoup(html_content, "html.parser")

@@ -16,9 +16,10 @@ __copyright__ = """
 
 """
 __license__ = "Apache 2.0"
-import ee
-import json
 import itertools
+import json
+
+import ee
 
 # Empty Lists
 
@@ -56,7 +57,7 @@ def fparse(path):
         gee_folder_path = recursive(path)
         gee_folder_path = sorted(list(set(gee_folder_path)))
         for folders in gee_folder_path:
-            children = ee.data.listAssets({"parent": ee.data.getAsset(folders)['name']})
+            children = ee.data.listAssets({"parent": ee.data.getAsset(folders)["name"]})
             for child in children["assets"]:
                 if child["type"].lower() == "image_collection":
                     collection_list.append(child["id"])
@@ -78,47 +79,58 @@ def fparse(path):
 ##request type of asset, asset path and user to give permission
 def access(collection_path, user, role):
     ee.Initialize()
+
     asset_list = fparse(collection_path)
     asset_names = list(set(itertools.chain(*asset_list)))
-    print("Changing permission for total of " + str(len(asset_names)) + " items.....")
+    print(f"Changing permission for a total of {len(asset_names)} items...")
+
     for count, init in enumerate(asset_names):
         acl = ee.data.getAssetAcl(init)
+        if user.endswith("googlegroups.com") and not user.startswith("group:"):
+            user = f"group:{user}"
+        elif user.endswith("gserviceaccount.com") and not user.startswith(
+            "serviceAccount"
+        ):
+            user = f"serviceAccount:{user}"
+        elif user == "allUsers" or user == "allusers":
+            user = "allUsers"
+        else:
+            user = f"user:{user}"
         if role == "reader":
-            if not user in acl["readers"]:
-                baselist = acl["readers"]
-                baselist.append(user)
-                acl["readers"] = baselist
-                acl["owners"] = []
+            target_list = acl["readers"]
+            target_permission = "reader"
+            if user in target_list:
+                print(f"{user} already has {role} access to {init} asset: SKIPPING")
+            else:
+                acl["readers"].append(user)
                 try:
                     ee.data.setAssetAcl(init, json.dumps(acl))
-                    print(f"Added {user} as reader for {init}")
-                except Exception as e:
-                    print(e)
+                    print(f"Added {user} as {target_permission} for {init}")
+                except Exception as error:
+                    print(error)
+        elif role == "writer":
+            target_list = acl["writers"]
+            target_permission = "writer"
+            if user in target_list:
+                print(f"{user} already has {role} access to {init} asset: SKIPPING")
             else:
-                print(f"{user} already has read access to {init} asset:SKIPPING")
-        if role == "writer":
-            if not user in acl["writers"]:
-                baselist = acl["writers"]
-                baselist.append(user)
-                acl["readers"] = baselist
-                acl["owners"] = []
+                acl["writers"].append(user)
                 try:
                     ee.data.setAssetAcl(init, json.dumps(acl))
-                    print(f"Added {user} as writer for {init}")
-                except Exception as e:
-                    print(e)
-            else:
-                print(f"{user} already has write access to {init} asset:SKIPPING")
-        if role == "delete":
-            if not user in acl["readers"]:
-                print(f"user {user} does not have permission:SKIPPING")
-            else:
-                baselist = acl["readers"]
-                baselist.remove(user)
-                acl["readers"] = baselist
-                acl["owners"] = []
-                try:
-                    ee.data.setAssetAcl(init, json.dumps(acl))
-                    print(f"Removed permissions for {user} to {init}")
-                except Exception as e:
-                    print(e)
+                    print(f"Added {user} as {target_permission} for {init}")
+                except Exception as error:
+                    print(error)
+        elif role == "delete":
+            if user == "allUsers" and "all_users_can_read" in acl:
+                acl.pop("all_users_can_read")
+            if user in acl["readers"]:
+                acl["readers"].remove(user)
+            if user in acl["writers"]:
+                acl["writers"].remove(user)
+            if user in acl["owners"]:
+                acl["owners"].remove(user)
+            try:
+                ee.data.setAssetAcl(init, json.dumps(acl))
+                print(f"Removed permission for {user} from {init}")
+            except Exception as e:
+                print(e)

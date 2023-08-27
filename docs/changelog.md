@@ -1,5 +1,13 @@
 # Changelog
 
+### v0.6.0
+- Updated to use API v1 with some updates to avoid breaking changes
+- Updated some core tools like size update and quota updation
+- The geeadd access tool is now user type agnostic and you can simply pass if the user is service account, group or email
+- Better handling of acl delete function
+- Added some function descriptions & general improvements
+- Reduced client initialization steps
+
 ### v0.5.6
 - fixed ee_report tool to allow for report exports for all EE asset types
 - updated task search and task by state search
