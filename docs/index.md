@@ -1,8 +1,15 @@
 ## Google Earth Engine Batch Asset Manager with Addons
 
-[![PyPI version](https://badge.fury.io/py/geeadd.svg)](https://badge.fury.io/py/geeadd)
-![Build Status](https://img.shields.io/badge/dynamic/json.svg?label=downloads&url=https%3A%2F%2Fpypistats.org%2Fapi%2Fpackages%2Fgeeadd%2Frecent%3Fperiod%3Dmonth&query=%24.data.last_month&colorB=blue&suffix=%2fmonth)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3766532.svg)](https://doi.org/10.5281/zenodo.3766532)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=plastic&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/samapriya/)
+[![Medium](https://img.shields.io/badge/Medium-12100E?style=flat&logo=medium&logoColor=white)](https://medium.com/@samapriyaroy)
+[![Twitter URL](https://img.shields.io/twitter/follow/samapriyaroy?style=social)](https://twitter.com/intent/follow?screen_name=samapriyaroy)
+[![Mastodon Follow](https://img.shields.io/mastodon/follow/109627075086849826?domain=https%3A%2F%2Fmapstodon.space%2F)](https://mapstodon.space/@samapriya)
+[![Hits-of-Code](https://hitsofcode.com/github/samapriya/gee_asset_manager_addon?branch=master)](https://hitsofcode.com/github/samapriya/gee_asset_manager_addon?branch=master)
+![PyPI - Version](https://img.shields.io/pypi/v/geeadd)
+[![Downloads](https://static.pepy.tech/badge/geeadd/month)](https://pepy.tech/project/geeadd)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7047403.svg)](https://doi.org/10.5281/zenodo.7047403)
+![CI geeadd](https://github.com/samapriya/gee_asset_manager_addon/workflows/CI%20geeadd/badge.svg)
 [![Donate](https://img.shields.io/badge/Donate-Buy%20me%20a%20Chai-teal)](https://www.buymeacoffee.com/samapriya)
 [![](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/samapriya)
 
