@@ -214,9 +214,11 @@ def cancel_tasks(tasks):
 def delete(ids):
     try:
         print("Recursively deleting path: {}".format(ids))
-        subprocess.call(
-            "earthengine rm -r {}".format(ids), shell=True, stdout=subprocess.PIPE
-        )
+        # subprocess.call(
+        #     "earthengine rm -r {}".format(ids), shell=True, stdout=subprocess.PIPE
+        # )
+        process_output = subprocess.run(["earthengine", "rm", "-r", "{}".format(ids)], capture_output=True, text=True)
+        print("output from commandline: {}".format(process_output.stdout))
     except Exception as e:
         print(e)
 
