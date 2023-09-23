@@ -328,18 +328,14 @@ def assetsize(asset):
     if header in ["IMAGE_COLLECTION", "IMAGE", "TABLE"]:
         if header == "IMAGE_COLLECTION":
             collc = ee.ImageCollection(asset)
-        else:
-            collc = (
-                ee.Image(asset) if header == "IMAGE" else ee.FeatureCollection(asset)
-            )
-
-        if header == "TABLE":
-            size = float(collc.get("system:asset_size").getInfo())
-        else:
             size = sum(collc.aggregate_array("system:asset_size").getInfo())
-
+        elif header == "IMAGE":
+            collc = ee.ImageCollection.fromImages([ee.Image(asset)])
+            size = sum(collc.aggregate_array("system:asset_size").getInfo())
+        elif header == "TABLE":
+            collc = ee.FeatureCollection(asset)
+            size = float(collc.get("system:asset_size").getInfo())
         item_count = collc.size().getInfo()
-
         print(f"\n{asset} ===> {humansize(size)}")
         print(f"Total number of items in {header.title()}: {item_count}")
 
