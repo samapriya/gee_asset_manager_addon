@@ -266,48 +266,76 @@ def quota(project):
             )
 
 
-def tasks(state):
+def epoch_convert_time(epoch_timestamp):
+    dt_object = datetime.fromtimestamp(epoch_timestamp/1000)
+    formatted_date_time = dt_object.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    return formatted_date_time
+
+def tasks(state,id):
     if state is not None:
         task_bundle = []
         operations = [
             status
-            for status in ee.data.listOperations()
-            if status["metadata"]["state"] == state.upper()
+            for status in ee.data.getTaskList()
+            if status["state"] == state.upper()
         ]
         for operation in operations:
-            task_id = operation["name"].split("/")[-1]
-            description = (
-                operation["metadata"]["description"]
-                .split(":")[-1]
-                .strip()
-                .replace('"', "")
-            )
-            op_type = operation["metadata"]["type"]
-            attempt_count = str(operation["metadata"]["attempt"])
-            start = datetime.strptime(
-                operation["metadata"]["startTime"], "%Y-%m-%dT%H:%M:%S.%fZ"
-            )
-            end = datetime.strptime(
-                operation["metadata"]["updateTime"], "%Y-%m-%dT%H:%M:%S.%fZ"
-            )
+            task_id = operation["id"]
+            description = operation["description"].split(":")[0]
+            op_type = operation["task_type"]
+            attempt_count = operation["attempt"]
+            date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
+            start = datetime.strptime(epoch_convert_time(operation["start_timestamp_ms"]),date_format)
+            end = datetime.strptime(epoch_convert_time(operation["update_timestamp_ms"]),date_format)
             time_difference = end - start
             item = {
                 "task_id": task_id,
                 "operation_type": op_type,
-                "description/path": description,
+                "description": description,
                 "run_time": str(time_difference),
                 "attempt": attempt_count,
             }
+            if operation['destination_uris']:
+                item['item_path']=operation['destination_uris']
+            if operation['batch_eecu_usage_seconds']:
+                item['eecu_usage'] = operation['batch_eecu_usage_seconds']
             task_bundle.append(item)
         print(json.dumps(task_bundle, indent=2))
+    elif id is not None:
+        operations = [
+            status
+            for status in ee.data.getTaskList()
+            if status["id"] == id
+        ]
+        for operation in operations:
+            task_id = operation["id"]
+            description = operation["description"].split(":")[0]
+            op_type = operation["task_type"]
+            attempt_count = operation["attempt"]
+            date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
+            start = datetime.strptime(epoch_convert_time(operation["start_timestamp_ms"]),date_format)
+            end = datetime.strptime(epoch_convert_time(operation["update_timestamp_ms"]),date_format)
+            time_difference = end - start
+            item = {
+                "task_id": task_id,
+                "operation_type": op_type,
+                "description": description,
+                "run_time": str(time_difference),
+                "attempt": attempt_count,
+            }
+            if operation['destination_uris']:
+                item['item_path']=operation['destination_uris']
+            if operation['batch_eecu_usage_seconds']:
+                item['eecu_usage'] = operation['batch_eecu_usage_seconds']
+            print(json.dumps(item, indent=2))
     else:
-        statuses = ee.data.listOperations()
+        statuses = ee.data.getTaskList()
         st = []
         for status in statuses:
-            st.append(status["metadata"]["state"])
+            st.append(status["state"])
         print(f"Tasks Running: {st.count('RUNNING')}")
         print(f"Tasks Pending: {st.count('PENDING')}")
-        print(f"Tasks Completed: {st.count('SUCCEEDED')}")
+        print(f"Tasks Completed: {st.count('COMPLETED')+st.count('SUCCEEDED')}")
         print(f"Tasks Failed: {st.count('FAILED')}")
         print(f"Tasks Cancelled: {st.count('CANCELLED') + st.count('CANCELLING')}")
 
@@ -582,7 +610,7 @@ def delete_collection_from_parser(args):
 
 
 def tasks_from_parser(args):
-    tasks(state=args.state)
+    tasks(state=args.state,id=args.id)
 
 
 def assetsize_from_parser(args):
@@ -680,7 +708,11 @@ def main(args=None):
     optional_named = parser_tasks.add_argument_group("Optional named arguments")
     optional_named.add_argument(
         "--state",
-        help="Query by state type SUCCEEDED|PENDING|RUNNING|FAILED",
+        help="Query by state type COMPLETED|PENDING|RUNNING|FAILED",
+    )
+    optional_named.add_argument(
+        "--id",
+        help="Query by task id",
     )
     parser_tasks.set_defaults(func=tasks_from_parser)
 
