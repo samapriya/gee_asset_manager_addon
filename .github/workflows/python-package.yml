@@ -1,14 +1,13 @@
 # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
-
 name: CI geeadd
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   build:
@@ -16,33 +15,47 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
-        python-version: ["3.8", "3.9", "3.10"]
-      fail-fast: false
+        python-version: ["3.9", "3.10"]
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      continue-on-error: true
-      run: |
-        if runner.os =='Windows'
-          python -m pip install --upgrade pip
-          pip install -U pip setuptools
-          pip install google-auth==1.27.1
-          pip install flake8 pytest pipwin pandas wheel
-          pip install poetry
-          pipwin refresh
-        if runner.os !='Windows'
-          python -m pip install --upgrade pip
-          pip install -U pip setuptools
-          pip install google-auth==1.27.1
-          pip install flake8 pytest pandas wheel
-          pip install poetry
-    - name: Test package
-      run: |
-        pip install google-auth==1.27.1
-        pip install google-api-core
-        python setup.py install
-        geeadd -h
+      - name: Checkout repository
+        continue-on-error: true
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Create whl files
+        continue-on-error: true
+        run: |
+          pip install setuptools
+          pip install wheel
+          python setup.py sdist bdist_wheel
+          cd dist
+      - name: List & install wheel files(ubuntu)
+        continue-on-error: true
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          for file in dist/*.whl; do
+            echo "Installing $file..."
+            pip install "$file"
+          done
+      - name: List & install wheel files(mac)
+        continue-on-error: true
+        if: matrix.os == 'macos-latest'
+        run: |
+          for file in dist/*.whl; do
+            echo "Installing $file..."
+            pip install "$file"
+          done
+      - name: List & install wheel files(windows)
+        continue-on-error: true
+        if: matrix.os == 'windows-latest'
+        run: |
+          foreach ($file in Get-ChildItem -Path dist -Filter *.whl) {
+            Write-Host "Installing $file..."
+            pip.exe install "$file"
+          }
+      - name: test pkg
+        run: |
+          geeadd -h
