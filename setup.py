@@ -15,7 +15,7 @@ setup(
     license="Apache 2.0",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    classifiers=(
+    classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
@@ -27,7 +27,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Operating System :: OS Independent",
         "Topic :: Scientific/Engineering :: GIS",
-    ),
+    ],
     author="Samapriya Roy",
     author_email="samapriya.roy@gmail.com",
     description="Google Earth Engine Batch Assets Manager with Addons",
