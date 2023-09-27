@@ -17,7 +17,7 @@
 
 This project has been a lot of work starting a few years ago and current improvements and updates can be seen reflected in v1.0.0 and higher up.
 
-![geeadd_main](https://github.com/samapriya/gee_asset_manager_addon/assets/6677629/727263db-03a9-4224-9bbb-82dffe3dccff)
+![geeadd_main](https://github.com/samapriya/gee_asset_manager_addon/assets/6677629/bf795033-5d5f-40fb-b767-ca87379b9cce)
 
 Like, share and support the Github project. And you can now cite it too
 
