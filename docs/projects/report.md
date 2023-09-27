@@ -1,20 +1,31 @@
-# Asset Report
+# Assets Report tool
 
-This tool recursively goes through all your assets(Includes Images, ImageCollection,Table,) and generates a report containing the following fields
-[Type,Asset Type, Path,Number of Assets,size(MB),unit,owner,readers,writers]. This tool creates a detailed report and may take sometime to complete.
+The Assets Report tool in geeadd is a robust utility designed to provide users with comprehensive insights into their Google Earth Engine (GEE) assets. This tool performs a recursive analysis of all your assets, including images, image collections, and tables, generating a detailed report that contains a wealth of information. The report includes essential fields such as asset type, path, number of assets, size in megabytes (MB), units, owner, readers, and writers for each asset. Please note that generating a detailed report may take some time due to the thorough analysis involved.
 
-![geeadd_report](https://user-images.githubusercontent.com/6677629/80339534-d9121180-882c-11ea-9bbb-f50973a9950f.gif)
+#### Key Features
 
+- **Comprehensive Asset Reporting**: The Assets Report tool offers an in-depth analysis of all your GEE assets, enabling you to gain a comprehensive understanding of your asset inventory.
+
+- **Detailed Information**: The generated report includes crucial asset details, such as type, path, quantity, size, ownership, and access permissions, making it a valuable resource for asset management and monitoring.
+
+#### Usage
+
+Using the Assets Report tool is straightforward, requiring only the specification of the location where you want to save the generated report in CSV format.
+
+```bash
+geeadd ee_report --outfile "report_file_location.csv"
 ```
-> geeadd ee_report -h
-usage: geeadd ee_report [-h] --outfile OUTFILE
 
-optional arguments:
-  -h, --help         show this help message and exit
+- `--outfile`: The full path to the location where you want to save the report in CSV format.
 
-Required named arguments.:
-  --outfile OUTFILE  This it the location of your report csv file
+#### Example
+
+Here's an example demonstrating how to use the Assets Report tool to generate a comprehensive report of your GEE assets:
+
+```bash
+geeadd ee_report --outfile "C:\johndoe\report.csv"
 ```
 
-A simple setup is the following
-``` geeadd --outfile "C:\johndoe\report.csv"```
+![Generate GEE Assets Report](https://user-images.githubusercontent.com/6677629/80339534-d9121180-882c-11ea-9bbb-f50973a9950f.gif)
+
+The Assets Report Tool in geeadd empowers users with a wealth of asset-related insights, facilitating effective asset management, auditing, and monitoring within the Google Earth Engine environment.

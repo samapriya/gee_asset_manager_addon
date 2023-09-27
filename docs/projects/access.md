@@ -1,8 +1,17 @@
 # Change asset permissions
 
-This tool allows you to set asset access for either folder , collection or image recursively meaning you can add collection access properties for multiple assets at the same time. Updates to v1.0.0 and later does not require user email parsing so you can pass it an individual user email, a google group or a google service account and it should work without your needing to specify type.
+The Access tool in geeadd empowers users to efficiently manage asset access permissions within Google Earth Engine (GEE). This tool streamlines the process of setting access properties for folders, collections, or images, and it does so recursively. This means you can apply access configurations to multiple assets simultaneously, saving you valuable time and effort.
 
-![geeadd_access](https://user-images.githubusercontent.com/6677629/80338721-0c53a100-882b-11ea-9475-e210ea701433.gif)
+#### Key Features
+
+- **Recursive Access Configuration**: The Access tool enables you to apply access permissions recursively. This functionality allows you to set access properties for multiple assets at once, ensuring efficient and consistent management of your Earth Engine assets.
+
+- **Simplified User Identification**: Starting from version 1.0.0 and onwards, the Access tool eliminates the need for manual email parsing. You can now directly provide an individual user email, a Google group, or a Google service account without specifying the type. This enhancement streamlines the process and makes it more user-friendly.
+
+#### Usage
+Using the Access tool is straightforward. Simply call the function and provide the necessary arguments.
+
+![geeadd_access](https://github.com/samapriya/gee_asset_manager_addon/assets/6677629/54954596-4583-4b56-a9ac-54b33fef8631)
 
 ```
 > geeadd access -h

@@ -15,15 +15,17 @@
 
 **geeadd** (which stands for **Google Earth Engine** batch asset manager with **addons** ) provides a command-line tool for managing Google Earth Engine assets in batch. It allows you to perform a variety of operations on your assets that add to the existing earthengine command line tool. This includes tools that allows a user to estimate their quota usage, asset sizes, set permissions on assets, move and copy and many others. There are also some functions that are build to provided extended functionality like convert any earth engine app script to the source code and search tool which allows you to search both the GEE official data catalog and the community catalog.
 
-This project has been a labor of love starting a few years ago and current improvements and updates can be seen reflected in v1.0.0 and higher up.
+This project has been a lot of work starting a few years ago and current improvements and updates can be seen reflected in v1.0.0 and higher up.
 
-![geeadd_main](https://github.com/samapriya/gee_asset_manager_addon/assets/6677629/727263db-03a9-4224-9bbb-82dffe3dccff)
+![geeadd_main](https://github.com/samapriya/gee_asset_manager_addon/assets/6677629/bf795033-5d5f-40fb-b767-ca87379b9cce)
 
 Like, share and support the Github project. And you can now cite it too
 
 <b>
+
 ```
 Samapriya Roy. (2023). samapriya/gee_asset_manager_addon: GEE Asset Manager with Addons (0.6.0).
 Zenodo. https://doi.org/10.5281/zenodo.8287354
 ```
+
 </b>

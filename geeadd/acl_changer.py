@@ -79,23 +79,22 @@ def fparse(path):
 ##request type of asset, asset path and user to give permission
 def access(collection_path, user, role):
     ee.Initialize()
-
+    if user.endswith("googlegroups.com") and not user.startswith("group:"):
+        user = f"group:{user}"
+    elif user.endswith("gserviceaccount.com") and not user.startswith(
+        "serviceAccount"
+    ):
+        user = f"serviceAccount:{user}"
+    elif user == "allUsers" or user == "allusers":
+        user = "allUsers"
+    else:
+        user = f"user:{user}"
     asset_list = fparse(collection_path)
     asset_names = list(set(itertools.chain(*asset_list)))
     print(f"Changing permission for a total of {len(asset_names)} items...")
 
     for count, init in enumerate(asset_names):
         acl = ee.data.getAssetAcl(init)
-        if user.endswith("googlegroups.com") and not user.startswith("group:"):
-            user = f"group:{user}"
-        elif user.endswith("gserviceaccount.com") and not user.startswith(
-            "serviceAccount"
-        ):
-            user = f"serviceAccount:{user}"
-        elif user == "allUsers" or user == "allusers":
-            user = "allUsers"
-        else:
-            user = f"user:{user}"
         if role == "reader":
             target_list = acl["readers"]
             target_permission = "reader"

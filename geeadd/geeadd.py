@@ -295,9 +295,9 @@ def tasks(state,id):
                 "run_time": str(time_difference),
                 "attempt": attempt_count,
             }
-            if operation['destination_uris']:
-                item['item_path']=operation['destination_uris']
-            if operation['batch_eecu_usage_seconds']:
+            if 'destination_uris' in operation:
+                item['item_path']=operation['destination_uris'][0].replace('https://code.earthengine.google.com/?asset=','')
+            if 'batch_eecu_usage_seconds' in operation:
                 item['eecu_usage'] = operation['batch_eecu_usage_seconds']
             task_bundle.append(item)
         print(json.dumps(task_bundle, indent=2))
@@ -323,9 +323,9 @@ def tasks(state,id):
                 "run_time": str(time_difference),
                 "attempt": attempt_count,
             }
-            if operation['destination_uris']:
-                item['item_path']=operation['destination_uris']
-            if operation['batch_eecu_usage_seconds']:
+            if 'destination_uris' in operation:
+                item['item_path']=operation['destination_uris'][0].replace('https://code.earthengine.google.com/?asset=','')
+            if 'batch_eecu_usage_seconds' in operation:
                 item['eecu_usage'] = operation['batch_eecu_usage_seconds']
             print(json.dumps(item, indent=2))
     else:

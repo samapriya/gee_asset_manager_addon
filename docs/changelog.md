@@ -1,5 +1,14 @@
 # Changelog
 
+### v1.0.0
+- Gives better parsing of tasking info
+- Search by task ID now
+- Now outputs EECU and path for tasks that have those fields
+- Fixed size estimation for image vs image collection
+- Enhanced user docs and readme
+- added output from delete operation
+- Added some function descriptions & general improvements
+
 ### v0.6.0
 - Updated to use API v1 with some updates to avoid breaking changes
 - Updated some core tools like size update and quota updation
