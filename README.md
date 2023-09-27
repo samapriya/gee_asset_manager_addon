@@ -22,10 +22,12 @@ This project has been a lot of work starting a few years ago and current improve
 Like, share and support the Github project. And you can now cite it too
 
 <b>
+
 ```
 Samapriya Roy. (2023). samapriya/gee_asset_manager_addon: GEE Asset Manager with Addons (0.6.0).
 Zenodo. https://doi.org/10.5281/zenodo.8287354
 ```
+
 </b>
 
 Find the [readme docs here](https://geeadd.geetools.xyz)
