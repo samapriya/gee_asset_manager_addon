@@ -125,7 +125,7 @@ markdown_extensions:
 nav:
   - Google Earth Engine Batch Asset Manager with Addons: index.md
   - License: license.md
-  - General Installation: installation.md
+  - Prerequisites and Installation: installation.md
   - Setup and Search Tools:
       - Quota tool: projects/quota.md
       - GEE App to Script tool: projects/app2script.md
