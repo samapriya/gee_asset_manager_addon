@@ -143,7 +143,7 @@ def cancel_tasks(tasks):
                 task
                 for task in ee.data.listOperations()
                 if task["metadata"]["state"] == "RUNNING"
-                or task["metadata"]["state"] == "PENDING"
+                or task["metadata"]["state"] == "READY"
             ]
             if len(all_tasks) > 0:
                 for task in all_tasks:
@@ -179,7 +179,7 @@ def cancel_tasks(tasks):
             ready_tasks = [
                 task
                 for task in ee.data.listOperations()
-                if task["metadata"]["state"] == "PENDING"
+                if task["metadata"]["state"] == "READY"
             ]
             if len(ready_tasks) > 0:
                 for task in ready_tasks:
@@ -199,7 +199,7 @@ def cancel_tasks(tasks):
             )
             if (
                 get_status["metadata"]["state"] == "RUNNING"
-                or get_status["metadata"]["state"] == "PENDING"
+                or get_status["metadata"]["state"] == "READY"
             ):
                 ee.data.cancelTask(task["id"])
                 print(
@@ -214,9 +214,6 @@ def cancel_tasks(tasks):
 def delete(ids):
     try:
         print("Recursively deleting path: {}".format(ids))
-        # subprocess.call(
-        #     "earthengine rm -r {}".format(ids), shell=True, stdout=subprocess.PIPE
-        # )
         process_output = subprocess.run(["earthengine", "rm", "-r", "{}".format(ids)], capture_output=True, text=True)
         print("output from commandline: {}".format(process_output.stdout))
     except Exception as e:
@@ -334,7 +331,7 @@ def tasks(state,id):
         for status in statuses:
             st.append(status["state"])
         print(f"Tasks Running: {st.count('RUNNING')}")
-        print(f"Tasks Pending: {st.count('PENDING')}")
+        print(f"Tasks Pending: {st.count('READY')}")
         print(f"Tasks Completed: {st.count('COMPLETED')+st.count('SUCCEEDED')}")
         print(f"Tasks Failed: {st.count('FAILED')}")
         print(f"Tasks Cancelled: {st.count('CANCELLED') + st.count('CANCELLING')}")
@@ -703,12 +700,12 @@ def main(args=None):
 
     parser_tasks = subparsers.add_parser(
         "tasks",
-        help="Queries current task status [completed,running,pending,failed,cancelled]",
+        help="Queries current task status [completed,running,ready,failed,cancelled]",
     )
     optional_named = parser_tasks.add_argument_group("Optional named arguments")
     optional_named.add_argument(
         "--state",
-        help="Query by state type COMPLETED|PENDING|RUNNING|FAILED",
+        help="Query by state type COMPLETED|READY|RUNNING|FAILED",
     )
     optional_named.add_argument(
         "--id",

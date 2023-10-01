@@ -1,5 +1,9 @@
 # Changelog
 
+#### v1.0.1
+- Updated pending/ready tasks as they are called in tasklist
+- Fixed task cancellation options
+
 ### v1.0.0
 - Gives better parsing of tasking info
 - Search by task ID now
