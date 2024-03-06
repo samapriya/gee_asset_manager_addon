@@ -1,5 +1,11 @@
 # Changelog
 
+#### v1.1.0
+- added recursive handling for folder object count
+- fixed [Issue 18](https://github.com/samapriya/gee_asset_manager_addon/issues/18) to handle featureview operations
+- fixed issue with copy, move, asset size estimation and acl
+- Added extra fields for geeadd search tool
+
 #### v1.0.1
 - Updated pending/ready tasks as they are called in tasklist
 - Fixed task cancellation options

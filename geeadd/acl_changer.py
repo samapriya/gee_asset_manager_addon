@@ -65,11 +65,15 @@ def fparse(path):
                     image_list.append(child["id"])
                 elif child["type"].lower() == "table":
                     table_list.append(child["id"])
+                elif child["type"].lower() == "feature_view":
+                    table_list.append(child["id"])
     elif ee.data.getAsset(path)["type"].lower() == "image":
         image_list.append(path)
     elif ee.data.getAsset(path)["type"].lower() == "image_collection":
         collection_list.append(path)
     elif ee.data.getAsset(path)["type"].lower() == "table":
+        table_list.append(path)
+    elif ee.data.getAsset(path)["type"].lower() == "feature_view":
         table_list.append(path)
     else:
         print(ee.data.getAsset(path)["type"].lower())

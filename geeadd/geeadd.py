@@ -336,7 +336,6 @@ def tasks(state,id):
         print(f"Tasks Failed: {st.count('FAILED')}")
         print(f"Tasks Cancelled: {st.count('CANCELLED') + st.count('CANCELLING')}")
 
-
 def assetsize(asset):
     """
     Print the size and item count of an Earth Engine asset.
@@ -350,17 +349,23 @@ def assetsize(asset):
 
     header = asset_info["type"]
 
-    if header in ["IMAGE_COLLECTION", "IMAGE", "TABLE"]:
+    if header in ["IMAGE_COLLECTION", "IMAGE", "TABLE","FEATURE_VIEW"]:
         if header == "IMAGE_COLLECTION":
             collc = ee.ImageCollection(asset)
             size = sum(collc.aggregate_array("system:asset_size").getInfo())
+            item_count = collc.size().getInfo()
         elif header == "IMAGE":
             collc = ee.ImageCollection.fromImages([ee.Image(asset)])
             size = sum(collc.aggregate_array("system:asset_size").getInfo())
+            item_count = 1
         elif header == "TABLE":
             collc = ee.FeatureCollection(asset)
             size = float(collc.get("system:asset_size").getInfo())
-        item_count = collc.size().getInfo()
+            item_count = collc.size().getInfo()
+        elif header == "FEATURE_VIEW":
+            collc = ee.data.getAsset(asset)
+            size = float(collc['sizeBytes'])
+            item_count = collc['featureCount']
         print(f"\n{asset} ===> {humansize(size)}")
         print(f"Total number of items in {header.title()}: {item_count}")
 
@@ -369,8 +374,7 @@ def assetsize(asset):
             "ascii"
         )
         size = humansize(float(out.split()[0]))
-
-        num = subprocess.check_output(f"earthengine ls {asset}", shell=True).decode(
+        num = subprocess.check_output(f"earthengine ls -r {asset}", shell=True).decode(
             "ascii"
         )
         num = [
@@ -380,7 +384,7 @@ def assetsize(asset):
         ]
 
         print(f"\n{asset} ===> {size}")
-        print(f"Total number of items in folder: {len(num)}")
+        print(f"Total number of items including all folders: {len(num)}")
 
 
 def search(mname, source):
@@ -406,6 +410,8 @@ def search(mname, source):
                         "title": rows["title"],
                         "ee_id_snippet": rows["id"],
                         "provider": rows["provider"],
+                        "tags": rows["tags"],
+                        "license": rows["license"],
                         "sample_code": rows["sample_code"],
                     }
 
@@ -426,6 +432,8 @@ def search(mname, source):
                         "title": rows["title"],
                         "ee_id_snippet": rows["id"],
                         "provider": rows["provider"],
+                        "tags": rows["tags"],
+                        "license": rows["license"],
                         "sample_code": rows["sample_code"],
                     }
                     gee_bundle.append(item)
@@ -445,6 +453,8 @@ def search(mname, source):
                         "title": rows["title"],
                         "ee_id_snippet": rows["id"],
                         "provider": rows["provider"],
+                        "tags": rows["tags"],
+                        "license": rows["license"],
                         "sample_code": rows["sample_code"],
                     }
                     gee_bundle.append(item)
@@ -464,6 +474,8 @@ def search(mname, source):
                         "title": rows["title"],
                         "ee_id_snippet": rows["id"],
                         "provider": rows["provider"],
+                        "tags": rows["tags"],
+                        "license": rows["license"],
                         "sample_code": rows["sample_code"],
                     }
                     gee_bundle.append(item)

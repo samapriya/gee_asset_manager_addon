@@ -16,10 +16,16 @@ __copyright__ = """
 
 """
 __license__ = "Apache 2.0"
-import ee
 import os
 
+import ee
 
+
+def camel_case(s):
+    words = s.split()
+    temp = words
+    res = ' '.join(ele.title() for ele in temp)
+    return res
 # Image copy
 def image_copy(initial, replace_string, replaced_string, fpath):
     if replace_string == replaced_string or replace_string == None:
@@ -38,16 +44,16 @@ def image_copy(initial, replace_string, replaced_string, fpath):
 
 
 # Table copy
-def table_copy(initial, replace_string, replaced_string, fpath):
+def table_copy(initial, replace_string, replaced_string, fpath,ftype):
     if replace_string == replaced_string or replace_string == None:
         final = fpath
     else:
         final = initial.replace(replace_string, replaced_string)
     try:
         if ee.data.getAsset(final):
-            print("Table already copied: {}".format(final))
+            print(f"{camel_case(ftype)} already copied: {final}")
     except Exception as e:
-        print("Copying table to {}".format(final))
+        print(f"Copying {camel_case(ftype)} to {final}")
         try:
             ee.data.copyAsset(initial, final)
         except Exception as e:
@@ -166,8 +172,14 @@ def copy(path, fpath):
                                 child["name"], replace_string, replaced_string, fpath
                             )
                         elif child["type"].lower() == "table":
+                            ftype = "table"
                             table_copy(
                                 child["name"], replace_string, replaced_string, fpath
+                            )
+                        elif child["type"].lower() == "feature_view":
+                            ftype = "feature view"
+                            table_copy(
+                                child["name"], replace_string, replaced_string, fpath,ftype
                             )
                     print("")
             elif ee.data.getAsset(path)["type"].lower() == "image":
@@ -232,12 +244,21 @@ def copy(path, fpath):
                         print(e)
                 # collection_copy(path, replace_string, replaced_string, fpath)
             elif ee.data.getAsset(path)["type"].lower() == "table":
+                ftype = "table"
                 path = ee.data.getAsset(path)["name"]
                 replace_string = None
                 replaced_string = ee.data.getAsset(
                     "/".join(fpath.split("/")[:-1]) + "/"
                 )["name"]
-                table_copy(path, replace_string, replaced_string, fpath)
+                table_copy(path, replace_string, replaced_string, fpath,ftype)
+            elif ee.data.getAsset(path)["type"].lower() == "feature_view":
+                ftype = "feature view"
+                path = ee.data.getAsset(path)["name"]
+                replace_string = None
+                replaced_string = ee.data.getAsset(
+                    "/".join(fpath.split("/")[:-1]) + "/"
+                )["name"]
+                table_copy(path, replace_string, replaced_string, fpath,ftype)
     except Exception as e:
         print(e)
 
