@@ -17,6 +17,8 @@ geeadd projects
 
 ```
 
+![enabled_projects-censor](https://github.com/samapriya/awesome-gee-community-datasets/assets/6677629/19353761-e962-46f8-b768-ac11c492ef38)
+
 #### Sample output
 
 ```

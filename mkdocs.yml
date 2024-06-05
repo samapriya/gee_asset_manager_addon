@@ -9,7 +9,7 @@ repo_name: gee_asset_manager_addon
 repo_url: https://github.com/samapriya/gee_asset_manager_addon
 
 # Copyright
-copyright: "Copyright &copy; 2021 - 2022 Samapriya Roy"
+copyright: "Copyright &copy; 2021 - 2024 Samapriya Roy"
 
 # Configuration
 theme:
