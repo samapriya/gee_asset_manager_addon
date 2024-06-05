@@ -5,11 +5,12 @@ from .app2script import jsext
 from .batch_copy import copy
 from .batch_mover import mover
 from .ee_del_meta import delprop
+from .ee_projects import get_projects
 from .ee_report import ee_report
 
 __copyright__ = """
 
-    Copyright 2021 Samapriya Roy
+    Copyright 2024 Samapriya Roy
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -33,9 +34,9 @@ import subprocess
 import sys
 import webbrowser
 from datetime import datetime
+from importlib.metadata import version
 
 import ee
-import pkg_resources
 import requests
 from bs4 import BeautifulSoup
 
@@ -89,17 +90,18 @@ def geeadd_version():
     html_content = source.text
     soup = BeautifulSoup(html_content, "html.parser")
     company = soup.find("h1")
+    installed_version = version("geeadd")
     vcheck = ob1.compareVersion(
         company.string.strip().split(" ")[-1],
-        pkg_resources.get_distribution("geeadd").version,
+        installed_version,
     )
     if vcheck == 1:
         print(
-            f"Current version of geeadd is {pkg_resources.get_distribution('geeadd').version} upgrade to latest version: {company.string.strip().split(' ')[-1]}"
+            f"Current version of geeadd is {installed_version} upgrade to latest version: {company.string.strip().split(' ')[-1]}"
         )
     elif vcheck == -1:
         print(
-            f"Possibly running staging code {pkg_resources.get_distribution('geeadd').version} compared to pypi release {company.string.strip().split(' ')[-1]}"
+            f"Possibly running staging code {installed_version} compared to pypi release {company.string.strip().split(' ')[-1]}"
         )
 
 
@@ -219,9 +221,7 @@ def delete(ids):
     except Exception as e:
         print(e)
 
-
-def quota(project):
-    if project is not None:
+def project_quota(project):
         try:
             if not project.endswith("/"):
                 project = project + "/"
@@ -248,20 +248,32 @@ def quota(project):
                 )
         except Exception as error:
             print(error)
-    else:
-        for roots in ee.data.getAssetRoots():
-            quota = ee.data.getAssetRootQuota(roots["id"])
-            print("")
-            print(
-                f"Root assets path: {roots['id'].replace('projects/earthengine-legacy/assets/', '')}"
-            )
-            print(
-                f"Used {humansize(quota['asset_size']['usage'])} of {humansize(quota['asset_size']['limit'])}"
-            )
-            print(
-                f"Used {quota['asset_count']['usage']:,} assets of {quota['asset_count']['limit']:,} total"
-            )
 
+def quota(project):
+    if project is not None:
+        project_quota(project)
+    else:
+        vcheck = ob1.compareVersion(
+                "0.1.379",
+                version('earthengine-api'),
+            )
+        if vcheck == 0 or vheck == 1:
+            for roots in ee.data.getAssetRoots():
+                quota = ee.data.getAssetRootQuota(roots["id"])
+                print("")
+                print(
+                    f"Root assets path: {roots['id'].replace('projects/earthengine-legacy/assets/', '')}"
+                )
+                print(
+                    f"Used {humansize(quota['asset_size']['usage'])} of {humansize(quota['asset_size']['limit'])}"
+                )
+                print(
+                    f"Used {quota['asset_count']['usage']:,} assets of {quota['asset_count']['limit']:,} total"
+                )
+        elif vcheck ==-1:
+            asset_list = ee.data.getAssetRoots()[0]
+            project = f"{asset_list.get('id').split('/assets/')[0]}/assets/"
+            project_quota(project)
 
 def epoch_convert_time(epoch_timestamp):
     dt_object = datetime.fromtimestamp(epoch_timestamp/1000)
@@ -609,6 +621,8 @@ def app2script_from_parser(args):
 def read_from_parser(args):
     readme()
 
+def projects_from_parser(args):
+    get_projects()
 
 def cancel_tasks_from_parser(args):
     cancel_tasks(tasks=args.tasks)
@@ -640,6 +654,11 @@ def main(args=None):
         "readme", help="Go the web based geeadd readme page"
     )
     parser_read.set_defaults(func=read_from_parser)
+
+    parser_projects = subparsers.add_parser(
+        "projects", help="Prints a list of Google Cloud Projects you own with Earth Engine API enabled"
+    )
+    parser_projects.set_defaults(func=projects_from_parser)
 
     parser_quota = subparsers.add_parser(
         "quota", help="Print Earth Engine total quota and used quota"

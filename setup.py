@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="geeadd",
-    version="1.1.0",
+    version="1.2.0",
     packages=["geeadd"],
     data_files=[("", ["LICENSE"])],
     url="https://github.com/samapriya/gee_asset_manager_addon",
@@ -11,6 +11,7 @@ setup(
         "requests>=2.22.0",
         "logzero>=1.5.0",
         "beautifulsoup4>=4.9.0",
+        "jsbeautifier>=1.15.1"
     ],
     license="Apache 2.0",
     long_description=open("README.md").read(),

@@ -1,6 +1,6 @@
 __copyright__ = """
 
-    Copyright 2020 Samapriya Roy
+    Copyright 2024 Samapriya Roy
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ __copyright__ = """
 """
 __license__ = "Apache 2.0"
 import requests
-from bs4 import BeautifulSoup
+import jsbeautifier
 
 
 def jsext(url, outfile):
@@ -29,36 +29,23 @@ def jsext(url, outfile):
         outfile (str, optional): Output file path for saving the JavaScript code.
 
     """
-    source = requests.get(url)
-    html_content = source.text
-    soup = BeautifulSoup(html_content, "html.parser")
+    head, tail = url.split("/view/")
+    fetch_url = f"{head}/javascript/{tail}-modules.json"
+    source_fetch = requests.get(
+        fetch_url,
+    )
+    if source_fetch.status_code == 200:
+        js_code = source_fetch.json()["dependencies"]
+        script_path = source_fetch.json()["path"]
+        js_code = js_code[script_path]
+
+    formatted_code = jsbeautifier.beautify(js_code)
     try:
-        for articles in soup.find_all("script"):
-            if not articles.string == None and articles.string.strip().startswith(
-                "init"
-            ):
-                url = articles.string.strip().split('"')[1]
-                if url.startswith("https"):
-                    iscript = requests.get(url).json()
-                    pt = iscript["path"]
-                    if outfile == None:
-                        print("\n")
-                        print(
-                            iscript["dependencies"][pt]
-                            .encode("utf-8")
-                            .decode("utf-8")
-                            .strip()
-                        )
-                    else:
-                        file = open(outfile, "w", encoding="utf-8")
-                        file.write(str(iscript["dependencies"][pt]).strip())
-                        file.close()
-                        clean_lines = []
-                        with open(outfile, "r", encoding="utf-8") as f:
-                            lines = f.readlines()
-                            clean_lines = [l.strip("\n") for l in lines if l.strip()]
-                        with open(outfile, "w", encoding="utf-8") as f:
-                            f.writelines("\n".join(clean_lines))
+        if outfile == None:
+            print(formatted_code)
+        else:
+            with open(outfile, 'w') as f:
+                f.write(formatted_code)
     except Exception as e:
         print(e)
 

@@ -132,6 +132,7 @@ nav:
   - Prerequisites and Installation: installation.md
   - Setup and Search Tools:
       - Quota tool: projects/quota.md
+      - EE API Enabled Projects tool: projects/projects.md
       - GEE App to Script tool: projects/app2script.md
       - Search tool: projects/search.md
   - Asset management tools:

@@ -1,5 +1,12 @@
 # Changelog
 
+#### v1.2.0
+- removed deprecated pkg_resources module
+- added better version checker
+- upgraded app2script module to handle conversions
+- added a projects tool to fetch projects with earthengine api enabled
+- upgraded quota tool to handle root assets for earthengine-api >=v0.1.400
+
 #### v1.1.0
 - added recursive handling for folder object count
 - fixed [Issue 18](https://github.com/samapriya/gee_asset_manager_addon/issues/18) to handle featureview operations
