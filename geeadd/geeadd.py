@@ -257,7 +257,7 @@ def quota(project):
                 "0.1.379",
                 version('earthengine-api'),
             )
-        if vcheck == 0 or vheck == 1:
+        if vcheck == 0 or vcheck == 1:
             for roots in ee.data.getAssetRoots():
                 quota = ee.data.getAssetRootQuota(roots["id"])
                 print("")
