@@ -3,6 +3,7 @@
 from .acl_changer import access
 from .app2script import jsext
 from .batch_copy import copy
+from .batch_delete import delete
 from .batch_mover import mover
 from .ee_del_meta import delprop
 from .ee_projects import get_projects
@@ -10,7 +11,7 @@ from .ee_report import ee_report
 
 __copyright__ = """
 
-    Copyright 2024 Samapriya Roy
+    Copyright 2025 Samapriya Roy
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -28,17 +29,23 @@ __copyright__ = """
 __license__ = "Apache 2.0"
 
 import argparse
+import concurrent.futures
+import importlib.metadata
 import json
 import os
 import subprocess
 import sys
+import time
 import webbrowser
 from datetime import datetime
 from importlib.metadata import version
 
 import ee
+import pkg_resources
 import requests
-from bs4 import BeautifulSoup
+from colorama import Fore, Style, init
+from packaging import version as pkg_version
+from tqdm import tqdm
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 lpath = os.path.dirname(os.path.realpath(__file__))
@@ -48,65 +55,74 @@ now = datetime.now()
 
 if len(sys.argv) > 1 and sys.argv[1] != "-h":
     ee.Initialize()
+# Initialize colorama for cross-platform colored terminal output
+init(autoreset=True)
 
 
-class Solution:
+def compare_version(version1, version2):
     """
-    A class for comparing version strings.
+    Compare two version strings using the packaging.version module.
+    Returns: 1 if version1 > version2, -1 if version1 < version2, 0 if equal
     """
+    v1 = pkg_version.parse(version1)
+    v2 = pkg_version.parse(version2)
 
-    def compareVersion(self, version1, version2):
-        """
-        Compare two version strings.
-
-        Args:
-            version1 (str): The first version string.
-            version2 (str): The second version string.
-
-        Returns:
-            int: 1 if version1 > version2, -1 if version1 < version2, 0 if equal.
-        """
-        versions1 = [int(v) for v in version1.split(".")]
-        versions2 = [int(v) for v in version2.split(".")]
-        for i in range(max(len(versions1), len(versions2))):
-            v1 = versions1[i] if i < len(versions1) else 0
-            v2 = versions2[i] if i < len(versions2) else 0
-            if v1 > v2:
-                return 1
-            elif v1 < v2:
-                return -1
+    if v1 > v2:
+        return 1
+    elif v1 < v2:
+        return -1
+    else:
         return 0
 
 
-ob1 = Solution()
+def get_latest_version(package):
+    """Get the latest version of a package from PyPI."""
+    try:
+        response = requests.get(f"https://pypi.org/pypi/{package}/json", timeout=5)
+        response.raise_for_status()
+        return response.json()["info"]["version"]
+    except (requests.RequestException, KeyError) as e:
+        print(f"Error fetching version for {package}: {e}")
+        return None
 
 
-def geeadd_version():
-    """
-    Check and notify about the latest version of the 'geeadd' package.
-    """
-    url = "https://pypi.org/project/geeadd/"
-    source = requests.get(url)
-    html_content = source.text
-    soup = BeautifulSoup(html_content, "html.parser")
-    company = soup.find("h1")
-    installed_version = version("geeadd")
-    vcheck = ob1.compareVersion(
-        company.string.strip().split(" ")[-1],
-        installed_version,
-    )
-    if vcheck == 1:
-        print(
-            f"Current version of geeadd is {installed_version} upgrade to latest version: {company.string.strip().split(' ')[-1]}"
-        )
-    elif vcheck == -1:
-        print(
-            f"Possibly running staging code {installed_version} compared to pypi release {company.string.strip().split(' ')[-1]}"
-        )
+def get_installed_version(package):
+    """Get the installed version of a package using importlib.metadata."""
+    try:
+        return importlib.metadata.version(package)
+    except importlib.metadata.PackageNotFoundError:
+        try:
+            # Fallback to pkg_resources
+            return pkg_resources.get_distribution(package).version
+        except pkg_resources.DistributionNotFound:
+            print(f"Package {package} is not installed")
+            return None
 
 
-geeadd_version()
+def check_package_version(package_name):
+    """Check if the installed version of a package is the latest."""
+    installed_version = get_installed_version(package_name)
+    latest_version = get_latest_version(package_name)
 
+    if not installed_version or not latest_version:
+        return
+
+    result = compare_version(latest_version, installed_version)
+    border = Style.BRIGHT + "========================================================================="
+
+    if result == 1:
+        print(f"\n{border}")
+        print(Fore.RED + f"Current version of {package_name} is {installed_version} "
+              f"upgrade to latest version: {latest_version}" + Style.RESET_ALL)
+        print(f"{border}")
+    elif result == -1:
+        print(f"\n{border}")
+        print(Fore.YELLOW + f"Possibly running staging code {installed_version} "
+              f"compared to PyPI release {latest_version}" + Style.RESET_ALL)
+        print(f"{border}")
+    # Removed the else branch to avoid printing "up to date" message
+
+check_package_version("geeadd")
 
 # Go to the readMe
 def readme():
@@ -138,142 +154,360 @@ def humansize(nbytes):
 
 
 def cancel_tasks(tasks):
-    if tasks == "all":
-        try:
-            print("Attempting to cancel all tasks")
-            all_tasks = [
-                task
-                for task in ee.data.listOperations()
-                if task["metadata"]["state"] == "RUNNING"
-                or task["metadata"]["state"] == "READY"
-            ]
-            if len(all_tasks) > 0:
-                for task in all_tasks:
-                    ee.data.cancelOperation(task["name"])
-                print(
-                    "Request completed task ID or task type {} cancelled".format(tasks)
-                )
-            elif len(all_tasks) == 0:
-                print("No Running or Pending tasks found")
-        except Exception as e:
-            print(e)
-    elif tasks == "running":
-        try:
-            print("Attempting to cancel running tasks")
-            running_tasks = [
-                task
-                for task in ee.data.listOperations()
-                if task["metadata"]["state"] == "RUNNING"
-            ]
-            if len(running_tasks) > 0:
-                for task in running_tasks:
-                    ee.data.cancelOperation(task["name"])
-                print(
-                    "Request completed task ID or task type: {} cancelled".format(tasks)
-                )
-            elif len(running_tasks) == 0:
-                print("No Running tasks found")
-        except Exception as e:
-            print(e)
-    elif tasks == "pending":
-        try:
-            print("Attempting to cancel queued tasks or pending tasks")
-            ready_tasks = [
-                task
-                for task in ee.data.listOperations()
-                if task["metadata"]["state"] == "READY"
-            ]
-            if len(ready_tasks) > 0:
-                for task in ready_tasks:
-                    ee.data.cancelOperation(task["name"])
-                print(
-                    "Request completed task ID or task type: {} cancelled".format(tasks)
-                )
-            elif len(ready_tasks) == 0:
-                print("No Pending tasks found")
-        except Exception as e:
-            print(e)
-    elif tasks is not None:
-        try:
-            print("Attempting to cancel task with given task ID {}".format(tasks))
-            get_status = ee.data.getOperation(
-                "projects/earthengine-legacy/operations/{}".format(tasks)
-            )
-            if (
-                get_status["metadata"]["state"] == "RUNNING"
-                or get_status["metadata"]["state"] == "READY"
-            ):
-                ee.data.cancelTask(task["id"])
-                print(
-                    "Request completed task ID or task type: {} cancelled".format(tasks)
-                )
-            else:
-                print("Task in status {}".format(get_status["metadata"]["state"]))
-        except Exception as e:
-            print("No task found with given task ID {}".format(tasks))
+    """
+    Cancels Earth Engine tasks based on specified criteria.
 
-
-def delete(ids):
+    Args:
+        tasks: Can be "all", "running", "pending", or a specific task ID
+    """
     try:
-        print("Recursively deleting path: {}".format(ids))
-        process_output = subprocess.run(["earthengine", "rm", "-r", "{}".format(ids)], capture_output=True, text=True)
-        print("output from commandline: {}".format(process_output.stdout))
+        if tasks == "all":
+            # Use the task list approach from TaskCancelCommand
+            print("Attempting to cancel all tasks")
+            statuses = ee.data.getTaskList()
+            cancelled_count = 0
+
+            with tqdm(total=len(statuses), desc="Cancelling tasks") as pbar:
+                for status in statuses:
+                    state = status['state']
+                    task_id = status['id']
+
+                    if state == 'READY' or state == 'RUNNING':
+                        try:
+                            ee.data.cancelTask(task_id)
+                            cancelled_count += 1
+                        except ee.EEException as e:
+                            print(f"Error cancelling task {task_id}: {e}")
+                    pbar.update(1)
+
+            if cancelled_count > 0:
+                print(f"Successfully cancelled {cancelled_count} tasks")
+            else:
+                print("No running or pending tasks found to cancel")
+
+        elif tasks == "running":
+            print("Attempting to cancel running tasks")
+            statuses = ee.data.getTaskList()
+            running_tasks = [status for status in statuses if status['state'] == 'RUNNING']
+
+            if running_tasks:
+                with tqdm(total=len(running_tasks), desc="Cancelling running tasks") as pbar:
+                    cancelled_count = 0
+                    for status in running_tasks:
+                        try:
+                            ee.data.cancelTask(status['id'])
+                            cancelled_count += 1
+                        except ee.EEException as e:
+                            print(f"Error cancelling task {status['id']}: {e}")
+                        pbar.update(1)
+                print(f"Successfully cancelled {cancelled_count} running tasks")
+            else:
+                print("No running tasks found")
+
+        elif tasks == "pending":
+            print("Attempting to cancel pending tasks")
+            statuses = ee.data.getTaskList()
+            pending_tasks = [status for status in statuses if status['state'] == 'READY']
+
+            if pending_tasks:
+                with tqdm(total=len(pending_tasks), desc="Cancelling pending tasks") as pbar:
+                    cancelled_count = 0
+                    for status in pending_tasks:
+                        try:
+                            ee.data.cancelTask(status['id'])
+                            cancelled_count += 1
+                        except ee.EEException as e:
+                            print(f"Error cancelling task {status['id']}: {e}")
+                        pbar.update(1)
+                print(f"Successfully cancelled {cancelled_count} pending tasks")
+            else:
+                print("No pending tasks found")
+
+        elif tasks is not None:
+            # Check if it's a valid task ID
+            print(f"Attempting to cancel task with ID: {tasks}")
+
+            try:
+                statuses = ee.data.getTaskStatus([tasks])
+                if not statuses:
+                    print(f"Task {tasks} not found")
+                    return
+
+                status = statuses[0]
+                state = status['state']
+
+                if state == 'UNKNOWN':
+                    print(f"Unknown task ID: {tasks}")
+                elif state in ['READY', 'RUNNING']:
+                    ee.data.cancelTask(tasks)
+                    print(f"Successfully cancelled task {tasks}")
+                else:
+                    print(f"Task {tasks} is already in state '{state}' and cannot be cancelled")
+            except ee.EEException as e:
+                print(f"Error accessing task {tasks}: {e}")
+        else:
+            print("Please specify 'all', 'running', 'pending', or a specific task ID")
+
     except Exception as e:
-        print(e)
+        print(f"Error in cancel_tasks: {e}")
 
-def project_quota(project):
+def quota(project_path=None):
+    """
+    Display quota information for Earth Engine assets with a visual progress bar.
+
+    Args:
+        project_path: Optional. Specific project path to check.
+                      If None, attempts to get all available projects.
+
+                      Examples:
+                      - "users/username"
+                      - "projects/earthengine-legacy/assets/users/username"
+                      - "projects/my-project-id"
+                      - "my-project-id" (will try to detect the correct format)
+    """
+    try:
+        def draw_bar(percent, width=30):
+            """Draw a simple progress bar"""
+            filled = int(width * percent / 100)
+            bar = "█" * filled + "░" * (width - filled)
+            return f"[{bar}] {percent:.1f}%"
+
+        def display_quota_info(project_name, info, project_type="Project"):
+            """Display quota info uniformly"""
+            if "quota" in info:
+                quota_info = info["quota"]
+                print(f"\n{project_type}: {project_name}")
+
+                # Size quota
+                used_size = int(quota_info.get("sizeBytes", 0))
+                max_size = int(quota_info.get("maxSizeBytes", 1))
+                percent = (used_size / max_size * 100) if max_size > 0 else 0
+                print(f"Storage: {humansize(used_size)} of {humansize(max_size)}")
+                print(f"  {draw_bar(percent)}")
+
+                # Asset count quota
+                used_assets = int(quota_info.get("assetCount", 0))
+                max_assets = int(quota_info.get("maxAssets", 1))
+                percent = (used_assets / max_assets * 100) if max_assets > 0 else 0
+                print(f"Assets: {used_assets:,} of {max_assets:,}")
+                print(f"  {draw_bar(percent)}")
+                return True
+            elif "asset_size" in info:
+                # Legacy format
+                print(f"\n{project_type}: {project_name}")
+
+                size_usage = info["asset_size"]["usage"]
+                size_limit = info["asset_size"]["limit"]
+                size_percent = (size_usage / size_limit * 100) if size_limit > 0 else 0
+
+                count_usage = info["asset_count"]["usage"]
+                count_limit = info["asset_count"]["limit"]
+                count_percent = (
+                    (count_usage / count_limit * 100) if count_limit > 0 else 0
+                )
+
+                print(f"Storage: {humansize(size_usage)} of {humansize(size_limit)}")
+                print(f"  {draw_bar(size_percent)}")
+                print(f"Assets: {count_usage:,} of {count_limit:,}")
+                print(f"  {draw_bar(count_percent)}")
+                return True
+            else:
+                print(f"No quota information available for {project_name}")
+                return False
+
+        # If no path provided, try to get all projects
+        if project_path is None:
+            try:
+                roots = ee.data.getAssetRoots()
+                if not roots:
+                    print("No accessible projects found.")
+                    return
+
+                # Group projects by parent to avoid showing the same quota multiple times
+                processed_projects = set()
+
+                for root in roots:
+                    root_path = root["id"]
+
+                    # Skip if we've already processed this project
+                    parent_project = (
+                        root_path.split("/assets/")[0]
+                        if "/assets/" in root_path
+                        else root_path
+                    )
+                    if parent_project in processed_projects:
+                        continue
+
+                    processed_projects.add(parent_project)
+
+                    # First try the direct getInfo approach
+                    try:
+                        asset_info = ee.data.getInfo(parent_project)
+                        if asset_info and "quota" in asset_info:
+                            # This is a project with quota info
+                            project_type = (
+                                "Legacy project"
+                                if "earthengine-legacy" in str(asset_info)
+                                else "Cloud project"
+                            )
+                            display_quota_info(parent_project, asset_info, project_type)
+                            continue
+                    except:
+                        pass
+
+                    # Try legacy approach
+                    if root_path.startswith("users/"):
+                        try:
+                            quota_info = ee.data.getAssetRootQuota(root_path)
+                            display_quota_info(root_path, quota_info, "Legacy project")
+                            continue
+                        except:
+                            pass
+
+                    # Try cloud approach with multiple formats
+                    if root_path.startswith("projects/"):
+                        cloud_formats = [
+                            # Try with /assets/
+                            f"{parent_project}/assets/",
+                            # Try with just /assets
+                            f"{parent_project}/assets",
+                            # Try original
+                            parent_project,
+                        ]
+
+                        success = False
+                        for path_format in cloud_formats:
+                            try:
+                                project_detail = ee.data.getAsset(path_format)
+                                if "quota" in project_detail:
+                                    display_quota_info(
+                                        parent_project, project_detail, "Cloud project"
+                                    )
+                                    success = True
+                                    break
+                            except:
+                                # Silently try next format
+                                continue
+
+                        if success:
+                            continue
+
+                    # As a last resort, try getInfo on the original path
+                    try:
+                        info = ee.data.getInfo(root_path)
+                        if info and ("quota" in info or "asset_size" in info):
+                            project_type = (
+                                "Legacy project"
+                                if root_path.startswith("users/")
+                                else "Cloud project"
+                            )
+                            display_quota_info(root_path, info, project_type)
+                    except:
+                        pass
+
+                return
+            except Exception as e:
+                print(f"Could not list projects: {str(e)}")
+                print("Falling back to current user quota.")
+                try:
+                    # Try to get default user quota
+                    quota_info = ee.data.getAssetRootQuota("users/")
+                    print("Current user quota:")
+                    display_quota_info("users/", quota_info, "User quota")
+                    return
+                except Exception as e2:
+                    print(f"Could not get user quota: {str(e2)}")
+                    return
+
+        # Handle the case where user provided just a name without prefix
+        if not project_path.startswith("projects/") and not project_path.startswith(
+            "users/"
+        ):
+            # Try to detect if it's a project ID
+            try:
+                # First try as a cloud project
+                cloud_path = f"projects/{project_path}"
+                asset_info = ee.data.getInfo(cloud_path)
+                if asset_info:
+                    print(f"Detected project ID format, using: {cloud_path}")
+                    project_path = cloud_path
+            except:
+                # If that fails, try as a legacy user
+                try:
+                    legacy_path = f"users/{project_path}"
+                    quota_info = ee.data.getAssetRootQuota(legacy_path)
+                    if quota_info:
+                        print(f"Detected legacy user format, using: {legacy_path}")
+                        project_path = legacy_path
+                except:
+                    # Keep original if both fail
+                    pass
+
+        # Try direct getInfo approach first (works for projects/sat-io style paths)
         try:
-            if not project.endswith("/"):
-                project = project + "/"
-            else:
-                project = project
-            project_detail = ee.data.getAsset(project)
-            print("")
-            print(f"Cloud project path: {project}")
-            if "sizeBytes" in project_detail["quota"]:
-                print(
-                    f'Used {humansize(int(project_detail["quota"]["sizeBytes"]))} of {humansize(int(project_detail["quota"]["maxSizeBytes"]))}'
+            asset_info = ee.data.getInfo(project_path)
+            if asset_info and "quota" in asset_info:
+                project_type = (
+                    "Legacy project"
+                    if "earthengine-legacy" in str(asset_info)
+                    else "Cloud project"
                 )
-            else:
-                print(
-                    f'Used 0 of {humansize(int(project_detail["quota"]["maxSizeBytes"]))}'
-                )
-            if "assetCount" in project_detail["quota"]:
-                print(
-                    f'Used {int(project_detail["quota"]["assetCount"]):,} assets of {int(project_detail["quota"]["maxAssets"]):,} total'
-                )
-            else:
-                print(
-                    f'Used 0 assets of {int(project_detail["quota"]["maxAssets"]):,} total'
-                )
-        except Exception as error:
-            print(error)
+                return display_quota_info(project_path, asset_info, project_type)
+        except:
+            pass
 
-def quota(project):
-    if project is not None:
-        project_quota(project)
-    else:
-        vcheck = ob1.compareVersion(
-                "0.1.379",
-                version('earthengine-api'),
-            )
-        if vcheck == 0 or vcheck == 1:
-            for roots in ee.data.getAssetRoots():
-                quota = ee.data.getAssetRootQuota(roots["id"])
-                print("")
-                print(
-                    f"Root assets path: {roots['id'].replace('projects/earthengine-legacy/assets/', '')}"
-                )
-                print(
-                    f"Used {humansize(quota['asset_size']['usage'])} of {humansize(quota['asset_size']['limit'])}"
-                )
-                print(
-                    f"Used {quota['asset_count']['usage']:,} assets of {quota['asset_count']['limit']:,} total"
-                )
-        elif vcheck ==-1:
-            asset_list = ee.data.getAssetRoots()[0]
-            project = f"{asset_list.get('id').split('/assets/')[0]}/assets/"
-            project_quota(project)
+        # Try with /assets suffix for cloud projects
+        if (
+            project_path.startswith("projects/")
+            and not project_path.endswith("/assets")
+            and "/assets" not in project_path
+        ):
+            try:
+                asset_info = ee.data.getInfo(f"{project_path}/assets")
+                if asset_info and "quota" in asset_info:
+                    return display_quota_info(project_path, asset_info, "Cloud project")
+            except:
+                pass
+
+        # Try legacy approach
+        try:
+            quota_info = ee.data.getAssetRootQuota(project_path)
+            return display_quota_info(project_path, quota_info, "Legacy project")
+        except:
+            pass
+
+        # Try cloud approach with multiple formats
+        cloud_formats = [
+            f"{project_path}/assets/"
+            if not project_path.endswith("/assets/") and "/assets/" not in project_path
+            else project_path,
+            f"{project_path}/assets"
+            if not project_path.endswith("/assets") and "/assets" not in project_path
+            else project_path,
+            project_path,
+        ]
+
+        for path_format in cloud_formats:
+            try:
+                project_detail = ee.data.getAsset(path_format)
+                if "quota" in project_detail:
+                    parent_path = (
+                        path_format.split("/assets")[0]
+                        if "/assets" in path_format
+                        else path_format
+                    )
+                    return display_quota_info(
+                        parent_path, project_detail, "Cloud project"
+                    )
+            except:
+                continue
+
+        print(f"Could not retrieve quota information for {project_path}")
+        return False
+
+    except Exception as e:
+        # print(f"Error retrieving quota: {str(e)}")
+        return False
 
 def epoch_convert_time(epoch_timestamp):
     dt_object = datetime.fromtimestamp(epoch_timestamp/1000)
@@ -591,7 +825,7 @@ def search(mname, source):
 
 
 def quota_from_parser(args):
-    quota(project=args.project)
+    quota(project_path=args.project)
 
 
 def ee_report_from_parser(args):
