@@ -1,5 +1,10 @@
-__copyright__ = """
+"""
+Earth Engine App JavaScript Extractor
 
+Retrieves and formats JavaScript code from Earth Engine applications.
+"""
+
+__copyright__ = """
     Copyright 2024 Samapriya Roy
 
     Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,42 +18,308 @@ __copyright__ = """
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
-
 """
 __license__ = "Apache 2.0"
-import requests
+
+import json
+import logging
+import unicodedata
+from pathlib import Path
+from typing import Optional
+from urllib.parse import urlparse
+
 import jsbeautifier
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
-def jsext(url, outfile):
+class EarthEngineJSExtractorError(Exception):
+    """Custom exception for Earth Engine JS extraction errors."""
+    pass
+
+
+def create_session() -> requests.Session:
     """
-    Retrieve the application script from an Earth Engine app.
+    Create a requests session with retry logic.
+
+    Returns:
+        requests.Session: Configured session with retry strategy.
+    """
+    session = requests.Session()
+    retry_strategy = Retry(
+        total=3,
+        backoff_factor=1,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["GET"]
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    return session
+
+
+def validate_ee_url(url: str) -> tuple[str, str]:
+    """
+    Validate and parse Earth Engine app URL.
 
     Args:
-        url (str): URL of the Earth Engine app.
-        outfile (str, optional): Output file path for saving the JavaScript code.
+        url: The Earth Engine app URL to validate.
 
+    Returns:
+        tuple: (base_url, app_id) extracted from the URL.
+
+    Raises:
+        EarthEngineJSExtractorError: If URL format is invalid.
     """
-    head, tail = url.split("/view/")
-    fetch_url = f"{head}/javascript/{tail}-modules.json"
-    source_fetch = requests.get(
-        fetch_url,
-    )
-    if source_fetch.status_code == 200:
-        js_code = source_fetch.json()["dependencies"]
-        script_path = source_fetch.json()["path"]
-        js_code = js_code[script_path]
+    parsed = urlparse(url)
 
-    formatted_code = jsbeautifier.beautify(js_code)
+    if not parsed.scheme or not parsed.netloc:
+        raise EarthEngineJSExtractorError(
+            f"Invalid URL format: {url}. Must be a complete URL with scheme."
+        )
+
+    if "/view/" not in url:
+        raise EarthEngineJSExtractorError(
+            f"Invalid Earth Engine app URL: {url}. Must contain '/view/' path."
+        )
+
     try:
-        if outfile == None:
-            print(formatted_code)
+        head, tail = url.split("/view/")
+        return head, tail
+    except ValueError:
+        raise EarthEngineJSExtractorError(
+            f"Could not parse URL: {url}. Expected format: https://user.earthengine.app/view/appname"
+        )
+
+
+def fetch_js_code(url: str, session: Optional[requests.Session] = None) -> str:
+    """
+    Fetch JavaScript code from Earth Engine app.
+
+    Args:
+        url: The Earth Engine app URL.
+        session: Optional requests session to use.
+
+    Returns:
+        str: The JavaScript code from the app.
+
+    Raises:
+        EarthEngineJSExtractorError: If fetching or parsing fails.
+    """
+    head, tail = validate_ee_url(url)
+    fetch_url = f"{head}/javascript/{tail}-modules.json"
+
+    logger.info(f"Fetching JavaScript from: {fetch_url}")
+
+    if session is None:
+        session = create_session()
+
+    try:
+        response = session.get(fetch_url, timeout=30)
+        response.raise_for_status()
+
+        # Explicitly set encoding if not detected properly
+        if response.encoding is None or response.encoding.lower() not in ['utf-8', 'utf8']:
+            response.encoding = 'utf-8'
+
+    except requests.exceptions.Timeout:
+        raise EarthEngineJSExtractorError(
+            f"Request timeout while fetching from: {fetch_url}"
+        )
+    except requests.exceptions.HTTPError as e:
+        if response.status_code == 404:
+            raise EarthEngineJSExtractorError(
+                f"App not found. Please verify the URL: {url}"
+            )
+        raise EarthEngineJSExtractorError(
+            f"HTTP error {response.status_code}: {e}"
+        )
+    except requests.exceptions.RequestException as e:
+        raise EarthEngineJSExtractorError(
+            f"Error fetching JavaScript: {e}"
+        )
+
+    try:
+        # Handle potential encoding issues when parsing JSON
+        try:
+            json_data = response.json()
+        except UnicodeDecodeError:
+            # Fallback: try to decode with error handling
+            content = response.content.decode('utf-8', errors='replace')
+            import json
+            json_data = json.loads(content)
+
+        dependencies = json_data.get("dependencies")
+        script_path = json_data.get("path")
+
+        if not dependencies or not script_path:
+            raise EarthEngineJSExtractorError(
+                "Invalid response format: missing 'dependencies' or 'path' fields"
+            )
+
+        if script_path not in dependencies:
+            raise EarthEngineJSExtractorError(
+                f"Script path '{script_path}' not found in dependencies"
+            )
+
+        js_code = dependencies[script_path]
+
+        # Ensure the code is a string and handle potential encoding issues
+        if not isinstance(js_code, str):
+            js_code = str(js_code)
+
+        return js_code
+
+    except (KeyError, ValueError) as e:
+        raise EarthEngineJSExtractorError(
+            f"Error parsing response JSON: {e}"
+        )
+
+
+def sanitize_code(code: str, normalize_unicode: bool = False) -> str:
+    """
+    Sanitize JavaScript code to handle special characters and text issues.
+
+    Args:
+        code: The JavaScript code to sanitize.
+        normalize_unicode: Whether to normalize Unicode characters (default: False).
+
+    Returns:
+        str: Sanitized JavaScript code.
+    """
+    # Remove null bytes that might cause issues
+    code = code.replace('\x00', '')
+
+    # Remove BOM (Byte Order Mark) if present
+    if code.startswith('\ufeff'):
+        code = code[1:]
+
+    # Normalize line endings to Unix style
+    code = code.replace('\r\n', '\n').replace('\r', '\n')
+
+    # Optionally normalize Unicode characters (e.g., different dash types)
+    if normalize_unicode:
+        code = unicodedata.normalize('NFKC', code)
+
+    # Remove or replace common problematic characters while preserving code
+    # This is conservative - only handling truly problematic chars
+    problematic_chars = {
+        '\u200b': '',  # Zero-width space
+        '\u200c': '',  # Zero-width non-joiner
+        '\u200d': '',  # Zero-width joiner
+        '\ufeff': '',  # Zero-width no-break space (BOM)
+    }
+
+    for char, replacement in problematic_chars.items():
+        code = code.replace(char, replacement)
+
+    return code
+
+
+def jsext(
+    url: str,
+    outfile: Optional[str] = None,
+    beautify: bool = True,
+    indent_size: int = 2,
+    normalize_unicode: bool = False,
+    sanitize: bool = True
+) -> Optional[str]:
+    """
+    Extract and optionally save JavaScript code from an Earth Engine app.
+
+    Args:
+        url: URL of the Earth Engine app.
+        outfile: Optional output file path for saving the JavaScript code.
+                If None, prints to stdout.
+        beautify: Whether to beautify the JavaScript code (default: True).
+        indent_size: Indentation size for beautified code (default: 2).
+        normalize_unicode: Whether to normalize Unicode characters (default: False).
+        sanitize: Whether to sanitize the code for special characters (default: True).
+
+    Returns:
+        str: The JavaScript code if outfile is None, otherwise None.
+
+    Raises:
+        EarthEngineJSExtractorError: If extraction or file writing fails.
+    """
+    session = create_session()
+
+    try:
+        js_code = fetch_js_code(url, session)
+
+        # Sanitize code if requested
+        if sanitize:
+            js_code = sanitize_code(js_code, normalize_unicode=normalize_unicode)
+
+        if beautify:
+            try:
+                options = jsbeautifier.default_options()
+                options.indent_size = indent_size
+                js_code = jsbeautifier.beautify(js_code, options)
+            except Exception as e:
+                logger.warning(f"Beautification failed: {e}. Using original formatting.")
+
+        if outfile is None:
+            print(js_code)
+            return js_code
         else:
-            with open(outfile, 'w') as f:
-                f.write(formatted_code)
+            output_path = Path(outfile)
+
+            # Create parent directories if they don't exist
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Write with explicit UTF-8 encoding and error handling
+            try:
+                with output_path.open('w', encoding='utf-8', errors='surrogateescape') as f:
+                    f.write(js_code)
+            except UnicodeEncodeError:
+                # Fallback: write with error replacement
+                logger.warning("Unicode encoding issue detected. Using replacement strategy.")
+                with output_path.open('w', encoding='utf-8', errors='replace') as f:
+                    f.write(js_code)
+
+            logger.info(f"JavaScript code saved to: {output_path.resolve()}")
+            return None
+
+    except EarthEngineJSExtractorError:
+        raise
+    except IOError as e:
+        raise EarthEngineJSExtractorError(
+            f"Error writing to file '{outfile}': {e}"
+        )
     except Exception as e:
-        print(e)
+        raise EarthEngineJSExtractorError(
+            f"Unexpected error: {e}"
+        )
+    finally:
+        session.close()
 
 
-# jsext(url='https://bullocke.users.earthengine.app/view/amazon',outfile=None)
-# jsext(url='https://bullocke.users.earthengine.app/view/amazon')
+# def main():
+#     """Example usage of the jsext function."""
+#     # Example 1: Print to stdout
+#     try:
+#         jsext(url='https://bullocke.users.earthengine.app/view/amazon')
+#     except EarthEngineJSExtractorError as e:
+#         logger.error(f"Extraction failed: {e}")
+
+#     # Example 2: Save to file
+#     try:
+#         jsext(
+#             url='https://bullocke.users.earthengine.app/view/amazon',
+#             outfile='output/amazon_app.js'
+#         )
+#     except EarthEngineJSExtractorError as e:
+#         logger.error(f"Extraction failed: {e}")
+
+
+# if __name__ == "__main__":
+#     main()

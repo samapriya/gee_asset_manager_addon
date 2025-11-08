@@ -8,6 +8,7 @@ from .batch_mover import mover
 from .ee_del_meta import delprop
 from .ee_projects import get_projects
 from .ee_report import ee_report
+from .search_fast import EnhancedGEESearch
 
 __copyright__ = """
 
@@ -38,10 +39,8 @@ import sys
 import time
 import webbrowser
 from datetime import datetime
-from importlib.metadata import version
 
 import ee
-import pkg_resources
 import requests
 from colorama import Fore, Style, init
 from packaging import version as pkg_version
@@ -54,7 +53,7 @@ sys.path.append(lpath)
 now = datetime.now()
 
 if len(sys.argv) > 1 and sys.argv[1] != "-h":
-    ee.Initialize()
+    ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com')
 # Initialize colorama for cross-platform colored terminal output
 init(autoreset=True)
 
@@ -91,12 +90,8 @@ def get_installed_version(package):
     try:
         return importlib.metadata.version(package)
     except importlib.metadata.PackageNotFoundError:
-        try:
-            # Fallback to pkg_resources
-            return pkg_resources.get_distribution(package).version
-        except pkg_resources.DistributionNotFound:
-            print(f"Package {package} is not installed")
-            return None
+        print(f"Package {package} is not installed")
+        return None
 
 
 def check_package_version(package_name):
@@ -633,196 +628,41 @@ def assetsize(asset):
         print(f"Total number of items including all folders: {len(num)}")
 
 
-def search(mname, source):
-    gee_bundle = []
+def search(mname, source, max_results=10, include_docs=False, allow_subsets=False):
+    """
+    Search GEE catalog using enhanced search engine with relevance ranking
+
+    Args:
+        mname: Search keywords
+        source: 'main', 'community', or None (searches both)
+        max_results: Maximum number of results to return
+        include_docs: Whether to search documentation URLs
+        allow_subsets: Whether to show all regional/temporal variants
+    """
+    search_engine = EnhancedGEESearch()
+
+    # Determine which catalog to search
     if source is not None and source == "community":
-        r = requests.get(
-            "https://raw.githubusercontent.com/samapriya/awesome-gee-community-datasets/master/community_datasets.json"
-        )
-        community_list = r.json()
-        print("Looking within {} community datasets".format(len(community_list)))
-        i = 1
-        for rows in community_list:
-            if mname.lower() in str(rows["title"]).lower():
-                try:
-                    if rows["type"] == "image_collection":
-                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
-                    elif rows["type"] == "image":
-                        rows["id"] = "ee.Image('{}')".format(rows["id"])
-                    elif rows["type"] == "table":
-                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
-                    item = {
-                        "index": i,
-                        "title": rows["title"],
-                        "ee_id_snippet": rows["id"],
-                        "provider": rows["provider"],
-                        "tags": rows["tags"],
-                        "license": rows["license"],
-                        "sample_code": rows["sample_code"],
-                    }
+        search_source = 'community'
+    elif source is not None and source == "main":
+        search_source = 'main'
+    else:
+        search_source = 'both'
 
-                    gee_bundle.append(item)
-                    i = i + 1
-                except Exception as e:
-                    print(e)
-            elif mname.lower() in str(rows["id"]).lower():
-                try:
-                    if rows["type"] == "image_collection":
-                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
-                    elif rows["type"] == "image":
-                        rows["id"] = "ee.Image('{}')".format(rows["id"])
-                    elif rows["type"] == "table":
-                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
-                    item = {
-                        "index": i,
-                        "title": rows["title"],
-                        "ee_id_snippet": rows["id"],
-                        "provider": rows["provider"],
-                        "tags": rows["tags"],
-                        "license": rows["license"],
-                        "sample_code": rows["sample_code"],
-                    }
-                    gee_bundle.append(item)
-                    i = i + 1
-                except Exception as e:
-                    print(e)
-            elif mname.lower() in str(rows["provider"]).lower():
-                try:
-                    if rows["type"] == "image_collection":
-                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
-                    elif rows["type"] == "image":
-                        rows["id"] = "ee.Image('{}')".format(rows["id"])
-                    elif rows["type"] == "table":
-                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
-                    item = {
-                        "index": i,
-                        "title": rows["title"],
-                        "ee_id_snippet": rows["id"],
-                        "provider": rows["provider"],
-                        "tags": rows["tags"],
-                        "license": rows["license"],
-                        "sample_code": rows["sample_code"],
-                    }
-                    gee_bundle.append(item)
-                    i = i + 1
-                except Exception as e:
-                    print(e)
-            elif mname.lower() in str(rows["tags"]).lower():
-                try:
-                    if rows["type"] == "image_collection":
-                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
-                    elif rows["type"] == "image":
-                        rows["id"] = "ee.Image('{}')".format(rows["id"])
-                    elif rows["type"] == "table":
-                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
-                    item = {
-                        "index": i,
-                        "title": rows["title"],
-                        "ee_id_snippet": rows["id"],
-                        "provider": rows["provider"],
-                        "tags": rows["tags"],
-                        "license": rows["license"],
-                        "sample_code": rows["sample_code"],
-                    }
-                    gee_bundle.append(item)
-                    i = i + 1
-                except Exception as e:
-                    print(e)
-    elif source is None:
-        r = requests.get(
-            "https://raw.githubusercontent.com/samapriya/Earth-Engine-Datasets-List/master/gee_catalog.json"
-        )
-        catalog_list = r.json()
-        print("Looking within {} gee catalog datasets".format(len(catalog_list)))
-        i = 1
-        for rows in catalog_list:
-            if mname.lower() in str(rows["title"]).lower():
-                try:
-                    if rows["type"] == "image_collection":
-                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
-                    elif rows["type"] == "image":
-                        rows["id"] = "ee.Image('{}')".format(rows["id"])
-                    elif rows["type"] == "table":
-                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
-                    item = {
-                        "index": i,
-                        "title": rows["title"],
-                        "ee_id_snippet": rows["id"],
-                        "start_date": rows["start_date"],
-                        "end_date": rows["end_date"],
-                        "asset_url": rows["asset_url"],
-                        "thumbnail_url": rows["thumbnail_url"],
-                    }
-                    gee_bundle.append(item)
-                    i = i + 1
-                except Exception as e:
-                    print(e)
-            elif mname.lower() in str(rows["id"]).lower():
-                try:
-                    if rows["type"] == "image_collection":
-                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
-                    elif rows["type"] == "image":
-                        rows["id"] = "ee.Image('{}')".format(rows["id"])
-                    elif rows["type"] == "table":
-                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
-                    item = {
-                        "index": i,
-                        "title": rows["title"],
-                        "ee_id_snippet": rows["id"],
-                        "start_date": rows["start_date"],
-                        "end_date": rows["end_date"],
-                        "asset_url": rows["asset_url"],
-                        "thumbnail_url": rows["thumbnail_url"],
-                    }
-                    gee_bundle.append(item)
-                    i = i + 1
-                except Exception as e:
-                    print(e)
-            elif mname.lower() in str(rows["provider"]).lower():
-                try:
-                    if rows["type"] == "image_collection":
-                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
-                    elif rows["type"] == "image":
-                        rows["id"] = "ee.Image('{}')".format(rows["id"])
-                    elif rows["type"] == "table":
-                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
-                    item = {
-                        "index": i,
-                        "title": rows["title"],
-                        "ee_id_snippet": rows["id"],
-                        "start_date": rows["start_date"],
-                        "end_date": rows["end_date"],
-                        "asset_url": rows["asset_url"],
-                        "thumbnail_url": rows["thumbnail_url"],
-                    }
-                    gee_bundle.append(item)
-                    i = i + 1
-                except Exception as e:
-                    print(e)
-            elif mname.lower() in str(rows["tags"]).lower():
-                try:
-                    if rows["type"] == "image_collection":
-                        rows["id"] = "ee.ImageCollection('{}')".format(rows["id"])
-                    elif rows["type"] == "image":
-                        rows["id"] = "ee.Image('{}')".format(rows["id"])
-                    elif rows["type"] == "table":
-                        rows["id"] = "ee.FeatureCollection('{}')".format(rows["id"])
-                    item = {
-                        "index": i,
-                        "title": rows["title"],
-                        "ee_id_snippet": rows["id"],
-                        "start_date": rows["start_date"],
-                        "end_date": rows["end_date"],
-                        "asset_url": rows["asset_url"],
-                        "thumbnail_url": rows["thumbnail_url"],
-                    }
-                    gee_bundle.append(item)
-                    i = i + 1
-                except Exception as e:
-                    print(e)
+    # Load the appropriate datasets
+    search_engine.load_datasets(source=search_source)
+
+    # Perform the search
+    results = search_engine.search(
+        query=mname,
+        max_results=max_results,
+        include_docs=include_docs,
+        allow_subsets=allow_subsets,
+        source=search_source
+    )
+
     print("")
-    print(json.dumps(gee_bundle, indent=4, sort_keys=False))
-
+    print(json.dumps(results, indent=2, sort_keys=False))
 
 def quota_from_parser(args):
     quota(project_path=args.project)
@@ -863,8 +703,12 @@ def cancel_tasks_from_parser(args):
 
 
 def delete_collection_from_parser(args):
-    delete(ids=args.id)
-
+    delete(
+        ids=args.id,
+        max_workers=args.workers,
+        max_retries=args.retries,
+        verbose=args.verbose
+    )
 
 def tasks_from_parser(args):
     tasks(state=args.state,id=args.id)
@@ -875,8 +719,13 @@ def assetsize_from_parser(args):
 
 
 def search_from_parser(args):
-    search(mname=args.keywords, source=args.source)
-
+    search(
+        mname=args.keywords,
+        source=args.source,
+        max_results=args.max_results if hasattr(args, 'max_results') else 5,
+        include_docs=args.include_docs if hasattr(args, 'include_docs') else False,
+        allow_subsets=args.allow_subsets if hasattr(args, 'allow_subsets') else False
+    )
 
 def main(args=None):
     parser = argparse.ArgumentParser(
@@ -919,7 +768,7 @@ def main(args=None):
     parser_app2script.set_defaults(func=app2script_from_parser)
 
     parser_search = subparsers.add_parser(
-        "search", help="Search public GEE catalog using keywords"
+        "search", help="Search public GEE catalog using keywords with relevance ranking"
     )
     required_named = parser_search.add_argument_group("Required named arguments.")
     required_named.add_argument(
@@ -930,8 +779,26 @@ def main(args=None):
     optional_named = parser_search.add_argument_group("Optional named arguments")
     optional_named.add_argument(
         "--source",
-        help="Type community to search within the Community Dataset Catalog",
+        help="Catalog to search: 'main' (official catalog), 'community' (community datasets), or leave blank for both",
         default=None,
+    )
+    optional_named.add_argument(
+        "--max_results",
+        help="Maximum number of results to return (default: 10)",
+        type=int,
+        default=5,
+    )
+    optional_named.add_argument(
+        "--include_docs",
+        help="Search documentation URLs for keywords (slower but more thorough)",
+        action="store_true",
+        default=False,
+    )
+    optional_named.add_argument(
+        "--allow_subsets",
+        help="Show all regional/temporal variants instead of grouping them",
+        action="store_true",
+        default=False,
     )
     parser_search.set_defaults(func=search_from_parser)
 
@@ -1036,6 +903,13 @@ def main(args=None):
         help="Full path to asset for deletion. Recursively removes all folders, collections and images.",
         required=True,
     )
+    optional_named = parser_delete.add_argument_group("Optional named arguments")
+    optional_named.add_argument('--workers', type=int, default=5,
+                        help='Number of concurrent workers (default: 5)')
+    optional_named.add_argument('--retries', type=int, default=5,
+                        help='Maximum retry attempts per asset (default: 5)')
+    optional_named.add_argument('--verbose', '-v', action='store_true',
+                        help='Enable verbose debug logging')
     parser_delete.set_defaults(func=delete_collection_from_parser)
 
     parser_delete_metadata = subparsers.add_parser(

@@ -1,6 +1,6 @@
 __copyright__ = """
 
-    Copyright 2024 Samapriya Roy
+    Copyright 2025 Samapriya Roy
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -17,42 +17,62 @@ __copyright__ = """
 """
 
 import json
-import shlex
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+
+# ANSI color codes - works natively across all major terminals and OSes
+class Colors:
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    BOLD = '\033[1m'
+    RESET = '\033[0m'
 
 
 def is_gcloud_installed():
+    """Check if gcloud is installed (optimized)."""
     try:
-        # Run the 'gcloud --version' command to check if gcloud is installed
-        result = subprocess.run(['gcloud', '--version'], shell=True,capture_output=True, text=True)
-        if result.returncode == 0:
-            return True
-        else:
-            return False
-    except FileNotFoundError:
+        # Use shell=True on Windows, False on Unix for best compatibility
+        is_windows = sys.platform.startswith('win')
+        result = subprocess.run(
+            'gcloud --version' if is_windows else ['gcloud', '--version'],
+            shell=is_windows,
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        return result.returncode == 0
+    except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
+
 
 def is_gcloud_authenticated():
+    """Check if gcloud is authenticated (optimized)."""
     try:
-        # Run the 'gcloud auth list' command to check if gcloud is authenticated
-        result = subprocess.run(['gcloud', 'auth', 'list'], shell=True,capture_output=True, text=True)
+        is_windows = sys.platform.startswith('win')
+        result = subprocess.run(
+            'gcloud auth list --format=json' if is_windows else ['gcloud', 'auth', 'list', '--format=json'],
+            shell=is_windows,
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
         if result.returncode == 0:
-            output = result.stdout.strip()
-            if "ACTIVE" in output:
-                return True
-            else:
-                return False
-        else:
-            return False
-    except FileNotFoundError:
+            accounts = json.loads(result.stdout)
+            return any(acc.get('status') == 'ACTIVE' for acc in accounts)
+        return False
+    except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
         return False
 
+
 def check_gcloud():
-    if is_gcloud_installed() and is_gcloud_authenticated():
-        return True
-    else:
-        return False
+    """Verify gcloud installation and authentication."""
+    return is_gcloud_installed() and is_gcloud_authenticated()
+
 
 def list_enabled_services(pname):
     """Lists enabled services for a given project.
@@ -61,48 +81,146 @@ def list_enabled_services(pname):
         pname: The project name.
 
     Returns:
-        A list of enabled services as a JSON object, or None if an error occurs.
+        A list of enabled services, or None if an error occurs.
     """
-    command = f"gcloud services list --project={pname} --enabled --format=json"
+    is_windows = sys.platform.startswith('win')
+    command = f'gcloud services list --project={pname} --enabled --format=json' if is_windows else [
+        'gcloud', 'services', 'list', f'--project={pname}', '--enabled', '--format=json'
+    ]
     try:
-        output = subprocess.run(shlex.split(command), shell=True, capture_output=True, text=True)
-        return json.loads(output.stdout)
-    except subprocess.CalledProcessError as e:
-        print(f"Error: gcloud command failed with code {e.returncode}.")
+        output = subprocess.run(
+            command,
+            shell=is_windows,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        if output.returncode == 0:
+            return json.loads(output.stdout)
         return None
-    except Exception as e:
+    except (subprocess.TimeoutExpired, json.JSONDecodeError):
         return None
+
+
 def project_permissions(pname):
     """Checks if Earth Engine API is enabled for a project.
 
     Args:
         pname: The project name.
+
+    Returns:
+        Tuple of (project_name, project_number, has_ee) or None if error.
     """
     enabled_services = list_enabled_services(pname)
-    data = enabled_services
-    enabled_api_list = []
-    if data is not None:
-        for item in data:
-            project_id = item["parent"]
-            enabled_api_list.append(item['name'].split('services/')[-1])
-        enabled_api_list = [item['name'].split('services/')[-1] for item in data if data is not None]
-        if "earthengine.googleapis.com" in enabled_api_list:
-            print(f"Project Name: {pname} Project Number: {project_id.split('/')[-1]}")
+
+    if enabled_services is None:
+        return None
+
+    if not enabled_services:
+        return None
+
+    enabled_api_list = [item['name'].split('services/')[-1]
+                       for item in enabled_services]
+
+    if "earthengine.googleapis.com" in enabled_api_list:
+        project_id = enabled_services[0]["parent"]
+        project_number = project_id.split('/')[-1]
+        return (pname, project_number, True)
+
+    return None
+
+
+def display_projects_table(ee_projects):
+    """Display projects in a 2-column table format.
+
+    Args:
+        ee_projects: List of tuples (project_name, project_number, has_ee)
+    """
+    # Calculate column widths
+    max_name_len = max(len(pname) for pname, _, _ in ee_projects)
+    max_number_len = max(len(pnumber) for _, pnumber, _ in ee_projects)
+
+    # Ensure minimum widths for headers
+    name_width = max(max_name_len, 12)  # "Project Name" length
+    number_width = max(max_number_len, 14)  # "Project Number" length
+
+    # Create divider
+    col_divider = "  │  "
+    divider = f"{'─' * name_width}──┬──{'─' * number_width}{col_divider}{'─' * name_width}──┬──{'─' * number_width}"
+    header_divider = f"{'═' * name_width}══╪══{'═' * number_width}{col_divider}{'═' * name_width}══╪══{'═' * number_width}"
+
+    # Print header
+    print(f"{Colors.BOLD}{'Project Name':<{name_width}}  │  {'Project Number':<{number_width}}{col_divider}{'Project Name':<{name_width}}  │  {'Project Number':<{number_width}}{Colors.RESET}")
+    print(header_divider)
+
+    # Print projects in 2 columns
+    for i in range(0, len(ee_projects), 2):
+        left_name, left_number, _ = ee_projects[i]
+
+        if i + 1 < len(ee_projects):
+            right_name, right_number, _ = ee_projects[i + 1]
+            print(f"{Colors.CYAN}{left_name:<{name_width}}{Colors.RESET}  │  {left_number:<{number_width}}{col_divider}{Colors.CYAN}{right_name:<{name_width}}{Colors.RESET}  │  {right_number:<{number_width}}")
+        else:
+            # Odd number of projects - only left column
+            print(f"{Colors.CYAN}{left_name:<{name_width}}{Colors.RESET}  │  {left_number:<{number_width}}")
+
+    print(f"\n{Colors.BOLD}Total: {len(ee_projects)} project(s){Colors.RESET}")
+
 
 def get_projects():
-    """Retrieves project list and checks Earth Engine permissions."""
+    """Retrieves project list and checks Earth Engine permissions (parallelized)."""
     if not check_gcloud():
-        sys.exit("gcloud is either not installed or not authenticated.")
-    else:
-        print("\n"+"gcloud is installed and authenticated")
-    command = f"gcloud projects list --format=json"
-    try:
-        print("\n"+"Checking Earth Engine permissions for all projects..."+"\n")
-        services_json = subprocess.check_output(command, shell=True, text=True)
-        project_json  = json.loads(services_json)
-        for item in project_json:
-            project_permissions(item['projectId'])
-    except subprocess.CalledProcessError as e:
-        print("Error:", e.output)
+        print(f"{Colors.RED}✗ gcloud is either not installed or not authenticated.{Colors.RESET}")
+        sys.exit(1)
 
-#get_projects()
+    print(f"{Colors.GREEN}✓ gcloud is installed and authenticated{Colors.RESET}\n")
+
+    # Get all projects
+    is_windows = sys.platform.startswith('win')
+    command = 'gcloud projects list --format=json' if is_windows else ['gcloud', 'projects', 'list', '--format=json']
+    try:
+        print(f"{Colors.CYAN}Checking Earth Engine permissions for all projects...{Colors.RESET}\n")
+        services_json = subprocess.check_output(
+            command,
+            shell=is_windows,
+            text=True,
+            timeout=30
+        )
+        project_json = json.loads(services_json)
+
+        if not project_json:
+            print(f"{Colors.YELLOW}No projects found.{Colors.RESET}")
+            return
+
+        print(f"{Colors.BLUE}Found {len(project_json)} project(s). Checking permissions...{Colors.RESET}\n")
+
+        # Process projects in parallel for massive speed improvement
+        ee_projects = []
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_project = {
+                executor.submit(project_permissions, item['projectId']): item['projectId']
+                for item in project_json
+            }
+
+            for future in as_completed(future_to_project):
+                result = future.result()
+                if result:
+                    ee_projects.append(result)
+
+        # Display results
+        if ee_projects:
+            print(f"{Colors.GREEN}{Colors.BOLD}Projects with Earth Engine enabled:{Colors.RESET}\n")
+            display_projects_table(ee_projects)
+        else:
+            print(f"{Colors.YELLOW}No projects found with Earth Engine API enabled.{Colors.RESET}")
+
+    except subprocess.CalledProcessError as e:
+        print(f"{Colors.RED}Error: {e.output}{Colors.RESET}")
+    except subprocess.TimeoutExpired:
+        print(f"{Colors.RED}Error: Command timed out{Colors.RESET}")
+    except json.JSONDecodeError:
+        print(f"{Colors.RED}Error: Failed to parse JSON output{Colors.RESET}")
+
+
+# Uncomment to run:
+# get_projects()
