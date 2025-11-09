@@ -20,12 +20,23 @@ __copyright__ = """
 __license__ = "Apache 2.0"
 
 import concurrent.futures
+import logging
 import os
 import signal
 import sys
+import time
+from functools import wraps
+from typing import Any, Dict, List, Optional
 
 import ee
 from tqdm import tqdm
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Global flag to track interrupt status
 interrupt_received = False
@@ -34,47 +45,90 @@ interrupt_received = False
 folder_list = []
 
 
-# Signal handler for keyboard interrupts
+def retry_on_ee_error(max_retries: int = 3, backoff_factor: float = 2):
+    """Decorator for retrying EE operations with exponential backoff."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except ee.EEException as e:
+                    if attempt == max_retries - 1:
+                        raise
+                    if "rate limit" in str(e).lower() or "quota" in str(e).lower():
+                        wait_time = backoff_factor ** attempt
+                        logger.warning(f"Rate limit hit, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(wait_time)
+                    else:
+                        raise
+            return None
+        return wrapper
+    return decorator
+
+
 def handle_interrupt(sig, frame):
     """Handle interrupt signals gracefully."""
     global interrupt_received
     if not interrupt_received:
-        print(
-            "\nInterrupt received! Gracefully shutting down... (This may take a moment)"
-        )
-        print(
-            "Press Ctrl+C again to force immediate exit (may leave tasks in an inconsistent state)"
-        )
+        logger.warning("Interrupt received! Gracefully shutting down... (This may take a moment)")
+        logger.info("Press Ctrl+C again to force immediate exit (may leave tasks in an inconsistent state)")
         interrupt_received = True
     else:
-        print("\nForced exit requested. Exiting immediately.")
+        logger.error("Forced exit requested. Exiting immediately.")
         sys.exit(1)
 
 
-def camel_case(s):
+def camel_case(s: str) -> str:
     """Convert string to camel case (Title Case)."""
     words = s.split()
     return " ".join(word.title() for word in words)
 
 
-def create_folder(folder_path, replace_string, replaced_string):
+def get_asset_safe(asset_path: str) -> Optional[Dict[str, Any]]:
+    """Safely get asset with proper error handling."""
+    try:
+        return ee.data.getAsset(asset_path)
+    except ee.EEException as e:
+        if 'not found' in str(e).lower():
+            return None
+        raise
+    except Exception:
+        return None
+
+
+def create_folder(folder_path: str, replace_string: str, replaced_string: str) -> None:
     """Create a folder if it doesn't exist, handling both cloud and legacy folders."""
     folder_path = folder_path.replace(replace_string, replaced_string)
+
     try:
-        if ee.data.getAsset(folder_path):
-            print(f"Folder exists: {ee.data.getAsset(folder_path)['id']}")
+        asset = get_asset_safe(folder_path)
+        if asset:
+            logger.info(f"Folder exists: {asset['id']}")
+            return
     except Exception:
-        print(f"Folder does not exist: Creating {folder_path}")
+        pass
+
+    logger.info(f"Folder does not exist: Creating {folder_path}")
+    try:
+        # Try modern approach first
+        ee.data.createAsset({"type": "FOLDER"}, folder_path)
+    except Exception:
+        # Fallback to legacy if needed
         try:
-            ee.data.createAsset({"type": ee.data.ASSET_TYPE_FOLDER_CLOUD}, folder_path)
-        except Exception:
-            try:
-                ee.data.createAsset({"type": ee.data.ASSET_TYPE_FOLDER}, folder_path)
-            except Exception as e:
-                print(f"Error creating folder {folder_path}: {e}")
+            ee.data.createAsset({"type": "Folder"}, folder_path)
+        except Exception as e:
+            logger.error(f"Error creating folder {folder_path}: {e}")
 
 
-def move_asset(source, replace_string, replaced_string, fpath, ftype="asset"):
+@retry_on_ee_error(max_retries=3)
+def move_asset(
+    source: str,
+    replace_string: Optional[str],
+    replaced_string: str,
+    fpath: str,
+    ftype: str = "asset"
+) -> bool:
     """Move a single asset with appropriate error handling and messaging."""
     if replace_string == replaced_string or replace_string is None:
         final = fpath
@@ -83,24 +137,29 @@ def move_asset(source, replace_string, replaced_string, fpath, ftype="asset"):
 
     try:
         # Check if destination already exists
-        if ee.data.getAsset(final):
-            print(f"{camel_case(ftype)} already moved: {final}")
+        if get_asset_safe(final):
+            logger.info(f"{camel_case(ftype)} already moved: {final}")
             return False
     except Exception:
-        try:
-            print(f"Moving {camel_case(ftype)} to {final}")
-            ee.data.renameAsset(source, final)
-            return True
-        except Exception as e:
-            print(f"Error moving {source} to {final}: {e}")
-            return False
+        pass
+
+    try:
+        logger.info(f"Moving {camel_case(ftype)} to {final}")
+        ee.data.renameAsset(source, final)
+        return True
+    except Exception as e:
+        logger.error(f"Error moving {source} to {final}: {e}")
+        return False
 
 
 def move_image_collection(
-    source, replace_string, replaced_string, fpath, max_workers=10
-):
+    source: str,
+    replace_string: Optional[str],
+    replaced_string: str,
+    fpath: str,
+    max_workers: int = 10
+) -> None:
     """Move an image collection with parallel execution for speed."""
-    # Global variable to track if interrupt occurred
     global interrupt_received
 
     if replace_string == replaced_string or replace_string is None:
@@ -110,31 +169,38 @@ def move_image_collection(
 
     try:
         # Create the collection if it doesn't exist
-        try:
-            if ee.data.getAsset(collection_path):
-                print(f"Collection exists: {ee.data.getAsset(collection_path)['id']}")
-        except Exception:
-            print(f"Collection does not exist: Creating {collection_path}")
+        dest_asset = get_asset_safe(collection_path)
+        if dest_asset:
+            logger.info(f"Collection exists: {dest_asset['id']}")
+        else:
+            logger.info(f"Collection does not exist: Creating {collection_path}")
             try:
-                ee.data.createAsset(
-                    {"type": ee.data.ASSET_TYPE_IMAGE_COLL_CLOUD}, collection_path
-                )
+                # Try modern approach first
+                ee.data.createAsset({"type": "IMAGE_COLLECTION"}, collection_path)
             except Exception:
-                ee.data.createAsset(
-                    {"type": ee.data.ASSET_TYPE_IMAGE_COLL}, collection_path
-                )
+                # Fallback to legacy if needed
+                try:
+                    ee.data.createAsset({"type": "ImageCollection"}, collection_path)
+                except Exception as e:
+                    logger.error(f"Error creating collection: {e}")
+                    return
 
         # Get list of source images
         source_list = ee.data.listAssets({"parent": source})
         source_names = [
-            os.path.basename(asset["name"]) for asset in source_list["assets"]
+            os.path.basename(asset["name"]) for asset in source_list.get("assets", [])
         ]
 
         # Get list of destination images
-        collection_path = ee.data.getAsset(collection_path)["name"]
+        collection_asset = get_asset_safe(collection_path)
+        if not collection_asset:
+            logger.error(f"Could not access destination collection {collection_path}")
+            return
+
+        collection_path = collection_asset["name"]
         final_list = ee.data.listAssets({"parent": collection_path})
         final_names = [
-            os.path.basename(asset["name"]) for asset in final_list["assets"]
+            os.path.basename(asset["name"]) for asset in final_list.get("assets", [])
         ]
 
         # Find images that need to be moved
@@ -142,12 +208,10 @@ def move_image_collection(
         total_images = len(diff)
 
         if not diff:
-            print(
-                "All images already exist in destination collection. Nothing to move."
-            )
+            logger.info("All images already exist in destination collection. Nothing to move.")
             return
 
-        print(f"Moving a total of {total_images} images...")
+        logger.info(f"Moving a total of {total_images} images with {max_workers} workers...")
 
         # Use ThreadPoolExecutor for parallel moving
         results = []
@@ -162,19 +226,17 @@ def move_image_collection(
                     break
                 source_path = f"{source}/{item}"
                 dest_path = f"{collection_path}/{item}"
-                future = executor.submit(ee.data.renameAsset, source_path, dest_path)
+                future = executor.submit(move_asset_wrapper, source_path, dest_path)
                 futures[future] = item
 
             # Process results with progress bar
-            with tqdm(total=total_images, desc="Moving images") as pbar:
+            with tqdm(total=total_images, desc="Moving images", unit="image") as pbar:
                 for future in concurrent.futures.as_completed(futures):
                     item = futures[future]
 
                     # Check if we've received an interrupt
                     if interrupt_received:
-                        pbar.write(
-                            "\nInterrupt received, cancelling remaining move operations..."
-                        )
+                        logger.warning("Interrupt received, cancelling remaining move operations...")
                         # Cancel remaining futures
                         for f in futures:
                             if not f.done():
@@ -182,10 +244,10 @@ def move_image_collection(
                         break
 
                     try:
-                        future.result()
-                        results.append(True)
+                        result = future.result()
+                        results.append(result)
                     except Exception as e:
-                        pbar.write(f"Error moving {item}: {e}")
+                        logger.error(f"Error moving {item}: {e}")
                         results.append(False)
 
                     processed_count += 1
@@ -196,45 +258,134 @@ def move_image_collection(
             executor.shutdown(wait=False)
 
         if interrupt_received:
-            print(
-                f"\nOperation interrupted. Moved {processed_count} of {total_images} images."
-            )
+            logger.warning(f"Operation interrupted. Moved {processed_count} of {total_images} images.")
         else:
             success_count = sum(results)
-            print(f"Successfully moved {success_count} of {total_images} images")
+            failed_count = total_images - success_count
+            logger.info(f"Successfully moved {success_count} of {total_images} images")
+            if failed_count > 0:
+                logger.warning(f"{failed_count} images failed to move")
 
     except Exception as e:
-        print(f"Error in collection move: {e}")
+        logger.error(f"Error in collection move: {e}", exc_info=True)
 
 
-def get_folder(path):
+def move_asset_wrapper(source: str, destination: str) -> bool:
+    """Wrapper for moving assets in thread pool."""
+    try:
+        ee.data.renameAsset(source, destination)
+        return True
+    except Exception as e:
+        logger.debug(f"Failed to move {source}: {e}")
+        return False
+
+
+def delete_asset_safe(asset_path: str) -> bool:
+    """Safely delete an asset with proper error handling."""
+    try:
+        ee.data.deleteAsset(asset_path)
+        logger.info(f"Deleted: {asset_path}")
+        return True
+    except ee.EEException as e:
+        logger.error(f"Error deleting {asset_path}: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error deleting {asset_path}: {e}")
+        return False
+
+
+def cleanup_empty_structure(path: str, skip_root: bool = False) -> None:
+    """
+    Recursively remove empty folders and collections from a path.
+
+    Args:
+        path: Root path to clean up
+        skip_root: If True, don't delete the root folder itself (only children)
+    """
+    global interrupt_received
+
+    if interrupt_received:
+        logger.warning("Interrupt received, skipping cleanup")
+        return
+
+    try:
+        asset = get_asset_safe(path)
+        if not asset:
+            return
+
+        asset_type = asset.get("type", "").upper()
+        asset_name = asset["name"]
+
+        # Handle folders
+        if asset_type == "FOLDER":
+            # First, recursively clean up children
+            try:
+                children = ee.data.listAssets({"parent": asset_name})
+                child_assets = children.get("assets", [])
+
+                for child in child_assets:
+                    if interrupt_received:
+                        break
+                    cleanup_empty_structure(child["name"])
+
+                # After cleaning children, check if folder is now empty
+                remaining = ee.data.listAssets({"parent": asset_name})
+                if not remaining.get("assets", []) and not skip_root:
+                    logger.info(f"Removing empty folder: {asset_name}")
+                    delete_asset_safe(asset_name)
+
+            except Exception as e:
+                logger.error(f"Error cleaning up folder {asset_name}: {e}")
+
+        # Handle image collections
+        elif asset_type == "IMAGE_COLLECTION":
+            try:
+                images = ee.data.listAssets({"parent": asset_name})
+                if not images.get("assets", []):
+                    logger.info(f"Removing empty collection: {asset_name}")
+                    delete_asset_safe(asset_name)
+            except Exception as e:
+                logger.error(f"Error cleaning up collection {asset_name}: {e}")
+
+    except Exception as e:
+        logger.error(f"Error in cleanup_empty_structure for {path}: {e}")
+
+
+def get_folder(path: str) -> None:
     """Get folder information and add to folder_list."""
-    parser = ee.data.getAsset(path)
-    if parser["type"].lower() == "folder":
-        folder_list.append(parser["name"])
-        recursive(parser["name"])
+    asset = get_asset_safe(path)
+    if not asset:
+        return
+
+    if asset.get("type", "").upper() == "FOLDER":
+        folder_list.append(asset["name"])
+        recursive(asset["name"])
 
 
-def recursive(path):
+def recursive(path: str) -> List[str]:
     """Recursively gather all folders under a path."""
-    path_info = ee.data.getAsset(path)
-    if path_info["type"].lower() == "folder":
+    path_info = get_asset_safe(path)
+    if not path_info:
+        return folder_list
+
+    if path_info.get("type", "").upper() == "FOLDER":
         path = path_info["name"]
         folder_list.append(path)
         children = ee.data.listAssets({"parent": path})
-        for child in children["assets"]:
-            if not child["name"] in folder_list:
+        for child in children.get("assets", []):
+            if child["name"] not in folder_list:
                 get_folder(child["name"])
     return folder_list
 
 
-def mover(path, fpath, max_workers=10):
+def mover(path: str, fpath: str, max_workers: int = 10, cleanup: bool = True) -> None:
     """Move Earth Engine assets from path to fpath.
 
     Args:
         path: Source asset path
         fpath: Destination asset path
         max_workers: Maximum number of parallel workers for collection moving
+        cleanup: If True, remove empty source folders/collections after moving (default: True)
     """
     global interrupt_received
     global folder_list
@@ -247,165 +398,213 @@ def mover(path, fpath, max_workers=10):
     signal.signal(signal.SIGINT, handle_interrupt)
 
     try:
-        ee.Initialize()
-
+        # Initialize EE if not already initialized
         try:
-            if not ee.data.getAsset(path):
-                print(f"Initial path {path} not found")
+            ee.data.getAssetRoots()
+        except:
+            logger.info("Initializing Earth Engine...")
+            ee.Initialize()
+
+        logger.info(f"Starting move operation from {path} to {fpath}")
+
+        asset_info = get_asset_safe(path)
+        if not asset_info:
+            logger.error(f"Initial path {path} not found")
+            return
+
+        asset_type = asset_info.get("type", "").upper()
+        logger.info(f"Source asset type: {asset_type}")
+
+        # Store original path for cleanup
+        original_source_path = asset_info["name"]
+
+        if asset_type == "FOLDER":
+            # Move folder structure
+            logger.info("Scanning folder structure...")
+            gee_folder_path = recursive(path)
+            gee_folder_path = sorted(list(set(folder_list)))
+            logger.info(f"Total folders: {len(set(folder_list))}")
+
+            # Get path prefixes for replacement
+            initial_path_suffix = path.split("/")[-1]
+            source_asset = get_asset_safe(path + "/")
+            if not source_asset:
+                logger.error(f"Cannot access source path: {path}")
+                return
+            replace_string = (
+                "/".join(source_asset["name"].split("/")[:-1])
+                + "/"
+                + initial_path_suffix
+            )
+
+            # Get the final path
+            final_path_suffix = fpath.split("/")[-1]
+            parent_path = "/".join(fpath.split("/")[:-1]) + "/"
+            parent_asset = get_asset_safe(parent_path)
+            if not parent_asset:
+                logger.error(f"Cannot access destination parent path: {parent_path}")
+                return
+            replaced_string = parent_asset["name"] + "/" + final_path_suffix
+
+            logger.info(f"Path mapping: {replace_string} -> {replaced_string}")
+
+            # Create folder structure
+            for folder in gee_folder_path:
+                if interrupt_received:
+                    logger.warning("Operation interrupted. Stopping folder creation.")
+                    break
+
+                create_folder(folder, replace_string, replaced_string)
+
+                # Process assets in this folder
+                try:
+                    children = ee.data.listAssets({"parent": folder})
+                    for child in children.get("assets", []):
+                        if interrupt_received:
+                            logger.warning("Operation interrupted. Stopping asset processing.")
+                            break
+
+                        child_type = child.get("type", "").upper()
+                        child_path = child["name"]
+
+                        if child_type == "IMAGE_COLLECTION":
+                            move_image_collection(
+                                child_path,
+                                replace_string,
+                                replaced_string,
+                                fpath,
+                                max_workers,
+                            )
+                        elif child_type == "IMAGE":
+                            move_asset(
+                                child_path,
+                                replace_string,
+                                replaced_string,
+                                fpath,
+                                "image",
+                            )
+                        elif child_type == "TABLE":
+                            move_asset(
+                                child_path,
+                                replace_string,
+                                replaced_string,
+                                fpath,
+                                "table",
+                            )
+                        elif child_type == "FEATURE_VIEW":
+                            move_asset(
+                                child_path,
+                                replace_string,
+                                replaced_string,
+                                fpath,
+                                "feature view",
+                            )
+
+                        # Check interrupt again after each asset
+                        if interrupt_received:
+                            break
+                except Exception as e:
+                    logger.error(f"Error processing assets in folder {folder}: {e}")
+
+        elif asset_type == "IMAGE":
+            # Move individual image
+            image_asset = get_asset_safe(path)
+            if not image_asset:
+                logger.error(f"Cannot access image: {path}")
                 return
 
-            asset_info = ee.data.getAsset(path)
-            asset_type = asset_info["type"].lower()
+            path = image_asset["name"]
+            initial_path_suffix = path.split("/")[-1]
+            replace_string = (
+                "/".join(image_asset["name"].split("/")[:-1])
+                + "/"
+                + initial_path_suffix
+            )
 
-            if asset_type == "folder":
-                # Move folder structure
-                gee_folder_path = recursive(path)
-                gee_folder_path = sorted(list(set(folder_list)))
-                print(f"Total folders: {len(set(folder_list))}")
+            final_path_suffix = fpath.split("/")[-1]
+            parent_path = "/".join(fpath.split("/")[:-1])
+            parent_asset = get_asset_safe(parent_path)
+            if not parent_asset:
+                logger.error(f"Cannot access destination parent: {parent_path}")
+                return
+            replaced_string = parent_asset["name"] + "/" + final_path_suffix
 
-                # Get path prefixes for replacement
-                initial_path_suffix = path.split("/")[-1]
-                replace_string = (
-                    "/".join(ee.data.getAsset(path + "/")["name"].split("/")[:-1])
-                    + "/"
-                    + initial_path_suffix
-                )
+            move_asset(path, replace_string, replaced_string, fpath, "image")
 
-                # Get the final path
-                final_path_suffix = fpath.split("/")[-1]
-                replaced_string = (
-                    ee.data.getAsset(("/".join(fpath.split("/")[:-1]) + "/"))["name"]
-                    + "/"
-                    + final_path_suffix
-                )
+        elif asset_type == "IMAGE_COLLECTION":
+            # Move collection
+            coll_asset = get_asset_safe(path)
+            if not coll_asset:
+                logger.error(f"Cannot access collection: {path}")
+                return
 
-                # Create folder structure
-                for folder in gee_folder_path:
-                    if interrupt_received:
-                        print("Operation interrupted. Stopping folder creation.")
-                        break
+            path = coll_asset["name"]
+            initial_list = ee.data.listAssets({"parent": path})
+            assets_names = [
+                os.path.basename(asset["name"]) for asset in initial_list.get("assets", [])
+            ]
 
-                    create_folder(folder, replace_string, replaced_string)
+            initial_path_suffix = path.split("/")[-1]
+            replace_string = (
+                "/".join(path.split("/")[:-1]) + "/" + initial_path_suffix
+            )
 
-                    # Process assets in this folder
-                    try:
-                        children = ee.data.listAssets({"parent": folder})
-                        for child in children["assets"]:
-                            if interrupt_received:
-                                print(
-                                    "Operation interrupted. Stopping asset processing."
-                                )
-                                break
+            move_image_collection(path, replace_string, None, fpath, max_workers)
 
-                            child_type = child["type"].lower()
-                            child_path = child["name"]
+        elif asset_type == "TABLE":
+            # Move table
+            table_asset = get_asset_safe(path)
+            if not table_asset:
+                logger.error(f"Cannot access table: {path}")
+                return
 
-                            if child_type == "image_collection":
-                                move_image_collection(
-                                    child_path,
-                                    replace_string,
-                                    replaced_string,
-                                    fpath,
-                                    max_workers,
-                                )
-                            elif child_type == "image":
-                                move_asset(
-                                    child_path,
-                                    replace_string,
-                                    replaced_string,
-                                    fpath,
-                                    "image",
-                                )
-                            elif child_type == "table":
-                                move_asset(
-                                    child_path,
-                                    replace_string,
-                                    replaced_string,
-                                    fpath,
-                                    "table",
-                                )
-                            elif child_type == "feature_view":
-                                move_asset(
-                                    child_path,
-                                    replace_string,
-                                    replaced_string,
-                                    fpath,
-                                    "feature view",
-                                )
+            path = table_asset["name"]
+            replace_string = None
+            parent_path = "/".join(fpath.split("/")[:-1]) + "/"
+            parent_asset = get_asset_safe(parent_path)
+            if not parent_asset:
+                logger.error(f"Cannot access destination parent: {parent_path}")
+                return
+            replaced_string = parent_asset["name"]
+            move_asset(path, replace_string, replaced_string, fpath, "table")
 
-                            # Check interrupt again after each asset
-                            if interrupt_received:
-                                break
-                    except Exception as e:
-                        print(f"Error processing assets in folder {folder}: {e}")
-                    print("")
+        elif asset_type == "FEATURE_VIEW":
+            # Move feature view
+            fv_asset = get_asset_safe(path)
+            if not fv_asset:
+                logger.error(f"Cannot access feature view: {path}")
+                return
 
-            elif asset_type == "image":
-                # Move individual image
-                path = ee.data.getAsset(path)["name"]
-                initial_path_suffix = path.split("/")[-1]
-                replace_string = (
-                    "/".join(ee.data.getAsset(path)["name"].split("/")[:-1])
-                    + "/"
-                    + initial_path_suffix
-                )
+            path = fv_asset["name"]
+            replace_string = None
+            parent_path = "/".join(fpath.split("/")[:-1]) + "/"
+            parent_asset = get_asset_safe(parent_path)
+            if not parent_asset:
+                logger.error(f"Cannot access destination parent: {parent_path}")
+                return
+            replaced_string = parent_asset["name"]
+            move_asset(path, replace_string, replaced_string, fpath, "feature view")
 
-                final_path_suffix = fpath.split("/")[-1]
-                replaced_string = (
-                    ee.data.getAsset("/".join(fpath.split("/")[:-1]))["name"]
-                    + "/"
-                    + final_path_suffix
-                )
+        else:
+            logger.error(f"Unsupported asset type: {asset_type}")
 
-                move_asset(path, replace_string, replaced_string, fpath, "image")
-
-            elif asset_type == "image_collection":
-                # Move collection
-                path = ee.data.getAsset(path)["name"]
-                initial_list = ee.data.listAssets({"parent": path})
-                assets_names = [
-                    os.path.basename(asset["name"]) for asset in initial_list["assets"]
-                ]
-
-                initial_path_suffix = path.split("/")[-1]
-                replace_string = (
-                    "/".join(path.split("/")[:-1]) + "/" + initial_path_suffix
-                )
-
-                move_image_collection(path, replace_string, None, fpath, max_workers)
-
-            elif asset_type == "table":
-                # Move table
-                path = ee.data.getAsset(path)["name"]
-                replace_string = None
-                replaced_string = ee.data.getAsset(
-                    "/".join(fpath.split("/")[:-1]) + "/"
-                )["name"]
-                move_asset(path, replace_string, replaced_string, fpath, "table")
-
-            elif asset_type == "feature_view":
-                # Move feature view
-                path = ee.data.getAsset(path)["name"]
-                replace_string = None
-                replaced_string = ee.data.getAsset(
-                    "/".join(fpath.split("/")[:-1]) + "/"
-                )["name"]
-                move_asset(path, replace_string, replaced_string, fpath, "feature view")
-
-            else:
-                print(f"Unsupported asset type: {asset_type}")
-
-        except Exception as e:
-            print(e)
-            print(f"Initial path {path} not found")
+        # CLEANUP PHASE - only if not interrupted and cleanup is enabled
+        if cleanup and not interrupt_received:
+            logger.info("Starting cleanup of source structure...")
+            cleanup_empty_structure(original_source_path)
+            logger.info("Cleanup completed.")
 
     except Exception as e:
         if not interrupt_received:
-            print(f"Error moving assets: {e}")
+            logger.error(f"Error moving assets: {e}", exc_info=True)
     finally:
         # Restore original signal handler
         signal.signal(signal.SIGINT, original_sigint_handler)
 
         if interrupt_received:
-            print("\nMove operation was interrupted and has been stopped.")
-            print("Some assets may have been moved while others were not.")
+            logger.warning("Move operation was interrupted and has been stopped.")
+            logger.warning("Some assets may have been moved while others were not.")
+            if cleanup:
+                logger.warning("Cleanup was skipped due to interruption. You may need to manually remove empty folders.")
+        else:
+            logger.info("Move operation completed successfully.")

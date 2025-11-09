@@ -673,7 +673,7 @@ def ee_report_from_parser(args):
 
 
 def move_from_parser(args):
-    mover(path=args.initial, fpath=args.final)
+    mover(path=args.initial, fpath=args.final, cleanup=args.cleanup)
 
 
 def copy_from_parser(args):
@@ -869,8 +869,16 @@ def main(args=None):
         "move", help="Moves entire folders, collections, images or tables"
     )
     required_named = parser_move.add_argument_group("Required named arguments.")
-    required_named.add_argument("--initial", help="Existing path of assets")
-    required_named.add_argument("--final", help="New path for assets")
+    required_named.add_argument("--initial", help="Existing path of assets", required=True)
+    required_named.add_argument("--final", help="New path for assets", required=True)
+    optional_named = parser_move.add_argument_group("Optional named arguments")
+    optional_named.add_argument(
+        "--no-cleanup",
+        dest="cleanup",
+        action="store_false",
+        default=True,
+        help="Keep empty source folders after moving (default: cleanup enabled)"
+    )
     parser_move.set_defaults(func=move_from_parser)
 
     parser_access = subparsers.add_parser(
