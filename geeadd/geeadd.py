@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 from .acl_changer import access
 from .app2script import jsext
 from .batch_copy import copy
@@ -598,7 +596,7 @@ def quota_from_parser(args):
 
 
 def ee_report_from_parser(args):
-    ee_report(output_path=args.outfile, asset_path=args.path)
+    ee_report(output_path=args.outfile, asset_path=args.path, output_format=args)
 
 
 def move_from_parser(args):
@@ -618,7 +616,7 @@ def delete_metadata_from_parser(args):
 
 
 def app2script_from_parser(args):
-    jsext(url=args.url, outfile=args.outfile)
+    jsext(url=args.url, outfile=args.outfile, clipboard=args.clipboard)
 
 
 def read_from_parser(args):
@@ -694,6 +692,12 @@ def main(args=None):
         help="Write the script out to a .js file: Open in any text editor",
         default=None,
     )
+    optional_named.add_argument(
+        "--clipboard",
+        help="Copy the script to clipboard",
+        action="store_true",
+        default=False,
+    )
     parser_app2script.set_defaults(func=app2script_from_parser)
 
     parser_search = subparsers.add_parser(
@@ -744,6 +748,11 @@ def main(args=None):
         "--path",
         help="Path to any folder including project folders",
         default=None,
+    )
+    optional_named.add_argument(
+        "--output_format",
+        help="Output format can be csv or json",
+        default="csv",
     )
     parser_ee_report.set_defaults(func=ee_report_from_parser)
 
