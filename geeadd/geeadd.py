@@ -43,6 +43,7 @@ from datetime import datetime
 import ee
 import requests
 from colorama import Fore, Style, init
+from google.auth.transport.requests import AuthorizedSession
 from packaging import version as pkg_version
 from tqdm import tqdm
 
@@ -252,7 +253,7 @@ def quota(project_path=None):
 
     Args:
         project_path: Optional. Specific project path to check.
-                      If None, attempts to get all available projects.
+                      If None, displays quota for all available projects (cloud and legacy).
 
                       Examples:
                       - "users/username"
@@ -260,248 +261,176 @@ def quota(project_path=None):
                       - "projects/my-project-id"
                       - "my-project-id" (will try to detect the correct format)
     """
-    try:
-        def draw_bar(percent, width=30):
-            """Draw a simple progress bar"""
-            filled = int(width * percent / 100)
-            bar = "█" * filled + "░" * (width - filled)
-            return f"[{bar}] {percent:.1f}%"
+    session = AuthorizedSession(ee.data.get_persistent_credentials())
 
-        def display_quota_info(project_name, info, project_type="Project"):
-            """Display quota info uniformly"""
-            if "quota" in info:
-                quota_info = info["quota"]
-                print(f"\n{project_type}: {project_name}")
+    def draw_bar(percent, width=30):
+        """Draw a simple progress bar"""
+        filled = int(width * percent / 100)
+        bar = "█" * filled + "░" * (width - filled)
+        return f"[{bar}] {percent:.1f}%"
 
-                # Size quota
-                used_size = int(quota_info.get("sizeBytes", 0))
-                max_size = int(quota_info.get("maxSizeBytes", 1))
-                percent = (used_size / max_size * 100) if max_size > 0 else 0
-                print(f"Storage: {humansize(used_size)} of {humansize(max_size)}")
-                print(f"  {draw_bar(percent)}")
+    def display_quota_info(project_name, info, project_type="Project"):
+        """Display quota info uniformly"""
+        if "quota" in info:
+            quota_info = info["quota"]
+            print(f"\n{project_type}: {project_name}")
 
-                # Asset count quota
-                used_assets = int(quota_info.get("assetCount", 0))
-                max_assets = int(quota_info.get("maxAssets", 1))
-                percent = (used_assets / max_assets * 100) if max_assets > 0 else 0
-                print(f"Assets: {used_assets:,} of {max_assets:,}")
-                print(f"  {draw_bar(percent)}")
-                return True
-            elif "asset_size" in info:
-                # Legacy format
-                print(f"\n{project_type}: {project_name}")
+            # Size quota
+            used_size = int(quota_info.get("sizeBytes", 0))
+            max_size = int(quota_info.get("maxSizeBytes", 1))
+            percent = (used_size / max_size * 100) if max_size > 0 else 0
+            print(f"Storage: {humansize(used_size)} of {humansize(max_size)}")
+            print(f"  {draw_bar(percent)}")
 
-                size_usage = info["asset_size"]["usage"]
-                size_limit = info["asset_size"]["limit"]
-                size_percent = (size_usage / size_limit * 100) if size_limit > 0 else 0
+            # Asset count quota
+            used_assets = int(quota_info.get("assetCount", 0))
+            max_assets = int(quota_info.get("maxAssets", 1))
+            percent = (used_assets / max_assets * 100) if max_assets > 0 else 0
+            print(f"Assets: {used_assets:,} of {max_assets:,}")
+            print(f"  {draw_bar(percent)}")
+            return True
+        elif "asset_size" in info:
+            # Legacy format
+            print(f"\n{project_type}: {project_name}")
 
-                count_usage = info["asset_count"]["usage"]
-                count_limit = info["asset_count"]["limit"]
-                count_percent = (
-                    (count_usage / count_limit * 100) if count_limit > 0 else 0
-                )
+            size_usage = info["asset_size"]["usage"]
+            size_limit = info["asset_size"]["limit"]
+            size_percent = (size_usage / size_limit * 100) if size_limit > 0 else 0
 
-                print(f"Storage: {humansize(size_usage)} of {humansize(size_limit)}")
-                print(f"  {draw_bar(size_percent)}")
-                print(f"Assets: {count_usage:,} of {count_limit:,}")
-                print(f"  {draw_bar(count_percent)}")
-                return True
-            else:
-                print(f"No quota information available for {project_name}")
-                return False
+            count_usage = info["asset_count"]["usage"]
+            count_limit = info["asset_count"]["limit"]
+            count_percent = (count_usage / count_limit * 100) if count_limit > 0 else 0
 
-        # If no path provided, try to get all projects
-        if project_path is None:
-            try:
-                roots = ee.data.getAssetRoots()
-                if not roots:
-                    print("No accessible projects found.")
-                    return
+            print(f"Storage: {humansize(size_usage)} of {humansize(size_limit)}")
+            print(f"  {draw_bar(size_percent)}")
+            print(f"Assets: {count_usage:,} of {count_limit:,}")
+            print(f"  {draw_bar(count_percent)}")
+            return True
+        else:
+            return False
 
-                # Group projects by parent to avoid showing the same quota multiple times
-                processed_projects = set()
-
-                for root in roots:
-                    root_path = root["id"]
-
-                    # Skip if we've already processed this project
-                    parent_project = (
-                        root_path.split("/assets/")[0]
-                        if "/assets/" in root_path
-                        else root_path
-                    )
-                    if parent_project in processed_projects:
-                        continue
-
-                    processed_projects.add(parent_project)
-
-                    # First try the direct getInfo approach
-                    try:
-                        asset_info = ee.data.getInfo(parent_project)
-                        if asset_info and "quota" in asset_info:
-                            # This is a project with quota info
-                            project_type = (
-                                "Legacy project"
-                                if "earthengine-legacy" in str(asset_info)
-                                else "Cloud project"
-                            )
-                            display_quota_info(parent_project, asset_info, project_type)
-                            continue
-                    except:
-                        pass
-
-                    # Try legacy approach
-                    if root_path.startswith("users/"):
-                        try:
-                            quota_info = ee.data.getAssetRootQuota(root_path)
-                            display_quota_info(root_path, quota_info, "Legacy project")
-                            continue
-                        except:
-                            pass
-
-                    # Try cloud approach with multiple formats
-                    if root_path.startswith("projects/"):
-                        cloud_formats = [
-                            # Try with /assets/
-                            f"{parent_project}/assets/",
-                            # Try with just /assets
-                            f"{parent_project}/assets",
-                            # Try original
-                            parent_project,
-                        ]
-
-                        success = False
-                        for path_format in cloud_formats:
-                            try:
-                                project_detail = ee.data.getAsset(path_format)
-                                if "quota" in project_detail:
-                                    display_quota_info(
-                                        parent_project, project_detail, "Cloud project"
-                                    )
-                                    success = True
-                                    break
-                            except:
-                                # Silently try next format
-                                continue
-
-                        if success:
-                            continue
-
-                    # As a last resort, try getInfo on the original path
-                    try:
-                        info = ee.data.getInfo(root_path)
-                        if info and ("quota" in info or "asset_size" in info):
-                            project_type = (
-                                "Legacy project"
-                                if root_path.startswith("users/")
-                                else "Cloud project"
-                            )
-                            display_quota_info(root_path, info, project_type)
-                    except:
-                        pass
-
-                return
-            except Exception as e:
-                print(f"Could not list projects: {str(e)}")
-                print("Falling back to current user quota.")
-                try:
-                    # Try to get default user quota
-                    quota_info = ee.data.getAssetRootQuota("users/")
-                    print("Current user quota:")
-                    display_quota_info("users/", quota_info, "User quota")
-                    return
-                except Exception as e2:
-                    print(f"Could not get user quota: {str(e2)}")
-                    return
-
-        # Handle the case where user provided just a name without prefix
-        if not project_path.startswith("projects/") and not project_path.startswith(
-            "users/"
-        ):
-            # Try to detect if it's a project ID
-            try:
-                # First try as a cloud project
-                cloud_path = f"projects/{project_path}"
-                asset_info = ee.data.getInfo(cloud_path)
-                if asset_info:
-                    print(f"Detected project ID format, using: {cloud_path}")
-                    project_path = cloud_path
-            except:
-                # If that fails, try as a legacy user
-                try:
-                    legacy_path = f"users/{project_path}"
-                    quota_info = ee.data.getAssetRootQuota(legacy_path)
-                    if quota_info:
-                        print(f"Detected legacy user format, using: {legacy_path}")
-                        project_path = legacy_path
-                except:
-                    # Keep original if both fail
-                    pass
-
-        # Try direct getInfo approach first (works for projects/sat-io style paths)
+    def get_legacy_roots():
+        """Get all legacy root assets"""
+        legacy_roots = []
         try:
-            asset_info = ee.data.getInfo(project_path)
+            url = 'https://earthengine.googleapis.com/v1/projects/earthengine-legacy:listAssets'
+            response = session.get(url=url)
+            for asset in response.json().get('assets', []):
+                legacy_roots.append(asset['id'])
+        except Exception as e:
+            print(f"Warning: Could not retrieve legacy roots: {str(e)}")
+        return legacy_roots
+
+    def try_get_quota(path, is_legacy=False):
+        """Try multiple methods to get quota for a given path"""
+        # Method 1: Direct getInfo
+        try:
+            asset_info = ee.data.getInfo(path)
             if asset_info and "quota" in asset_info:
-                project_type = (
-                    "Legacy project"
-                    if "earthengine-legacy" in str(asset_info)
-                    else "Cloud project"
-                )
-                return display_quota_info(project_path, asset_info, project_type)
+                return asset_info
         except:
             pass
 
-        # Try with /assets suffix for cloud projects
-        if (
-            project_path.startswith("projects/")
-            and not project_path.endswith("/assets")
-            and "/assets" not in project_path
-        ):
+        # Method 2: Legacy getAssetRootQuota
+        if is_legacy:
             try:
-                asset_info = ee.data.getInfo(f"{project_path}/assets")
-                if asset_info and "quota" in asset_info:
-                    return display_quota_info(project_path, asset_info, "Cloud project")
+                quota_info = ee.data.getAssetRootQuota(path)
+                if quota_info:
+                    return quota_info
             except:
                 pass
 
-        # Try legacy approach
+        # Method 3: Cloud project with /assets suffix
+        if path.startswith("projects/") and "/assets" not in path:
+            for suffix in ["/assets", "/assets/"]:
+                try:
+                    asset_info = ee.data.getAsset(path + suffix)
+                    if asset_info and "quota" in asset_info:
+                        return asset_info
+                except:
+                    pass
+
+        return None
+
+    # If no path provided, display all projects
+    if project_path is None:
+        print("=== Earth Engine Quota Summary ===")
+
+        displayed_projects = set()
+        found_any = False
+
+        # Get all asset roots (cloud projects)
         try:
-            quota_info = ee.data.getAssetRootQuota(project_path)
-            return display_quota_info(project_path, quota_info, "Legacy project")
-        except:
-            pass
+            roots = ee.data.getAssetRoots()
 
-        # Try cloud approach with multiple formats
-        cloud_formats = [
-            f"{project_path}/assets/"
-            if not project_path.endswith("/assets/") and "/assets/" not in project_path
-            else project_path,
-            f"{project_path}/assets"
-            if not project_path.endswith("/assets") and "/assets" not in project_path
-            else project_path,
-            project_path,
-        ]
+            for root in roots:
+                root_path = root["id"]
 
-        for path_format in cloud_formats:
-            try:
-                project_detail = ee.data.getAsset(path_format)
-                if "quota" in project_detail:
-                    parent_path = (
-                        path_format.split("/assets")[0]
-                        if "/assets" in path_format
-                        else path_format
-                    )
-                    return display_quota_info(
-                        parent_path, project_detail, "Cloud project"
-                    )
-            except:
+                # Extract parent project to avoid duplicates
+                parent_project = root_path.split("/assets/")[0] if "/assets/" in root_path else root_path
+
+                if parent_project in displayed_projects:
+                    continue
+
+                is_legacy = parent_project.startswith("users/")
+                quota_info = try_get_quota(parent_project, is_legacy=is_legacy)
+
+                if quota_info:
+                    project_type = "Legacy Project" if is_legacy else "Cloud Project"
+                    display_quota_info(parent_project, quota_info, project_type)
+                    displayed_projects.add(parent_project)
+                    found_any = True
+
+        except Exception as e:
+            print(f"Warning: Could not list asset roots: {str(e)}")
+
+        # Get legacy roots from earthengine-legacy
+        legacy_roots = get_legacy_roots()
+
+        for legacy_path in legacy_roots:
+            if legacy_path in displayed_projects:
                 continue
 
-        print(f"Could not retrieve quota information for {project_path}")
-        return False
+            quota_info = try_get_quota(legacy_path, is_legacy=True)
 
-    except Exception as e:
-        # print(f"Error retrieving quota: {str(e)}")
+            if quota_info:
+                display_quota_info(legacy_path, quota_info, "Legacy Root")
+                displayed_projects.add(legacy_path)
+                found_any = True
+
+        if not found_any:
+            print("No quota information available for any projects.")
+
+        return
+
+    # Handle specific project path provided
+    # Normalize path if needed
+    if not project_path.startswith("projects/") and not project_path.startswith("users/"):
+        # Try as cloud project first
+        try:
+            cloud_path = f"projects/{project_path}"
+            test_info = ee.data.getInfo(cloud_path)
+            if test_info:
+                project_path = cloud_path
+        except:
+            # Try as legacy user
+            try:
+                legacy_path = f"users/{project_path}"
+                test_info = ee.data.getAssetRootQuota(legacy_path)
+                if test_info:
+                    project_path = legacy_path
+            except:
+                pass
+
+    # Get quota for specific path
+    is_legacy = project_path.startswith("users/")
+    quota_info = try_get_quota(project_path, is_legacy=is_legacy)
+
+    if quota_info:
+        project_type = "Legacy Project" if is_legacy else "Cloud Project"
+        display_quota_info(project_path, quota_info, project_type)
+    else:
+        print(f"Could not retrieve quota information for {project_path}")
         return False
 
 def epoch_convert_time(epoch_timestamp):
@@ -669,7 +598,7 @@ def quota_from_parser(args):
 
 
 def ee_report_from_parser(args):
-    ee_report(output=args.outfile, path=args.path)
+    ee_report(output_path=args.outfile, asset_path=args.path)
 
 
 def move_from_parser(args):
