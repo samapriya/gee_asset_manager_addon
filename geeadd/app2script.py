@@ -33,6 +33,13 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+# Try to import clipboard library
+try:
+    import pyperclip
+    CLIPBOARD_AVAILABLE = True
+except ImportError:
+    CLIPBOARD_AVAILABLE = False
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -224,9 +231,34 @@ def sanitize_code(code: str, normalize_unicode: bool = False) -> str:
     return code
 
 
+def copy_to_clipboard(text: str) -> bool:
+    """
+    Copy text to clipboard.
+
+    Args:
+        text: The text to copy to clipboard.
+
+    Returns:
+        bool: True if successful, False otherwise.
+    """
+    if not CLIPBOARD_AVAILABLE:
+        logger.warning(
+            "pyperclip not installed. Install it with: pip install pyperclip"
+        )
+        return False
+
+    try:
+        pyperclip.copy(text)
+        return True
+    except Exception as e:
+        logger.error(f"Failed to copy to clipboard: {e}")
+        return False
+
+
 def jsext(
     url: str,
     outfile: Optional[str] = None,
+    clipboard: bool = False,
     beautify: bool = True,
     indent_size: int = 2,
     normalize_unicode: bool = False,
@@ -238,7 +270,8 @@ def jsext(
     Args:
         url: URL of the Earth Engine app.
         outfile: Optional output file path for saving the JavaScript code.
-                If None, prints to stdout.
+                If None and clipboard is False, prints to stdout.
+        clipboard: Whether to copy the code to clipboard (default: False).
         beautify: Whether to beautify the JavaScript code (default: True).
         indent_size: Indentation size for beautified code (default: 2).
         normalize_unicode: Whether to normalize Unicode characters (default: False).
@@ -267,10 +300,16 @@ def jsext(
             except Exception as e:
                 logger.warning(f"Beautification failed: {e}. Using original formatting.")
 
-        if outfile is None:
-            print(js_code)
-            return js_code
-        else:
+        # Handle clipboard copy
+        if clipboard:
+            if copy_to_clipboard(js_code):
+                logger.info("JavaScript code copied to clipboard!")
+            else:
+                logger.warning("Failed to copy to clipboard. Falling back to print.")
+                print(js_code)
+
+        # Handle file output
+        if outfile is not None:
             output_path = Path(outfile)
 
             # Create parent directories if they don't exist
@@ -287,7 +326,12 @@ def jsext(
                     f.write(js_code)
 
             logger.info(f"JavaScript code saved to: {output_path.resolve()}")
-            return None
+
+        # If neither clipboard nor outfile specified, print to stdout
+        if not clipboard and outfile is None:
+            print(js_code)
+
+        return js_code
 
     except EarthEngineJSExtractorError:
         raise
@@ -305,9 +349,12 @@ def jsext(
 
 # def main():
 #     """Example usage of the jsext function."""
-#     # Example 1: Print to stdout
+#     # Example 1: Copy to clipboard
 #     try:
-#         jsext(url='https://bullocke.users.earthengine.app/view/amazon')
+#         jsext(
+#             url='https://bullocke.users.earthengine.app/view/amazon',
+#             clipboard=True
+#         )
 #     except EarthEngineJSExtractorError as e:
 #         logger.error(f"Extraction failed: {e}")
 
@@ -316,6 +363,16 @@ def jsext(
 #         jsext(
 #             url='https://bullocke.users.earthengine.app/view/amazon',
 #             outfile='output/amazon_app.js'
+#         )
+#     except EarthEngineJSExtractorError as e:
+#         logger.error(f"Extraction failed: {e}")
+
+#     # Example 3: Both clipboard and file
+#     try:
+#         jsext(
+#             url='https://bullocke.users.earthengine.app/view/amazon',
+#             outfile='output/amazon_app.js',
+#             clipboard=True
 #         )
 #     except EarthEngineJSExtractorError as e:
 #         logger.error(f"Extraction failed: {e}")
