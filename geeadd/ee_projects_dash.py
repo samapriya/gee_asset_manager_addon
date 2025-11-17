@@ -227,11 +227,7 @@ def create_html_dashboard(projects_data, output_path="ee_projects_dashboard.html
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
         body {
-            font-family: 'Inter', sans-serif;
-            background-image: url('https://i.imgur.com/XEo2G6C.jpeg');
-            background-size: cover;
-            background-position: center center;
-            background-attachment: fixed;
+            font-family: 'Montserrat', sans-serif;
         }
 
         @keyframes fade-in {
@@ -252,29 +248,31 @@ def create_html_dashboard(projects_data, output_path="ee_projects_dashboard.html
             border: 1px solid transparent;
         }
 
+        /* --- Light Mode Status Badge Colors --- */
         .status-commercial {
-            background: #064e3b;
-            color: #a7f3d0;
+            background: #a7f3d0; /* Light Green */
+            color: #064e3b; /* Dark Green */
             border-color: #052e16;
         }
 
         .status-non-commercial {
-            background: #1e3a8a;
-            color: #bfdbfe;
+            background: #bfdbfe; /* Light Blue */
+            color: #1e3a8a; /* Dark Blue */
             border-color: #1e1b4b;
         }
 
         .status-not-registered {
-            background: #78350f;
-            color: #fde68a;
+            background: #fde68a; /* Light Yellow */
+            color: #78350f; /* Dark Orange */
             border-color: #451a03;
         }
 
         .status-unknown {
-            background: #374151;
-            color: #d1d5db;
+            background: #d1d5db; /* Light Gray */
+            color: #374151; /* Dark Gray */
             border-color: #1f2937;
         }
+        /* --- End Light Mode Colors --- */
 
         .btn {
             display: inline-flex;
@@ -317,14 +315,14 @@ def create_html_dashboard(projects_data, output_path="ee_projects_dashboard.html
             justify-content: center;
             padding: 0.25rem;
             border-radius: 0.375rem;
-            color: #9ca3af;
+            color: #6b7280; /* Darker gray for light mode */
             transition: all 0.2s ease;
             flex-shrink: 0;
         }
 
         .copy-btn:hover {
-            background-color: #374151;
-            color: #f9fafb;
+            background-color: #e5e7eb; /* Light gray hover */
+            color: #1f2937; /* Dark text on hover */
         }
 
         .stat-card {
@@ -337,7 +335,8 @@ def create_html_dashboard(projects_data, output_path="ee_projects_dashboard.html
         }
 
         .stat-card.active {
-            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+            /* Updated shadow to use blue for light mode */
+            box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.4);
             transform: scale(1.02);
         }
 
@@ -351,21 +350,19 @@ def create_html_dashboard(projects_data, output_path="ee_projects_dashboard.html
     </style>
 </head>
 
-<body class="p-4 sm:p-8 text-gray-200">
-
-    <div class="fixed inset-0 w-full h-full bg-black/70 -z-10"></div>
+<body class="p-4 sm:p-8 text-gray-800 bg-gray-100">
 
     <div class="max-w-7xl mx-auto relative z-10">
-        <div class="border border-gray-700/50 bg-gray-900/80 backdrop-blur-sm rounded-2xl p-6 sm:p-8 mb-8 flex items-center justify-between shadow-md">
+        <div class="border border-gray-200 bg-white shadow-lg rounded-2xl p-6 sm:p-8 mb-8 flex items-center justify-between">
             <div>
-                <h1 class="text-3xl lg:text-4xl font-bold text-white mb-2">Earth Engine Projects</h1>
-                <p class="text-gray-400">Overview of your Google Earth Engine enabled projects</p>
+                <h1 class="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Earth Engine Projects</h1>
+                <p class="text-gray-600">Overview of your Google Earth Engine enabled projects</p>
             </div>
 
             <div class="flex items-center space-x-4">
-                <img src="https://sanborn.com/wp-content/uploads/google-earth-engine-logo-1-400x380.png"
-                    alt="Earth Engine Logo" class="w-16 h-16"
-                    onerror="this.src='https://placehold.co/64x64/9ca3af/FFFFFF?text=EE';this.onerror=null;">
+                <img src="https://storage.googleapis.com/gweb-uniblog-publish-prod/original_images/image_3_for_carousel.gif"
+                    alt="Earth Engine Logo" class="w-20 h-20 rounded-full object-cover border-2 border-gray-300"
+                    onerror="this.src='https://placehold.co/80x80/9ca3af/FFFFFF?text=EE';this.onerror=null;">
             </div>
         </div>
 
@@ -373,12 +370,12 @@ def create_html_dashboard(projects_data, output_path="ee_projects_dashboard.html
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="projects-container"></div>
 
-        <footer class="text-center text-gray-400 text-sm py-8 mt-12">
+        <footer class="text-center text-gray-600 text-sm py-8 mt-12">
             <p class="mb-2">
                 Created by GEE Asset Manager Addon. For details, visit
                 <a href="https://geeadd.geetools.xyz" target="_blank"
                    rel="noopener noreferrer"
-                   class="text-blue-400 hover:text-blue-300 underline">
+                   class="text-blue-600 hover:text-blue-800 underline">
                    https://geeadd.geetools.xyz
                 </a>.
             </p>
@@ -386,7 +383,7 @@ def create_html_dashboard(projects_data, output_path="ee_projects_dashboard.html
                 Created by
                 <a href="https://www.linkedin.com/in/samapriya/" target="_blank"
                    rel="noopener noreferrer"
-                   class="text-blue-400 hover:text-blue-300 underline">
+                   class="text-blue-600 hover:text-blue-800 underline">
                    Samapriya Roy
                 </a>.
             </p>
@@ -454,25 +451,25 @@ def create_html_dashboard(projects_data, output_path="ee_projects_dashboard.html
 
         const statsContainer = document.getElementById('stats-container');
         statsContainer.innerHTML = `
-            <div class="stat-card rounded-2xl p-6 shadow-md backdrop-blur-sm bg-gradient-to-br from-blue-900/80 to-gray-900/80 border border-blue-800/50"
+            <div class="stat-card rounded-2xl p-6 shadow-lg bg-white border border-gray-200/80"
                  data-filter="all" onclick="filterProjects('all')">
-                <div class="text-gray-400 text-sm font-medium mb-2">Total Projects</div>
-                <div class="text-blue-300 text-3xl font-bold">${stats.total}</div>
+                <div class="text-gray-600 text-sm font-medium mb-2">Total Projects</div>
+                <div class="text-blue-600 text-3xl font-bold">${stats.total}</div>
             </div>
-            <div class="stat-card rounded-2xl p-6 shadow-md backdrop-blur-sm bg-gradient-to-br from-green-900/80 to-gray-900/80 border border-green-800/50"
+            <div class="stat-card rounded-2xl p-6 shadow-lg bg-white border border-gray-200/80"
                  data-filter="commercial" onclick="filterProjects('commercial')">
-                <div class="text-gray-400 text-sm font-medium mb-2">Commercial</div>
-                <div class="text-green-300 text-3xl font-bold">${stats.commercial}</div>
+                <div class="text-gray-600 text-sm font-medium mb-2">Commercial</div>
+                <div class="text-green-600 text-3xl font-bold">${stats.commercial}</div>
             </div>
-            <div class="stat-card rounded-2xl p-6 shadow-md backdrop-blur-sm bg-gradient-to-br from-yellow-900/80 to-gray-900/80 border border-yellow-800/50"
+            <div class="stat-card rounded-2xl p-6 shadow-lg bg-white border border-gray-200/80"
                  data-filter="non-commercial" onclick="filterProjects('non-commercial')">
-                <div class="text-gray-400 text-sm font-medium mb-2">Non-Commercial</div>
-                <div class="text-yellow-300 text-3xl font-bold">${stats.nonCommercial}</div>
+                <div class="text-gray-600 text-sm font-medium mb-2">Non-Commercial</div>
+                <div class="text-yellow-600 text-3xl font-bold">${stats.nonCommercial}</div>
             </div>
-            <div class="stat-card rounded-2xl p-6 shadow-md backdrop-blur-sm bg-gradient-to-br from-red-900/80 to-gray-900/80 border border-red-800/50"
+            <div class="stat-card rounded-2xl p-6 shadow-lg bg-white border border-gray-200/80"
                  data-filter="not-registered" onclick="filterProjects('not-registered')">
-                <div class="text-gray-400 text-sm font-medium mb-2">Not Registered</div>
-                <div class="text-red-300 text-3xl font-bold">${stats.notRegistered}</div>
+                <div class="text-gray-600 text-sm font-medium mb-2">Not Registered</div>
+                <div class="text-red-600 text-3xl font-bold">${stats.notRegistered}</div>
             </div>
         `;
 
@@ -509,12 +506,12 @@ def create_html_dashboard(projects_data, output_path="ee_projects_dashboard.html
 
         const projectsContainer = document.getElementById('projects-container');
         projectsContainer.innerHTML = projectsData.map((project, index) => `
-            <div class="project-card rounded-2xl p-6 flex flex-col justify-between bg-gray-900/80 border border-gray-700/50 backdrop-blur-sm shadow-md hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+            <div class="project-card rounded-2xl p-6 flex flex-col justify-between bg-white border border-gray-200/80 shadow-md hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
                  style="animation-delay: ${index * 50}ms"
                  data-status="${project.registration_status}">
                 <div class="flex-grow">
                     <div class="flex items-center justify-between mb-4 gap-2">
-                        <h3 class="text-xl font-semibold text-white truncate pr-2">${project.project_name}</h3>
+                        <h3 class="text-xl font-semibold text-gray-900 truncate pr-2">${project.project_name}</h3>
                         <button class="copy-btn"
                                 title="Copy project name"
                                 onclick="copyToClipboard('${project.project_name.replace(/'/g, "\\\\'")}', this)">
@@ -524,9 +521,9 @@ def create_html_dashboard(projects_data, output_path="ee_projects_dashboard.html
 
                     <div class="space-y-3">
                         <div>
-                            <div class="text-gray-400 text-xs font-medium mb-1">Project ID</div>
+                            <div class="text-gray-500 text-xs font-medium mb-1">Project ID</div>
                             <div class="flex items-center justify-between">
-                                <span class="text-gray-300 text-sm font-mono">${project.project_id}</span>
+                                <span class="text-gray-700 text-sm font-mono">${project.project_id}</span>
                                 <button class="copy-btn"
                                         title="Copy project ID"
                                         onclick="copyToClipboard('${project.project_id}', this)">
@@ -536,7 +533,7 @@ def create_html_dashboard(projects_data, output_path="ee_projects_dashboard.html
                         </div>
 
                         <div>
-                            <div class="text-gray-400 text-xs font-medium mb-2">Registration Status</div>
+                            <div class="text-gray-500 text-xs font-medium mb-2">Registration Status</div>
                             <span class="status-badge ${getStatusBadgeClass(project.registration_status)}">
                                 ${formatStatus(project.registration_status)}
                             </span>
@@ -544,7 +541,7 @@ def create_html_dashboard(projects_data, output_path="ee_projects_dashboard.html
                     </div>
                 </div>
 
-                <div class="mt-6 pt-4 border-t border-gray-700/50 flex justify-end items-center flex-wrap gap-2">
+                <div class="mt-6 pt-4 border-t border-gray-200/80 flex justify-end items-center flex-wrap gap-2">
                     ${getButtons(project)}
                 </div>
             </div>
@@ -669,5 +666,5 @@ def get_projects_with_dashboard(output_dir=None):
 
 
 # Example usage:
-#get_projects_with_dashboard()  # Uses script directory
+# get_projects_with_dashboard()  # Uses script directory
 # get_projects_with_dashboard(output_dir=r"C:\Users\samiam\Downloads\masks")  # Uses custom directory

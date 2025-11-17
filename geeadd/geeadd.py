@@ -5,6 +5,7 @@ from .batch_delete import delete
 from .batch_mover import mover
 from .ee_del_meta import delprop
 from .ee_projects import get_projects
+from .ee_projects_dash import get_projects_with_dashboard
 from .ee_report import ee_report
 from .search_fast import EnhancedGEESearch
 
@@ -625,6 +626,9 @@ def read_from_parser(args):
 def projects_from_parser(args):
     get_projects()
 
+def projects_dash_from_parser(args):
+    get_projects_with_dashboard(output_dir=args.outdir)
+
 def cancel_tasks_from_parser(args):
     cancel_tasks(tasks=args.tasks)
 
@@ -669,6 +673,18 @@ def main(args=None):
         "projects", help="Prints a list of Google Cloud Projects you own with Earth Engine API enabled"
     )
     parser_projects.set_defaults(func=projects_from_parser)
+
+    parser_projects_dash = subparsers.add_parser(
+        "projects_dash", 
+        help="Create an interactive HTML dashboard of your Earth Engine enabled projects with registration status"
+    )
+    optional_named = parser_projects_dash.add_argument_group("Optional named arguments")
+    optional_named.add_argument(
+        "--outdir",
+        help="Output directory for dashboard files (default: script directory)",
+        default=None,
+    )
+    parser_projects_dash.set_defaults(func=projects_dash_from_parser)
 
     parser_quota = subparsers.add_parser(
         "quota", help="Print Earth Engine total quota and used quota"
