@@ -258,7 +258,7 @@ def copy_to_clipboard(text: str) -> bool:
 def jsext(
     url: str,
     outfile: Optional[str] = None,
-    clipboard: bool = False,
+    clipboard: bool = True,
     beautify: bool = True,
     indent_size: int = 2,
     normalize_unicode: bool = False,

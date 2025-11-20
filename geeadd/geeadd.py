@@ -1,3 +1,7 @@
+"""
+Google Earth Engine Batch Asset Manager with Addons
+"""
+
 from .acl_changer import access
 from .app2script import jsext
 from .batch_copy import copy
@@ -10,26 +14,19 @@ from .ee_report import ee_report
 from .search_fast import EnhancedGEESearch
 
 __copyright__ = """
-
     Copyright 2025 Samapriya Roy
-
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
-
        http://www.apache.org/licenses/LICENSE-2.0
-
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
-
 """
 __license__ = "Apache 2.0"
 
-import argparse
-import concurrent.futures
 import importlib.metadata
 import json
 import os
@@ -39,12 +36,42 @@ import time
 import webbrowser
 from datetime import datetime
 
+import click
 import ee
 import requests
-from colorama import Fore, Style, init
 from google.auth.transport.requests import AuthorizedSession
 from packaging import version as pkg_version
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
+from rich.table import Table
+from rich.tree import Tree
 from tqdm import tqdm
+from click import Group
+
+class OrderedGroup(Group):
+    def list_commands(self, ctx):
+        return list(self.commands) 
+
+console = Console()
+
+# Deprecated command mapping
+DEPRECATED_COMMANDS = {
+    'quota': 'projects quota',
+    'projects': 'projects enabled',
+    'projects_dash': 'projects dashboard',
+    'tasks': 'tasks list',
+    'cancel': 'tasks cancel',
+    'copy': 'assets copy',
+    'move': 'assets move',
+    'access': 'assets access',
+    'delete': 'assets delete',
+    'delete_metadata': 'assets delete-meta',
+    'app2script': 'utils app2script',
+    'search': 'utils search',
+    'ee_report': 'utils report',
+    'assetsize': 'assets size',
+}
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 lpath = os.path.dirname(os.path.realpath(__file__))
@@ -52,20 +79,24 @@ sys.path.append(lpath)
 
 now = datetime.now()
 
-if len(sys.argv) > 1 and sys.argv[1] != "-h":
+# Initialize Earth Engine for all commands except help
+if len(sys.argv) > 1 and sys.argv[1] not in ['-h', '--help', '--version']:
+    # Handle deprecated 'projects' command by checking if it's being used without subcommands
+    if sys.argv[1] == 'projects' and len(sys.argv) == 2:
+        console.print(Panel(
+            "[yellow]Command[/yellow] [bold red]'geeadd projects'[/bold red] [yellow]is deprecated![/yellow]\n\n"
+            "[green]Use instead:[/green] [bold cyan]geeadd projects enabled[/bold cyan]\n\n"
+            "[dim]Showing 'projects' group help instead...[/dim]",
+            title="[bold red]Deprecated Usage[/bold red]",
+            border_style="red"
+        ))
     ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com')
-# Initialize colorama for cross-platform colored terminal output
-init(autoreset=True)
 
 
 def compare_version(version1, version2):
-    """
-    Compare two version strings using the packaging.version module.
-    Returns: 1 if version1 > version2, -1 if version1 < version2, 0 if equal
-    """
+    """Compare two version strings using the packaging.version module."""
     v1 = pkg_version.parse(version1)
     v2 = pkg_version.parse(version2)
-
     if v1 > v2:
         return 1
     elif v1 < v2:
@@ -81,7 +112,6 @@ def get_latest_version(package):
         response.raise_for_status()
         return response.json()["info"]["version"]
     except (requests.RequestException, KeyError) as e:
-        print(f"Error fetching version for {package}: {e}")
         return None
 
 
@@ -90,7 +120,6 @@ def get_installed_version(package):
     try:
         return importlib.metadata.version(package)
     except importlib.metadata.PackageNotFoundError:
-        print(f"Package {package} is not installed")
         return None
 
 
@@ -103,43 +132,31 @@ def check_package_version(package_name):
         return
 
     result = compare_version(latest_version, installed_version)
-    border = Style.BRIGHT + "========================================================================="
 
     if result == 1:
-        print(f"\n{border}")
-        print(Fore.RED + f"Current version of {package_name} is {installed_version} "
-              f"upgrade to latest version: {latest_version}" + Style.RESET_ALL)
-        print(f"{border}")
+        console.print(Panel(
+            f"[yellow]Current version:[/yellow] {installed_version}\n"
+            f"[green]Latest version:[/green] {latest_version}\n\n"
+            f"[cyan]Upgrade with:[/cyan] pip install --upgrade {package_name}",
+            title=f"[bold red]Update Available for {package_name}[/bold red]",
+            border_style="red"
+        ))
     elif result == -1:
-        print(f"\n{border}")
-        print(Fore.YELLOW + f"Possibly running staging code {installed_version} "
-              f"compared to PyPI release {latest_version}" + Style.RESET_ALL)
-        print(f"{border}")
-    # Removed the else branch to avoid printing "up to date" message
+        console.print(Panel(
+            f"[yellow]Running staging version {installed_version}[/yellow]\n"
+            f"PyPI release: {latest_version}",
+            title="[bold yellow]Development Version[/bold yellow]",
+            border_style="yellow"
+        ))
+
 
 check_package_version("geeadd")
-
-# Go to the readMe
-def readme():
-    try:
-        a = webbrowser.open(
-            "https://samapriya.github.io/gee_asset_manager_addon/", new=2
-        )
-        if a == False:
-            print("Your setup does not have a monitor to display the webpage")
-            print(
-                " Go to {}".format(
-                    "https://samapriya.github.io/gee_asset_manager_addon/"
-                )
-            )
-    except Exception as e:
-        print(e)
-
 
 suffixes = ["B", "KB", "MB", "GB", "TB", "PB"]
 
 
 def humansize(nbytes):
+    """Convert bytes to human readable format."""
     i = 0
     while nbytes >= 1024 and i < len(suffixes) - 1:
         nbytes /= 1024.0
@@ -148,118 +165,66 @@ def humansize(nbytes):
     return "%s %s" % (f, suffixes[i])
 
 
-def cancel_tasks(tasks):
-    """
-    Cancels Earth Engine tasks based on specified criteria.
+def epoch_convert_time(epoch_timestamp):
+    """Convert epoch timestamp to formatted datetime string."""
+    dt_object = datetime.fromtimestamp(epoch_timestamp/1000)
+    formatted_date_time = dt_object.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    return formatted_date_time
 
-    Args:
-        tasks: Can be "all", "running", "pending", or a specific task ID
-    """
+
+# Main CLI group
+@click.group(
+    cls=OrderedGroup,
+    help="[bold cyan]Google Earth Engine Batch Asset Manager with Addons[/bold cyan]\n\n"
+         "A modern CLI tool for managing GEE assets, tasks, and projects.",
+    context_settings=dict(help_option_names=['-h', '--help'])
+)
+@click.version_option(version=get_installed_version("geeadd"), prog_name="geeadd")
+def cli():
+    """Main entry point for geeadd CLI."""
+    pass
+
+
+# 1. README command (first)
+@cli.command('readme', help="Open the geeadd documentation webpage")
+def readme():
+    """Open documentation in browser."""
     try:
-        if tasks == "all":
-            # Use the task list approach from TaskCancelCommand
-            print("Attempting to cancel all tasks")
-            statuses = ee.data.getTaskList()
-            cancelled_count = 0
-
-            with tqdm(total=len(statuses), desc="Cancelling tasks") as pbar:
-                for status in statuses:
-                    state = status['state']
-                    task_id = status['id']
-
-                    if state == 'READY' or state == 'RUNNING':
-                        try:
-                            ee.data.cancelTask(task_id)
-                            cancelled_count += 1
-                        except ee.EEException as e:
-                            print(f"Error cancelling task {task_id}: {e}")
-                    pbar.update(1)
-
-            if cancelled_count > 0:
-                print(f"Successfully cancelled {cancelled_count} tasks")
-            else:
-                print("No running or pending tasks found to cancel")
-
-        elif tasks == "running":
-            print("Attempting to cancel running tasks")
-            statuses = ee.data.getTaskList()
-            running_tasks = [status for status in statuses if status['state'] == 'RUNNING']
-
-            if running_tasks:
-                with tqdm(total=len(running_tasks), desc="Cancelling running tasks") as pbar:
-                    cancelled_count = 0
-                    for status in running_tasks:
-                        try:
-                            ee.data.cancelTask(status['id'])
-                            cancelled_count += 1
-                        except ee.EEException as e:
-                            print(f"Error cancelling task {status['id']}: {e}")
-                        pbar.update(1)
-                print(f"Successfully cancelled {cancelled_count} running tasks")
-            else:
-                print("No running tasks found")
-
-        elif tasks == "pending":
-            print("Attempting to cancel pending tasks")
-            statuses = ee.data.getTaskList()
-            pending_tasks = [status for status in statuses if status['state'] == 'READY']
-
-            if pending_tasks:
-                with tqdm(total=len(pending_tasks), desc="Cancelling pending tasks") as pbar:
-                    cancelled_count = 0
-                    for status in pending_tasks:
-                        try:
-                            ee.data.cancelTask(status['id'])
-                            cancelled_count += 1
-                        except ee.EEException as e:
-                            print(f"Error cancelling task {status['id']}: {e}")
-                        pbar.update(1)
-                print(f"Successfully cancelled {cancelled_count} pending tasks")
-            else:
-                print("No pending tasks found")
-
-        elif tasks is not None:
-            # Check if it's a valid task ID
-            print(f"Attempting to cancel task with ID: {tasks}")
-
-            try:
-                statuses = ee.data.getTaskStatus([tasks])
-                if not statuses:
-                    print(f"Task {tasks} not found")
-                    return
-
-                status = statuses[0]
-                state = status['state']
-
-                if state == 'UNKNOWN':
-                    print(f"Unknown task ID: {tasks}")
-                elif state in ['READY', 'RUNNING']:
-                    ee.data.cancelTask(tasks)
-                    print(f"Successfully cancelled task {tasks}")
-                else:
-                    print(f"Task {tasks} is already in state '{state}' and cannot be cancelled")
-            except ee.EEException as e:
-                print(f"Error accessing task {tasks}: {e}")
+        opened = webbrowser.open("https://geeadd.geetools.xyz/", new=2)
+        if not opened:
+            console.print("[yellow]Your setup does not have a monitor to display the webpage[/yellow]")
+            console.print("[cyan]Go to: https://geeadd.geetools.xyz/[/cyan]")
         else:
-            print("Please specify 'all', 'running', 'pending', or a specific task ID")
-
+            console.print("[green]Opening documentation in browser...[/green]")
     except Exception as e:
-        print(f"Error in cancel_tasks: {e}")
+        console.print(f"[red]Error opening browser: {e}[/red]")
+        console.print("[cyan]Visit: https://geeadd.geetools.xyz/[/cyan]")
 
-def quota(project_path=None):
-    """
-    Display quota information for Earth Engine assets with a visual progress bar.
 
-    Args:
-        project_path: Optional. Specific project path to check.
-                      If None, displays quota for all available projects (cloud and legacy).
+# 2. Projects group (second)
+@cli.group(help="Manage Earth Engine projects", context_settings=dict(help_option_names=['-h', '--help']))
+def projects():
+    """Project management commands."""
+    pass
 
-                      Examples:
-                      - "users/username"
-                      - "projects/earthengine-legacy/assets/users/username"
-                      - "projects/my-project-id"
-                      - "my-project-id" (will try to detect the correct format)
-    """
+
+@projects.command('enabled', help="List Google Cloud Projects with Earth Engine API enabled")
+def projects_enabled():
+    """List all projects with EE enabled."""
+    get_projects()
+
+
+@projects.command('dashboard', help="Create interactive HTML dashboard of EE projects")
+@click.option('--outdir', default=None, help='Output directory for dashboard files')
+def projects_dashboard(outdir):
+    """Generate projects dashboard."""
+    get_projects_with_dashboard(output_dir=outdir)
+
+
+@projects.command('quota', help="Display Earth Engine quota information")
+@click.option('--project', default=None, help='Specific project path (e.g., projects/my-project or users/username)')
+def projects_quota(project):
+    """Display quota information."""
     session = AuthorizedSession(ee.data.get_persistent_credentials())
 
     def draw_bar(percent, width=30):
@@ -272,26 +237,34 @@ def quota(project_path=None):
         """Display quota info uniformly"""
         if "quota" in info:
             quota_info = info["quota"]
-            print(f"\n{project_type}: {project_name}")
-
+            
+            table = Table(title=f"[bold cyan]{project_type}: {project_name}[/bold cyan]", 
+                         show_header=False, box=None)
+            
             # Size quota
             used_size = int(quota_info.get("sizeBytes", 0))
             max_size = int(quota_info.get("maxSizeBytes", 1))
             percent = (used_size / max_size * 100) if max_size > 0 else 0
-            print(f"Storage: {humansize(used_size)} of {humansize(max_size)}")
-            print(f"  {draw_bar(percent)}")
-
+            
+            table.add_row("[cyan]Storage:[/cyan]", f"{humansize(used_size)} of {humansize(max_size)}")
+            table.add_row("", draw_bar(percent))
+            
             # Asset count quota
             used_assets = int(quota_info.get("assetCount", 0))
             max_assets = int(quota_info.get("maxAssets", 1))
             percent = (used_assets / max_assets * 100) if max_assets > 0 else 0
-            print(f"Assets: {used_assets:,} of {max_assets:,}")
-            print(f"  {draw_bar(percent)}")
+            
+            table.add_row("[cyan]Assets:[/cyan]", f"{used_assets:,} of {max_assets:,}")
+            table.add_row("", draw_bar(percent))
+            
+            console.print(table)
+            console.print()
             return True
         elif "asset_size" in info:
             # Legacy format
-            print(f"\n{project_type}: {project_name}")
-
+            table = Table(title=f"[bold cyan]{project_type}: {project_name}[/bold cyan]", 
+                         show_header=False, box=None)
+            
             size_usage = info["asset_size"]["usage"]
             size_limit = info["asset_size"]["limit"]
             size_percent = (size_usage / size_limit * 100) if size_limit > 0 else 0
@@ -300,10 +273,13 @@ def quota(project_path=None):
             count_limit = info["asset_count"]["limit"]
             count_percent = (count_usage / count_limit * 100) if count_limit > 0 else 0
 
-            print(f"Storage: {humansize(size_usage)} of {humansize(size_limit)}")
-            print(f"  {draw_bar(size_percent)}")
-            print(f"Assets: {count_usage:,} of {count_limit:,}")
-            print(f"  {draw_bar(count_percent)}")
+            table.add_row("[cyan]Storage:[/cyan]", f"{humansize(size_usage)} of {humansize(size_limit)}")
+            table.add_row("", draw_bar(size_percent))
+            table.add_row("[cyan]Assets:[/cyan]", f"{count_usage:,} of {count_limit:,}")
+            table.add_row("", draw_bar(count_percent))
+            
+            console.print(table)
+            console.print()
             return True
         else:
             return False
@@ -317,12 +293,11 @@ def quota(project_path=None):
             for asset in response.json().get('assets', []):
                 legacy_roots.append(asset['id'])
         except Exception as e:
-            print(f"Warning: Could not retrieve legacy roots: {str(e)}")
+            console.print(f"[yellow]Warning: Could not retrieve legacy roots: {str(e)}[/yellow]")
         return legacy_roots
 
     def try_get_quota(path, is_legacy=False):
         """Try multiple methods to get quota for a given path"""
-        # Method 1: Direct getInfo
         try:
             asset_info = ee.data.getInfo(path)
             if asset_info and "quota" in asset_info:
@@ -330,7 +305,6 @@ def quota(project_path=None):
         except:
             pass
 
-        # Method 2: Legacy getAssetRootQuota
         if is_legacy:
             try:
                 quota_info = ee.data.getAssetRootQuota(path)
@@ -339,7 +313,6 @@ def quota(project_path=None):
             except:
                 pass
 
-        # Method 3: Cloud project with /assets suffix
         if path.startswith("projects/") and "/assets" not in path:
             for suffix in ["/assets", "/assets/"]:
                 try:
@@ -352,92 +325,192 @@ def quota(project_path=None):
         return None
 
     # If no path provided, display all projects
-    if project_path is None:
-        print("=== Earth Engine Quota Summary ===")
+    if project is None:
+        console.print("[bold cyan]Earth Engine Quota Summary[/bold cyan]\n")
 
         displayed_projects = set()
         found_any = False
 
-        # Get all asset roots (cloud projects)
-        try:
-            roots = ee.data.getAssetRoots()
+        with console.status("[bold cyan]Fetching quota information...", spinner="dots"):
+            try:
+                roots = ee.data.getAssetRoots()
 
-            for root in roots:
-                root_path = root["id"]
+                for root in roots:
+                    root_path = root["id"]
+                    parent_project = root_path.split("/assets/")[0] if "/assets/" in root_path else root_path
 
-                # Extract parent project to avoid duplicates
-                parent_project = root_path.split("/assets/")[0] if "/assets/" in root_path else root_path
+                    if parent_project in displayed_projects:
+                        continue
 
-                if parent_project in displayed_projects:
+                    is_legacy = parent_project.startswith("users/")
+                    quota_info = try_get_quota(parent_project, is_legacy=is_legacy)
+
+                    if quota_info:
+                        project_type = "Legacy Project" if is_legacy else "Cloud Project"
+                        display_quota_info(parent_project, quota_info, project_type)
+                        displayed_projects.add(parent_project)
+                        found_any = True
+
+            except Exception as e:
+                console.print(f"[yellow]Warning: Could not list asset roots: {str(e)}[/yellow]")
+
+            legacy_roots = get_legacy_roots()
+
+            for legacy_path in legacy_roots:
+                if legacy_path in displayed_projects:
                     continue
 
-                is_legacy = parent_project.startswith("users/")
-                quota_info = try_get_quota(parent_project, is_legacy=is_legacy)
+                quota_info = try_get_quota(legacy_path, is_legacy=True)
 
                 if quota_info:
-                    project_type = "Legacy Project" if is_legacy else "Cloud Project"
-                    display_quota_info(parent_project, quota_info, project_type)
-                    displayed_projects.add(parent_project)
+                    display_quota_info(legacy_path, quota_info, "Legacy Root")
+                    displayed_projects.add(legacy_path)
                     found_any = True
 
-        except Exception as e:
-            print(f"Warning: Could not list asset roots: {str(e)}")
-
-        # Get legacy roots from earthengine-legacy
-        legacy_roots = get_legacy_roots()
-
-        for legacy_path in legacy_roots:
-            if legacy_path in displayed_projects:
-                continue
-
-            quota_info = try_get_quota(legacy_path, is_legacy=True)
-
-            if quota_info:
-                display_quota_info(legacy_path, quota_info, "Legacy Root")
-                displayed_projects.add(legacy_path)
-                found_any = True
-
         if not found_any:
-            print("No quota information available for any projects.")
+            console.print("[yellow]No quota information available for any projects.[/yellow]")
 
         return
 
-    # Handle specific project path provided
-    # Normalize path if needed
-    if not project_path.startswith("projects/") and not project_path.startswith("users/"):
-        # Try as cloud project first
+    # Handle specific project path
+    if not project.startswith("projects/") and not project.startswith("users/"):
         try:
-            cloud_path = f"projects/{project_path}"
+            cloud_path = f"projects/{project}"
             test_info = ee.data.getInfo(cloud_path)
             if test_info:
-                project_path = cloud_path
+                project = cloud_path
         except:
-            # Try as legacy user
             try:
-                legacy_path = f"users/{project_path}"
+                legacy_path = f"users/{project}"
                 test_info = ee.data.getAssetRootQuota(legacy_path)
                 if test_info:
-                    project_path = legacy_path
+                    project = legacy_path
             except:
                 pass
 
-    # Get quota for specific path
-    is_legacy = project_path.startswith("users/")
-    quota_info = try_get_quota(project_path, is_legacy=is_legacy)
+    is_legacy = project.startswith("users/")
+    quota_info = try_get_quota(project, is_legacy=is_legacy)
 
     if quota_info:
         project_type = "Legacy Project" if is_legacy else "Cloud Project"
-        display_quota_info(project_path, quota_info, project_type)
+        display_quota_info(project, quota_info, project_type)
     else:
-        print(f"Could not retrieve quota information for {project_path}")
-        return False
+        console.print(f"[red]Could not retrieve quota information for {project}[/red]")
 
-def epoch_convert_time(epoch_timestamp):
-    dt_object = datetime.fromtimestamp(epoch_timestamp/1000)
-    formatted_date_time = dt_object.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-    return formatted_date_time
 
-def tasks(state,id):
+# 3. Assets group (third)
+@cli.group(help="Manage Earth Engine assets", context_settings=dict(help_option_names=['-h', '--help']))
+def assets():
+    """Asset management commands."""
+    pass
+
+
+@assets.command('copy', help="Copy folders, collections, images or tables")
+@click.option('--initial', required=True, help='Existing path of assets')
+@click.option('--final', required=True, help='New path for assets')
+def assets_copy(initial, final):
+    """Copy assets."""
+    copy(path=initial, fpath=final)
+
+
+@assets.command('move', help="Move folders, collections, images or tables")
+@click.option('--initial', required=True, help='Existing path of assets')
+@click.option('--final', required=True, help='New path for assets')
+@click.option('--no-cleanup', 'cleanup', is_flag=True, default=True, 
+              help='Keep empty source folders after moving')
+def assets_move(initial, final, cleanup):
+    """Move assets."""
+    mover(path=initial, fpath=final, cleanup=cleanup)
+
+
+@assets.command('access', help="Set permissions for assets")
+@click.option('--asset', required=True, help='Path to the Earth Engine asset')
+@click.option('--user', required=True, help='User email, service account, group, or "allUsers"')
+@click.option('--role', required=True, type=click.Choice(['reader', 'writer', 'delete']), 
+              help='Permission role')
+def assets_access(asset, user, role):
+    """Set asset permissions."""
+    access(collection_path=asset, user=user, role=role)
+
+
+@assets.command('delete', help="Delete folders or collections recursively")
+@click.option('--id', 'asset_id', required=True, help='Full path to asset for deletion')
+@click.option('--workers', default=5, help='Number of concurrent workers')
+@click.option('--retries', default=5, help='Maximum retry attempts per asset')
+@click.option('--verbose', '-v', is_flag=True, help='Enable verbose debug logging')
+def assets_delete(asset_id, workers, retries, verbose):
+    """Delete assets recursively."""
+    delete(ids=asset_id, max_workers=workers, max_retries=retries, verbose=verbose)
+
+
+@assets.command('delete-meta', help="Delete metadata from collection or image")
+@click.option('--asset', required=True, help='Path to the Earth Engine asset')
+@click.option('--property', required=True, help='Metadata property name to delete')
+def assets_delete_meta(asset, property):
+    """Delete asset metadata."""
+    delprop(collection_path=asset, property=property)
+
+
+@assets.command('size', help="Display asset size and item count")
+@click.argument('asset', required=True)
+def assets_size(asset):
+    """Print asset size information."""
+    asset_info = ee.data.getAsset(asset)
+    header = asset_info["type"]
+
+    if header in ["IMAGE_COLLECTION", "IMAGE", "TABLE", "FEATURE_VIEW"]:
+        with console.status(f"[bold cyan]Calculating size for {header}...", spinner="dots"):
+            if header == "IMAGE_COLLECTION":
+                collc = ee.ImageCollection(asset)
+                size = sum(collc.aggregate_array("system:asset_size").getInfo())
+                item_count = collc.size().getInfo()
+            elif header == "IMAGE":
+                collc = ee.ImageCollection.fromImages([ee.Image(asset)])
+                size = sum(collc.aggregate_array("system:asset_size").getInfo())
+                item_count = 1
+            elif header == "TABLE":
+                collc = ee.FeatureCollection(asset)
+                size = float(collc.get("system:asset_size").getInfo())
+                item_count = collc.size().getInfo()
+            elif header == "FEATURE_VIEW":
+                collc = ee.data.getAsset(asset)
+                size = float(collc['sizeBytes'])
+                item_count = collc['featureCount']
+
+        table = Table(show_header=False, box=None)
+        table.add_row("[cyan]Asset:[/cyan]", asset)
+        table.add_row("[cyan]Type:[/cyan]", header.title())
+        table.add_row("[cyan]Size:[/cyan]", humansize(size))
+        table.add_row("[cyan]Items:[/cyan]", str(item_count))
+        console.print(table)
+
+    elif header == "FOLDER":
+        with console.status("[bold cyan]Calculating folder size...", spinner="dots"):
+            out = subprocess.check_output(f"earthengine du {asset} -s", shell=True).decode("ascii")
+            size = humansize(float(out.split()[0]))
+            num = subprocess.check_output(f"earthengine ls -r {asset}", shell=True).decode("ascii")
+            num = [i for i in num.split("\n") if i and len(i) > 1 and not i.startswith("Running")]
+
+        table = Table(show_header=False, box=None)
+        table.add_row("[cyan]Folder:[/cyan]", asset)
+        table.add_row("[cyan]Size:[/cyan]", size)
+        table.add_row("[cyan]Total items:[/cyan]", str(len(num)))
+        console.print(table)
+
+
+# 4. Tasks group (fourth)
+@cli.group(help="Manage Earth Engine tasks", context_settings=dict(help_option_names=['-h', '--help']))
+def tasks():
+    """Task management commands."""
+    pass
+
+
+@tasks.command('list', help="List tasks by state or get details of a specific task")
+@click.option('--state', type=click.Choice(['COMPLETED', 'READY', 'RUNNING', 'FAILED', 'CANCELLED'], case_sensitive=False),
+              help='Filter tasks by state')
+@click.option('--id', 'task_id', help='Get details of a specific task ID')
+def tasks_list(state, task_id):
+    """Query current task status."""
     if state is not None:
         task_bundle = []
         operations = [
@@ -445,131 +518,504 @@ def tasks(state,id):
             for status in ee.data.getTaskList()
             if status["state"] == state.upper()
         ]
-        for operation in operations:
-            task_id = operation["id"]
-            description = operation["description"].split(":")[0]
-            op_type = operation["task_type"]
-            attempt_count = operation["attempt"]
-            date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
-            start = datetime.strptime(epoch_convert_time(operation["start_timestamp_ms"]),date_format)
-            end = datetime.strptime(epoch_convert_time(operation["update_timestamp_ms"]),date_format)
-            time_difference = end - start
-            item = {
-                "task_id": task_id,
-                "operation_type": op_type,
-                "description": description,
-                "run_time": str(time_difference),
-                "attempt": attempt_count,
-            }
-            if 'destination_uris' in operation:
-                item['item_path']=operation['destination_uris'][0].replace('https://code.earthengine.google.com/?asset=','')
-            if 'batch_eecu_usage_seconds' in operation:
-                item['eecu_usage'] = operation['batch_eecu_usage_seconds']
-            task_bundle.append(item)
-        print(json.dumps(task_bundle, indent=2))
-    elif id is not None:
+        
+        with console.status(f"[bold cyan]Fetching {state.upper()} tasks...", spinner="dots"):
+            for operation in operations:
+                task_id_val = operation["id"]
+                description = operation["description"].split(":")[0]
+                op_type = operation["task_type"]
+                attempt_count = operation["attempt"]
+                date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
+                start = datetime.strptime(epoch_convert_time(operation["start_timestamp_ms"]), date_format)
+                end = datetime.strptime(epoch_convert_time(operation["update_timestamp_ms"]), date_format)
+                time_difference = end - start
+                item = {
+                    "task_id": task_id_val,
+                    "operation_type": op_type,
+                    "description": description,
+                    "run_time": str(time_difference),
+                    "attempt": attempt_count,
+                }
+                if 'destination_uris' in operation:
+                    item['item_path'] = operation['destination_uris'][0].replace('https://code.earthengine.google.com/?asset=', '')
+                if 'batch_eecu_usage_seconds' in operation:
+                    item['eecu_usage'] = operation['batch_eecu_usage_seconds']
+                task_bundle.append(item)
+        
+        console.print_json(data=task_bundle)
+        
+    elif task_id is not None:
         operations = [
             status
             for status in ee.data.getTaskList()
-            if status["id"] == id
+            if status["id"] == task_id
         ]
         for operation in operations:
-            task_id = operation["id"]
+            task_id_val = operation["id"]
             description = operation["description"].split(":")[0]
             op_type = operation["task_type"]
             attempt_count = operation["attempt"]
             date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
-            start = datetime.strptime(epoch_convert_time(operation["start_timestamp_ms"]),date_format)
-            end = datetime.strptime(epoch_convert_time(operation["update_timestamp_ms"]),date_format)
+            start = datetime.strptime(epoch_convert_time(operation["start_timestamp_ms"]), date_format)
+            end = datetime.strptime(epoch_convert_time(operation["update_timestamp_ms"]), date_format)
             time_difference = end - start
             item = {
-                "task_id": task_id,
+                "task_id": task_id_val,
                 "operation_type": op_type,
                 "description": description,
                 "run_time": str(time_difference),
                 "attempt": attempt_count,
             }
             if 'destination_uris' in operation:
-                item['item_path']=operation['destination_uris'][0].replace('https://code.earthengine.google.com/?asset=','')
+                item['item_path'] = operation['destination_uris'][0].replace('https://code.earthengine.google.com/?asset=', '')
             if 'batch_eecu_usage_seconds' in operation:
                 item['eecu_usage'] = operation['batch_eecu_usage_seconds']
-            print(json.dumps(item, indent=2))
+            console.print_json(data=item)
     else:
         statuses = ee.data.getTaskList()
         st = []
         for status in statuses:
             st.append(status["state"])
-        print(f"Tasks Running: {st.count('RUNNING')}")
-        print(f"Tasks Pending: {st.count('READY')}")
-        print(f"Tasks Completed: {st.count('COMPLETED')+st.count('SUCCEEDED')}")
-        print(f"Tasks Failed: {st.count('FAILED')}")
-        print(f"Tasks Cancelled: {st.count('CANCELLED') + st.count('CANCELLING')}")
+        
+        table = Table(title="[bold cyan]Task Summary[/bold cyan]", show_header=True, header_style="bold magenta")
+        table.add_column("Status", style="cyan", width=20)
+        table.add_column("Count", justify="right", style="green")
+        
+        table.add_row("Running", str(st.count('RUNNING')))
+        table.add_row("Pending", str(st.count('READY')))
+        table.add_row("Completed", str(st.count('COMPLETED') + st.count('SUCCEEDED')))
+        table.add_row("Failed", str(st.count('FAILED')))
+        table.add_row("Cancelled", str(st.count('CANCELLED') + st.count('CANCELLING')))
+        
+        console.print(table)
 
-def assetsize(asset):
-    """
-    Print the size and item count of an Earth Engine asset.
 
-    Args:
-        asset (str): The Earth Engine asset path.
+@tasks.command('cancel', help="Cancel tasks (all, running, pending, or specific task ID)")
+@click.argument('target', type=str, required=True)
+def tasks_cancel(target):
+    """Cancel Earth Engine tasks."""
+    try:
+        if target == "all":
+            console.print("[bold yellow]Attempting to cancel all tasks...[/bold yellow]")
+            statuses = ee.data.getTaskList()
+            cancelled_count = 0
 
-    """
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                console=console
+            ) as progress:
+                task = progress.add_task("[cyan]Cancelling tasks...", total=len(statuses))
+                
+                for status in statuses:
+                    state = status['state']
+                    task_id = status['id']
 
+                    if state == 'READY' or state == 'RUNNING':
+                        try:
+                            ee.data.cancelTask(task_id)
+                            cancelled_count += 1
+                        except ee.EEException as e:
+                            console.print(f"[red]Error cancelling task {task_id}: {e}[/red]")
+                    progress.update(task, advance=1)
+
+            if cancelled_count > 0:
+                console.print(f"[green]Successfully cancelled {cancelled_count} tasks[/green]")
+            else:
+                console.print("[yellow]No running or pending tasks found to cancel[/yellow]")
+
+        elif target == "running":
+            console.print("[bold yellow]Attempting to cancel running tasks...[/bold yellow]")
+            statuses = ee.data.getTaskList()
+            running_tasks = [status for status in statuses if status['state'] == 'RUNNING']
+
+            if running_tasks:
+                with Progress(console=console) as progress:
+                    task = progress.add_task("[cyan]Cancelling running tasks...", total=len(running_tasks))
+                    cancelled_count = 0
+                    for status in running_tasks:
+                        try:
+                            ee.data.cancelTask(status['id'])
+                            cancelled_count += 1
+                        except ee.EEException as e:
+                            console.print(f"[red]Error cancelling task {status['id']}: {e}[/red]")
+                        progress.update(task, advance=1)
+                console.print(f"[green]Successfully cancelled {cancelled_count} running tasks[/green]")
+            else:
+                console.print("[yellow]No running tasks found[/yellow]")
+
+        elif target == "pending":
+            console.print("[bold yellow]Attempting to cancel pending tasks...[/bold yellow]")
+            statuses = ee.data.getTaskList()
+            pending_tasks = [status for status in statuses if status['state'] == 'READY']
+
+            if pending_tasks:
+                with Progress(console=console) as progress:
+                    task = progress.add_task("[cyan]Cancelling pending tasks...", total=len(pending_tasks))
+                    cancelled_count = 0
+                    for status in pending_tasks:
+                        try:
+                            ee.data.cancelTask(status['id'])
+                            cancelled_count += 1
+                        except ee.EEException as e:
+                            console.print(f"[red]Error cancelling task {status['id']}: {e}[/red]")
+                        progress.update(task, advance=1)
+                console.print(f"[green]Successfully cancelled {cancelled_count} pending tasks[/green]")
+            else:
+                console.print("[yellow]No pending tasks found[/yellow]")
+
+        else:
+            # Assume it's a task ID
+            console.print(f"[bold yellow]Attempting to cancel task: {target}[/bold yellow]")
+
+            try:
+                statuses = ee.data.getTaskStatus([target])
+                if not statuses:
+                    console.print(f"[red]Task {target} not found[/red]")
+                    return
+
+                status = statuses[0]
+                state = status['state']
+
+                if state == 'UNKNOWN':
+                    console.print(f"[red]Unknown task ID: {target}[/red]")
+                elif state in ['READY', 'RUNNING']:
+                    ee.data.cancelTask(target)
+                    console.print(f"[green]Successfully cancelled task {target}[/green]")
+                else:
+                    console.print(f"[yellow]Task {target} is already in state '{state}' and cannot be cancelled[/yellow]")
+            except ee.EEException as e:
+                console.print(f"[red]Error accessing task {target}: {e}[/red]")
+
+    except Exception as e:
+        console.print(f"[red]Error in cancel_tasks: {e}[/red]")
+
+
+# Projects group
+@cli.group(help="Manage Earth Engine projects", context_settings=dict(help_option_names=['-h', '--help']))
+def projects():
+    """Project management commands."""
+    pass
+
+
+@projects.command('enabled', help="List Google Cloud Projects with Earth Engine API enabled")
+def projects_enabled():
+    """List all projects with EE enabled."""
+    get_projects()
+
+
+@projects.command('dashboard', help="Create interactive HTML dashboard of EE projects")
+@click.option('--outdir', default=None, help='Output directory for dashboard files')
+def projects_dashboard(outdir):
+    """Generate projects dashboard."""
+    get_projects_with_dashboard(output_dir=outdir)
+
+
+@projects.command('quota', help="Display Earth Engine quota information")
+@click.option('--project', default=None, help='Specific project path (e.g., projects/my-project or users/username)')
+def projects_quota(project):
+    """Display quota information."""
+    session = AuthorizedSession(ee.data.get_persistent_credentials())
+
+    def draw_bar(percent, width=30):
+        """Draw a simple progress bar"""
+        filled = int(width * percent / 100)
+        bar = "█" * filled + "░" * (width - filled)
+        return f"[{bar}] {percent:.1f}%"
+
+    def display_quota_info(project_name, info, project_type="Project"):
+        """Display quota info uniformly"""
+        if "quota" in info:
+            quota_info = info["quota"]
+            
+            table = Table(title=f"[bold cyan]{project_type}: {project_name}[/bold cyan]", 
+                         show_header=False, box=None)
+            
+            # Size quota
+            used_size = int(quota_info.get("sizeBytes", 0))
+            max_size = int(quota_info.get("maxSizeBytes", 1))
+            percent = (used_size / max_size * 100) if max_size > 0 else 0
+            
+            table.add_row("[cyan]Storage:[/cyan]", f"{humansize(used_size)} of {humansize(max_size)}")
+            table.add_row("", draw_bar(percent))
+            
+            # Asset count quota
+            used_assets = int(quota_info.get("assetCount", 0))
+            max_assets = int(quota_info.get("maxAssets", 1))
+            percent = (used_assets / max_assets * 100) if max_assets > 0 else 0
+            
+            table.add_row("[cyan]Assets:[/cyan]", f"{used_assets:,} of {max_assets:,}")
+            table.add_row("", draw_bar(percent))
+            
+            console.print(table)
+            console.print()
+            return True
+        elif "asset_size" in info:
+            # Legacy format
+            table = Table(title=f"[bold cyan]{project_type}: {project_name}[/bold cyan]", 
+                         show_header=False, box=None)
+            
+            size_usage = info["asset_size"]["usage"]
+            size_limit = info["asset_size"]["limit"]
+            size_percent = (size_usage / size_limit * 100) if size_limit > 0 else 0
+
+            count_usage = info["asset_count"]["usage"]
+            count_limit = info["asset_count"]["limit"]
+            count_percent = (count_usage / count_limit * 100) if count_limit > 0 else 0
+
+            table.add_row("[cyan]Storage:[/cyan]", f"{humansize(size_usage)} of {humansize(size_limit)}")
+            table.add_row("", draw_bar(size_percent))
+            table.add_row("[cyan]Assets:[/cyan]", f"{count_usage:,} of {count_limit:,}")
+            table.add_row("", draw_bar(count_percent))
+            
+            console.print(table)
+            console.print()
+            return True
+        else:
+            return False
+
+    def get_legacy_roots():
+        """Get all legacy root assets"""
+        legacy_roots = []
+        try:
+            url = 'https://earthengine.googleapis.com/v1/projects/earthengine-legacy:listAssets'
+            response = session.get(url=url)
+            for asset in response.json().get('assets', []):
+                legacy_roots.append(asset['id'])
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not retrieve legacy roots: {str(e)}[/yellow]")
+        return legacy_roots
+
+    def try_get_quota(path, is_legacy=False):
+        """Try multiple methods to get quota for a given path"""
+        try:
+            asset_info = ee.data.getInfo(path)
+            if asset_info and "quota" in asset_info:
+                return asset_info
+        except:
+            pass
+
+        if is_legacy:
+            try:
+                quota_info = ee.data.getAssetRootQuota(path)
+                if quota_info:
+                    return quota_info
+            except:
+                pass
+
+        if path.startswith("projects/") and "/assets" not in path:
+            for suffix in ["/assets", "/assets/"]:
+                try:
+                    asset_info = ee.data.getAsset(path + suffix)
+                    if asset_info and "quota" in asset_info:
+                        return asset_info
+                except:
+                    pass
+
+        return None
+
+    # If no path provided, display all projects
+    if project is None:
+        console.print("[bold cyan]Earth Engine Quota Summary[/bold cyan]\n")
+
+        displayed_projects = set()
+        found_any = False
+
+        with console.status("[bold cyan]Fetching quota information...", spinner="dots"):
+            try:
+                roots = ee.data.getAssetRoots()
+
+                for root in roots:
+                    root_path = root["id"]
+                    parent_project = root_path.split("/assets/")[0] if "/assets/" in root_path else root_path
+
+                    if parent_project in displayed_projects:
+                        continue
+
+                    is_legacy = parent_project.startswith("users/")
+                    quota_info = try_get_quota(parent_project, is_legacy=is_legacy)
+
+                    if quota_info:
+                        project_type = "Legacy Project" if is_legacy else "Cloud Project"
+                        display_quota_info(parent_project, quota_info, project_type)
+                        displayed_projects.add(parent_project)
+                        found_any = True
+
+            except Exception as e:
+                console.print(f"[yellow]Warning: Could not list asset roots: {str(e)}[/yellow]")
+
+            legacy_roots = get_legacy_roots()
+
+            for legacy_path in legacy_roots:
+                if legacy_path in displayed_projects:
+                    continue
+
+                quota_info = try_get_quota(legacy_path, is_legacy=True)
+
+                if quota_info:
+                    display_quota_info(legacy_path, quota_info, "Legacy Root")
+                    displayed_projects.add(legacy_path)
+                    found_any = True
+
+        if not found_any:
+            console.print("[yellow]No quota information available for any projects.[/yellow]")
+
+        return
+
+    # Handle specific project path
+    if not project.startswith("projects/") and not project.startswith("users/"):
+        try:
+            cloud_path = f"projects/{project}"
+            test_info = ee.data.getInfo(cloud_path)
+            if test_info:
+                project = cloud_path
+        except:
+            try:
+                legacy_path = f"users/{project}"
+                test_info = ee.data.getAssetRootQuota(legacy_path)
+                if test_info:
+                    project = legacy_path
+            except:
+                pass
+
+    is_legacy = project.startswith("users/")
+    quota_info = try_get_quota(project, is_legacy=is_legacy)
+
+    if quota_info:
+        project_type = "Legacy Project" if is_legacy else "Cloud Project"
+        display_quota_info(project, quota_info, project_type)
+    else:
+        console.print(f"[red]Could not retrieve quota information for {project}[/red]")
+
+
+# Assets group
+@cli.group(help="Manage Earth Engine assets", context_settings=dict(help_option_names=['-h', '--help']))
+def assets():
+    """Asset management commands."""
+    pass
+
+
+@assets.command('copy', help="Copy folders, collections, images or tables")
+@click.option('--initial', required=True, help='Existing path of assets')
+@click.option('--final', required=True, help='New path for assets')
+def assets_copy(initial, final):
+    """Copy assets."""
+    copy(path=initial, fpath=final)
+
+
+@assets.command('move', help="Move folders, collections, images or tables")
+@click.option('--initial', required=True, help='Existing path of assets')
+@click.option('--final', required=True, help='New path for assets')
+@click.option('--no-cleanup', 'cleanup', is_flag=True, default=True, 
+              help='Keep empty source folders after moving')
+def assets_move(initial, final, cleanup):
+    """Move assets."""
+    mover(path=initial, fpath=final, cleanup=cleanup)
+
+
+@assets.command('access', help="Set permissions for assets")
+@click.option('--asset', required=True, help='Path to the Earth Engine asset')
+@click.option('--user', required=True, help='User email, service account, group, or "allUsers"')
+@click.option('--role', required=True, type=click.Choice(['reader', 'writer', 'delete']), 
+              help='Permission role')
+def assets_access(asset, user, role):
+    """Set asset permissions."""
+    access(collection_path=asset, user=user, role=role)
+
+
+@assets.command('delete', help="Delete folders or collections recursively")
+@click.option('--id', 'asset_id', required=True, help='Full path to asset for deletion')
+@click.option('--workers', default=5, help='Number of concurrent workers')
+@click.option('--retries', default=5, help='Maximum retry attempts per asset')
+@click.option('--verbose', '-v', is_flag=True, help='Enable verbose debug logging')
+def assets_delete(asset_id, workers, retries, verbose):
+    """Delete assets recursively."""
+    delete(ids=asset_id, max_workers=workers, max_retries=retries, verbose=verbose)
+
+
+@assets.command('delete-meta', help="Delete metadata from collection or image")
+@click.option('--asset', required=True, help='Path to the Earth Engine asset')
+@click.option('--property', required=True, help='Metadata property name to delete')
+def assets_delete_meta(asset, property):
+    """Delete asset metadata."""
+    delprop(collection_path=asset, property=property)
+
+
+@assets.command('size', help="Display asset size and item count")
+@click.argument('asset', required=True)
+def assets_size(asset):
+    """Print asset size information."""
     asset_info = ee.data.getAsset(asset)
-
     header = asset_info["type"]
 
-    if header in ["IMAGE_COLLECTION", "IMAGE", "TABLE","FEATURE_VIEW"]:
-        if header == "IMAGE_COLLECTION":
-            collc = ee.ImageCollection(asset)
-            size = sum(collc.aggregate_array("system:asset_size").getInfo())
-            item_count = collc.size().getInfo()
-        elif header == "IMAGE":
-            collc = ee.ImageCollection.fromImages([ee.Image(asset)])
-            size = sum(collc.aggregate_array("system:asset_size").getInfo())
-            item_count = 1
-        elif header == "TABLE":
-            collc = ee.FeatureCollection(asset)
-            size = float(collc.get("system:asset_size").getInfo())
-            item_count = collc.size().getInfo()
-        elif header == "FEATURE_VIEW":
-            collc = ee.data.getAsset(asset)
-            size = float(collc['sizeBytes'])
-            item_count = collc['featureCount']
-        print(f"\n{asset} ===> {humansize(size)}")
-        print(f"Total number of items in {header.title()}: {item_count}")
+    if header in ["IMAGE_COLLECTION", "IMAGE", "TABLE", "FEATURE_VIEW"]:
+        with console.status(f"[bold cyan]Calculating size for {header}...", spinner="dots"):
+            if header == "IMAGE_COLLECTION":
+                collc = ee.ImageCollection(asset)
+                size = sum(collc.aggregate_array("system:asset_size").getInfo())
+                item_count = collc.size().getInfo()
+            elif header == "IMAGE":
+                collc = ee.ImageCollection.fromImages([ee.Image(asset)])
+                size = sum(collc.aggregate_array("system:asset_size").getInfo())
+                item_count = 1
+            elif header == "TABLE":
+                collc = ee.FeatureCollection(asset)
+                size = float(collc.get("system:asset_size").getInfo())
+                item_count = collc.size().getInfo()
+            elif header == "FEATURE_VIEW":
+                collc = ee.data.getAsset(asset)
+                size = float(collc['sizeBytes'])
+                item_count = collc['featureCount']
+
+        table = Table(show_header=False, box=None)
+        table.add_row("[cyan]Asset:[/cyan]", asset)
+        table.add_row("[cyan]Type:[/cyan]", header.title())
+        table.add_row("[cyan]Size:[/cyan]", humansize(size))
+        table.add_row("[cyan]Items:[/cyan]", str(item_count))
+        console.print(table)
 
     elif header == "FOLDER":
-        out = subprocess.check_output(f"earthengine du {asset} -s", shell=True).decode(
-            "ascii"
-        )
-        size = humansize(float(out.split()[0]))
-        num = subprocess.check_output(f"earthengine ls -r {asset}", shell=True).decode(
-            "ascii"
-        )
-        num = [
-            i
-            for i in num.split("\n")
-            if i and len(i) > 1 and not i.startswith("Running")
-        ]
+        with console.status("[bold cyan]Calculating folder size...", spinner="dots"):
+            out = subprocess.check_output(f"earthengine du {asset} -s", shell=True).decode("ascii")
+            size = humansize(float(out.split()[0]))
+            num = subprocess.check_output(f"earthengine ls -r {asset}", shell=True).decode("ascii")
+            num = [i for i in num.split("\n") if i and len(i) > 1 and not i.startswith("Running")]
 
-        print(f"\n{asset} ===> {size}")
-        print(f"Total number of items including all folders: {len(num)}")
+        table = Table(show_header=False, box=None)
+        table.add_row("[cyan]Folder:[/cyan]", asset)
+        table.add_row("[cyan]Size:[/cyan]", size)
+        table.add_row("[cyan]Total items:[/cyan]", str(len(num)))
+        console.print(table)
 
 
-def search(mname, source, max_results=10, include_docs=False, allow_subsets=False):
-    """
-    Search GEE catalog using enhanced search engine with relevance ranking
+# Utils group
+@cli.group(help="Utility commands", context_settings=dict(help_option_names=['-h', '--help']))
+def utils():
+    """Utility commands."""
+    pass
 
-    Args:
-        mname: Search keywords
-        source: 'main', 'community', or None (searches both)
-        max_results: Maximum number of results to return
-        include_docs: Whether to search documentation URLs
-        allow_subsets: Whether to show all regional/temporal variants
-    """
+
+@utils.command('app2script', help="Extract script from public Earth Engine app")
+@click.option('--url', required=True, help='Earth Engine app URL')
+@click.option('--outfile', default=None, help='Output .js file path')
+def utils_app2script(url, outfile):
+    """Get underlying script from EE app."""
+    jsext(url=url, outfile=outfile)
+
+
+@utils.command('search', help="Search GEE catalog with relevance ranking")
+@click.option('--keywords', required=True, help='Search keywords')
+@click.option('--source', type=click.Choice(['main', 'community']), default=None,
+              help='Catalog to search (main, community, or both)')
+@click.option('--max-results', default=5, help='Maximum number of results')
+@click.option('--include-docs', is_flag=True, help='Search documentation URLs')
+@click.option('--allow-subsets', is_flag=True, help='Show all regional/temporal variants')
+def utils_search(keywords, source, max_results, include_docs, allow_subsets):
+    """Search GEE catalog."""
     search_engine = EnhancedGEESearch()
 
-    # Determine which catalog to search
     if source is not None and source == "community":
         search_source = 'community'
     elif source is not None and source == "main":
@@ -577,331 +1023,257 @@ def search(mname, source, max_results=10, include_docs=False, allow_subsets=Fals
     else:
         search_source = 'both'
 
-    # Load the appropriate datasets
     search_engine.load_datasets(source=search_source)
 
-    # Perform the search
     results = search_engine.search(
-        query=mname,
+        query=keywords,
         max_results=max_results,
         include_docs=include_docs,
         allow_subsets=allow_subsets,
         source=search_source
     )
 
-    print("")
-    print(json.dumps(results, indent=2, sort_keys=False))
-
-def quota_from_parser(args):
-    quota(project_path=args.project)
+    console.print_json(data=results)
 
 
-def ee_report_from_parser(args):
-    ee_report(output_path=args.outfile, asset_path=args.path, output_format=args)
+@utils.command('report', help="Generate detailed asset report")
+@click.option('--outfile', required=True, help='Output file path for report')
+@click.option('--path', default=None, help='Path to folder or project')
+@click.option('--format', 'output_format', default='csv', 
+              type=click.Choice(['csv', 'json']), help='Output format')
+def utils_report(outfile, path, output_format):
+    """Generate Earth Engine asset report."""
+    ee_report(output_path=outfile, asset_path=path, output_format=output_format)
 
 
-def move_from_parser(args):
-    mover(path=args.initial, fpath=args.final, cleanup=args.cleanup)
-
-
-def copy_from_parser(args):
-    copy(path=args.initial, fpath=args.final)
-
-
-def access_from_parser(args):
-    access(collection_path=args.asset, user=args.user, role=args.role)
-
-
-def delete_metadata_from_parser(args):
-    delprop(collection_path=args.asset, property=args.property)
-
-
-def app2script_from_parser(args):
-    jsext(url=args.url, outfile=args.outfile, clipboard=args.clipboard)
-
-
-def read_from_parser(args):
-    readme()
-
-def projects_from_parser(args):
-    get_projects()
-
-def projects_dash_from_parser(args):
-    get_projects_with_dashboard(output_dir=args.outdir)
-
-def cancel_tasks_from_parser(args):
-    cancel_tasks(tasks=args.tasks)
-
-
-def delete_collection_from_parser(args):
-    delete(
-        ids=args.id,
-        max_workers=args.workers,
-        max_retries=args.retries,
-        verbose=args.verbose
-    )
-
-def tasks_from_parser(args):
-    tasks(state=args.state,id=args.id)
-
-
-def assetsize_from_parser(args):
-    assetsize(asset=args.asset)
-
-
-def search_from_parser(args):
-    search(
-        mname=args.keywords,
-        source=args.source,
-        max_results=args.max_results if hasattr(args, 'max_results') else 5,
-        include_docs=args.include_docs if hasattr(args, 'include_docs') else False,
-        allow_subsets=args.allow_subsets if hasattr(args, 'allow_subsets') else False
-    )
-
-def main(args=None):
-    parser = argparse.ArgumentParser(
-        description="Google Earth Engine Batch Asset Manager with Addons"
-    )
-    subparsers = parser.add_subparsers()
-
-    parser_read = subparsers.add_parser(
-        "readme", help="Go the web based geeadd readme page"
-    )
-    parser_read.set_defaults(func=read_from_parser)
-
-    parser_projects = subparsers.add_parser(
-        "projects", help="Prints a list of Google Cloud Projects you own with Earth Engine API enabled"
-    )
-    parser_projects.set_defaults(func=projects_from_parser)
-
-    parser_projects_dash = subparsers.add_parser(
-        "projects_dash", 
-        help="Create an interactive HTML dashboard of your Earth Engine enabled projects with registration status"
-    )
-    optional_named = parser_projects_dash.add_argument_group("Optional named arguments")
-    optional_named.add_argument(
-        "--outdir",
-        help="Output directory for dashboard files (default: script directory)",
-        default=None,
-    )
-    parser_projects_dash.set_defaults(func=projects_dash_from_parser)
-
-    parser_quota = subparsers.add_parser(
-        "quota", help="Print Earth Engine total quota and used quota"
-    )
-    optional_named = parser_quota.add_argument_group("Optional named arguments")
-    optional_named.add_argument(
-        "--project",
-        help="Project Name usually in format projects/project-name/assets/",
-        default=None,
-    )
-    parser_quota.set_defaults(func=quota_from_parser)
-
-    parser_app2script = subparsers.add_parser(
-        "app2script", help="Get underlying script for public Google earthengine app"
-    )
-    required_named = parser_app2script.add_argument_group("Required named arguments.")
-    required_named.add_argument("--url", help="Earthengine app url", required=True)
-    optional_named = parser_app2script.add_argument_group("Optional named arguments")
-    optional_named.add_argument(
-        "--outfile",
-        help="Write the script out to a .js file: Open in any text editor",
-        default=None,
-    )
-    optional_named.add_argument(
-        "--clipboard",
-        help="Copy the script to clipboard",
-        action="store_true",
-        default=False,
-    )
-    parser_app2script.set_defaults(func=app2script_from_parser)
-
-    parser_search = subparsers.add_parser(
-        "search", help="Search public GEE catalog using keywords with relevance ranking"
-    )
-    required_named = parser_search.add_argument_group("Required named arguments.")
-    required_named.add_argument(
-        "--keywords",
-        help="Keywords to search for can be id, provider, tag and so on",
-        required=True,
-    )
-    optional_named = parser_search.add_argument_group("Optional named arguments")
-    optional_named.add_argument(
-        "--source",
-        help="Catalog to search: 'main' (official catalog), 'community' (community datasets), or leave blank for both",
-        default=None,
-    )
-    optional_named.add_argument(
-        "--max_results",
-        help="Maximum number of results to return (default: 10)",
-        type=int,
-        default=5,
-    )
-    optional_named.add_argument(
-        "--include_docs",
-        help="Search documentation URLs for keywords (slower but more thorough)",
-        action="store_true",
-        default=False,
-    )
-    optional_named.add_argument(
-        "--allow_subsets",
-        help="Show all regional/temporal variants instead of grouping them",
-        action="store_true",
-        default=False,
-    )
-    parser_search.set_defaults(func=search_from_parser)
-
-    parser_ee_report = subparsers.add_parser(
-        "ee_report",
-        help="Prints a detailed report of all Earth Engine Assets includes Asset Type, Path,Number of Assets,size(MB),unit,owner,readers,writers",
-    )
-    required_named = parser_ee_report.add_argument_group("Required named arguments.")
-    required_named.add_argument(
-        "--outfile", help="This it the location of your report csv file ", required=True
-    )
-    optional_named = parser_ee_report.add_argument_group("Optional named arguments")
-    optional_named.add_argument(
-        "--path",
-        help="Path to any folder including project folders",
-        default=None,
-    )
-    optional_named.add_argument(
-        "--output_format",
-        help="Output format can be csv or json",
-        default="csv",
-    )
-    parser_ee_report.set_defaults(func=ee_report_from_parser)
-
-    parser_assetsize = subparsers.add_parser(
-        "assetsize",
-        help="Prints any asset size (folders,collections,images or tables) in Human Readable form & Number of assets included",
-    )
-    required_named = parser_assetsize.add_argument_group("Required named arguments.")
-    required_named.add_argument(
-        "--asset",
-        help="Earth Engine Asset for which to get size properties",
-        required=True,
-    )
-    parser_assetsize.set_defaults(func=assetsize_from_parser)
-
-    parser_tasks = subparsers.add_parser(
-        "tasks",
-        help="Queries current task status [completed,running,ready,failed,cancelled]",
-    )
-    optional_named = parser_tasks.add_argument_group("Optional named arguments")
-    optional_named.add_argument(
-        "--state",
-        help="Query by state type COMPLETED|READY|RUNNING|FAILED",
-    )
-    optional_named.add_argument(
-        "--id",
-        help="Query by task id",
-    )
-    parser_tasks.set_defaults(func=tasks_from_parser)
-
-    parser_cancel = subparsers.add_parser(
-        "cancel", help="Cancel all, running or ready tasks or task ID"
-    )
-    required_named = parser_cancel.add_argument_group("Required named arguments.")
-    required_named.add_argument(
-        "--tasks",
-        help="You can provide tasks as running or pending or all or even a single task id",
-        required=True,
-        default=None,
-    )
-    parser_cancel.set_defaults(func=cancel_tasks_from_parser)
-
-    parser_copy = subparsers.add_parser(
-        "copy", help="Copies entire folders, collections, images or tables"
-    )
-    required_named = parser_copy.add_argument_group("Required named arguments.")
-    required_named.add_argument("--initial", help="Existing path of assets")
-    required_named.add_argument("--final", help="New path for assets")
-    parser_copy.set_defaults(func=copy_from_parser)
-
-    parser_move = subparsers.add_parser(
-        "move", help="Moves entire folders, collections, images or tables"
-    )
-    required_named = parser_move.add_argument_group("Required named arguments.")
-    required_named.add_argument("--initial", help="Existing path of assets", required=True)
-    required_named.add_argument("--final", help="New path for assets", required=True)
-    optional_named = parser_move.add_argument_group("Optional named arguments")
-    optional_named.add_argument(
-        "--no-cleanup",
-        dest="cleanup",
-        action="store_false",
-        default=True,
-        help="Keep empty source folders after moving (default: cleanup enabled)"
-    )
-    parser_move.set_defaults(func=move_from_parser)
-
-    parser_access = subparsers.add_parser(
-        "access",
-        help="Sets Permissions for entire folders, collections, images or tables",
-    )
-    required_named = parser_access.add_argument_group("Required named arguments.")
-    required_named.add_argument(
-        "--asset",
-        help="This is the path to the earth engine asset whose permission you are changing folder/collection/image",
-        required=True,
-    )
-    required_named.add_argument(
-        "--user",
-        help='Can be user email or serviceAccount like account@gserviceaccount.com or groups like group@googlegroups.com or try using "allUsers" to make it public',
-        required=True,
-        default=False,
-    )
-    required_named.add_argument(
-        "--role", help="Choose between reader, writer or delete", required=True
-    )
-    parser_access.set_defaults(func=access_from_parser)
-
-    parser_delete = subparsers.add_parser(
-        "delete", help="Deletes folders or collections recursively"
-    )
-    required_named = parser_delete.add_argument_group("Required named arguments.")
-    required_named.add_argument(
-        "--id",
-        help="Full path to asset for deletion. Recursively removes all folders, collections and images.",
-        required=True,
-    )
-    optional_named = parser_delete.add_argument_group("Optional named arguments")
-    optional_named.add_argument('--workers', type=int, default=5,
-                        help='Number of concurrent workers (default: 5)')
-    optional_named.add_argument('--retries', type=int, default=5,
-                        help='Maximum retry attempts per asset (default: 5)')
-    optional_named.add_argument('--verbose', '-v', action='store_true',
-                        help='Enable verbose debug logging')
-    parser_delete.set_defaults(func=delete_collection_from_parser)
-
-    parser_delete_metadata = subparsers.add_parser(
-        "delete_metadata",
-        help="Use with caution: delete any metadata from collection or image",
-    )
-    required_named = parser_delete_metadata.add_argument_group(
-        "Required named arguments."
-    )
-    required_named.add_argument(
-        "--asset",
-        help="This is the path to the earth engine asset whose permission you are changing collection/image",
-        required=True,
-    )
-    required_named.add_argument(
-        "--property",
-        help="Metadata name that you want to delete",
-        required=True,
-        default=False,
-    )
-    parser_delete_metadata.set_defaults(func=delete_metadata_from_parser)
-
-    args = parser.parse_args()
-
+@cli.command('readme', help="Open the geeadd documentation webpage")
+def readme():
+    """Open documentation in browser."""
     try:
-        func = args.func
-    except AttributeError:
-        parser.error("too few arguments")
-    func(args)
+        opened = webbrowser.open("https://samapriya.github.io/gee_asset_manager_addon/", new=2)
+        if not opened:
+            console.print("[yellow]Your setup does not have a monitor to display the webpage[/yellow]")
+            console.print("[cyan]Go to: https://samapriya.github.io/gee_asset_manager_addon/[/cyan]")
+        else:
+            console.print("[green]Opening documentation in browser...[/green]")
+    except Exception as e:
+        console.print(f"[red]Error opening browser: {e}[/red]")
+        console.print("[cyan]Visit: https://samapriya.github.io/gee_asset_manager_addon/[/cyan]")
 
 
-if __name__ == "__main__":
-    main()
+# Deprecated command handlers - show migration messages
+@cli.command('quota', hidden=True)
+@click.option('--project', default=None)
+@click.pass_context
+def deprecated_quota(ctx, project):
+    """Deprecated: Use 'geeadd projects quota' instead."""
+    console.print(Panel(
+        "[yellow]Command[/yellow] [bold red]'geeadd quota'[/bold red] [yellow]is deprecated![/yellow]\n\n"
+        "[green]Use instead:[/green] [bold cyan]geeadd projects quota[/bold cyan]\n\n"
+        "[dim]Redirecting you to the new command...[/dim]",
+        title="[bold red]Deprecated Command[/bold red]",
+        border_style="red"
+    ))
+    # Extract any arguments and forward them
+    ctx.invoke(projects_quota, project=project)
+
+
+@cli.command('deprecated-projects', hidden=True)
+@click.pass_context
+def deprecated_projects_old(ctx):
+    """Deprecated: Use 'geeadd projects enabled' instead."""
+    console.print(Panel(
+        "[yellow]Command[/yellow] [bold red]'geeadd projects'[/bold red] [yellow]is deprecated![/yellow]\n\n"
+        "[green]Use instead:[/green] [bold cyan]geeadd projects enabled[/bold cyan]\n\n"
+        "[dim]Redirecting you to the new command...[/dim]",
+        title="[bold red]Deprecated Command[/bold red]",
+        border_style="red"
+    ))
+    ctx.invoke(projects_enabled)
+
+
+@cli.command('projects_dash', hidden=True)
+@click.option('--outdir', default=None)
+@click.pass_context
+def deprecated_projects_dash(ctx, outdir):
+    """Deprecated: Use 'geeadd projects dashboard' instead."""
+    console.print(Panel(
+        "[yellow]Command[/yellow] [bold red]'geeadd projects_dash'[/bold red] [yellow]is deprecated![/yellow]\n\n"
+        "[green]Use instead:[/green] [bold cyan]geeadd projects dashboard[/bold cyan]\n\n"
+        "[dim]Redirecting you to the new command...[/dim]",
+        title="[bold red]Deprecated Command[/bold red]",
+        border_style="red"
+    ))
+    ctx.invoke(projects_dashboard, outdir=outdir)
+
+
+@cli.command('cancel', hidden=True)
+@click.argument('tasks_arg', required=True)
+@click.pass_context
+def deprecated_cancel(ctx, tasks_arg):
+    """Deprecated: Use 'geeadd tasks cancel' instead."""
+    console.print(Panel(
+        "[yellow]Command[/yellow] [bold red]'geeadd cancel'[/bold red] [yellow]is deprecated![/yellow]\n\n"
+        "[green]Use instead:[/green] [bold cyan]geeadd tasks cancel[/bold cyan]\n\n"
+        "[dim]Redirecting you to the new command...[/dim]",
+        title="[bold red]Deprecated Command[/bold red]",
+        border_style="red"
+    ))
+    ctx.invoke(tasks_cancel, target=tasks_arg)
+
+
+@cli.command('copy', hidden=True)
+@click.option('--initial', required=True)
+@click.option('--final', required=True)
+@click.pass_context
+def deprecated_copy(ctx, initial, final):
+    """Deprecated: Use 'geeadd assets copy' instead."""
+    console.print(Panel(
+        "[yellow]Command[/yellow] [bold red]'geeadd copy'[/bold red] [yellow]is deprecated![/yellow]\n\n"
+        "[green]Use instead:[/green] [bold cyan]geeadd assets copy[/bold cyan]\n\n"
+        "[dim]Redirecting you to the new command...[/dim]",
+        title="[bold red]Deprecated Command[/bold red]",
+        border_style="red"
+    ))
+    ctx.invoke(assets_copy, initial=initial, final=final)
+
+
+@cli.command('move', hidden=True)
+@click.option('--initial', required=True)
+@click.option('--final', required=True)
+@click.option('--no-cleanup', 'cleanup', is_flag=True, default=True)
+@click.pass_context
+def deprecated_move(ctx, initial, final, cleanup):
+    """Deprecated: Use 'geeadd assets move' instead."""
+    console.print(Panel(
+        "[yellow]Command[/yellow] [bold red]'geeadd move'[/bold red] [yellow]is deprecated![/yellow]\n\n"
+        "[green]Use instead:[/green] [bold cyan]geeadd assets move[/bold cyan]\n\n"
+        "[dim]Redirecting you to the new command...[/dim]",
+        title="[bold red]Deprecated Command[/bold red]",
+        border_style="red"
+    ))
+    ctx.invoke(assets_move, initial=initial, final=final, cleanup=cleanup)
+
+
+@cli.command('access', hidden=True)
+@click.option('--asset', required=True)
+@click.option('--user', required=True)
+@click.option('--role', required=True)
+@click.pass_context
+def deprecated_access(ctx, asset, user, role):
+    """Deprecated: Use 'geeadd assets access' instead."""
+    console.print(Panel(
+        "[yellow]Command[/yellow] [bold red]'geeadd access'[/bold red] [yellow]is deprecated![/yellow]\n\n"
+        "[green]Use instead:[/green] [bold cyan]geeadd assets access[/bold cyan]\n\n"
+        "[dim]Redirecting you to the new command...[/dim]",
+        title="[bold red]Deprecated Command[/bold red]",
+        border_style="red"
+    ))
+    ctx.invoke(assets_access, asset=asset, user=user, role=role)
+
+
+@cli.command('delete', hidden=True)
+@click.option('--id', 'asset_id', required=True)
+@click.option('--workers', default=5)
+@click.option('--retries', default=5)
+@click.option('--verbose', '-v', is_flag=True)
+@click.pass_context
+def deprecated_delete(ctx, asset_id, workers, retries, verbose):
+    """Deprecated: Use 'geeadd assets delete' instead."""
+    console.print(Panel(
+        "[yellow]Command[/yellow] [bold red]'geeadd delete'[/bold red] [yellow]is deprecated![/yellow]\n\n"
+        "[green]Use instead:[/green] [bold cyan]geeadd assets delete[/bold cyan]\n\n"
+        "[dim]Redirecting you to the new command...[/dim]",
+        title="[bold red]Deprecated Command[/bold red]",
+        border_style="red"
+    ))
+    ctx.invoke(assets_delete, asset_id=asset_id, workers=workers, retries=retries, verbose=verbose)
+
+
+@cli.command('delete_metadata', hidden=True)
+@click.option('--asset', required=True)
+@click.option('--property', required=True)
+@click.pass_context
+def deprecated_delete_metadata(ctx, asset, property):
+    """Deprecated: Use 'geeadd assets delete-meta' instead."""
+    console.print(Panel(
+        "[yellow]Command[/yellow] [bold red]'geeadd delete_metadata'[/bold red] [yellow]is deprecated![/yellow]\n\n"
+        "[green]Use instead:[/green] [bold cyan]geeadd assets delete-meta[/bold cyan]\n\n"
+        "[dim]Redirecting you to the new command...[/dim]",
+        title="[bold red]Deprecated Command[/bold red]",
+        border_style="red"
+    ))
+    ctx.invoke(assets_delete_meta, asset=asset, property=property)
+
+
+@cli.command('app2script', hidden=True)
+@click.option('--url', required=True)
+@click.option('--outfile', default=None)
+@click.pass_context
+def deprecated_app2script(ctx, url, outfile):
+    """Deprecated: Use 'geeadd utils app2script' instead."""
+    console.print(Panel(
+        "[yellow]Command[/yellow] [bold red]'geeadd app2script'[/bold red] [yellow]is deprecated![/yellow]\n\n"
+        "[green]Use instead:[/green] [bold cyan]geeadd utils app2script[/bold cyan]\n\n"
+        "[dim]Redirecting you to the new command...[/dim]",
+        title="[bold red]Deprecated Command[/bold red]",
+        border_style="red"
+    ))
+    ctx.invoke(utils_app2script, url=url, outfile=outfile)
+
+
+@cli.command('search', hidden=True)
+@click.option('--keywords', required=True)
+@click.option('--source', default=None)
+@click.option('--max-results', default=5)
+@click.option('--include-docs', is_flag=True)
+@click.option('--allow-subsets', is_flag=True)
+@click.pass_context
+def deprecated_search(ctx, keywords, source, max_results, include_docs, allow_subsets):
+    """Deprecated: Use 'geeadd utils search' instead."""
+    console.print(Panel(
+        "[yellow]Command[/yellow] [bold red]'geeadd search'[/bold red] [yellow]is deprecated![/yellow]\n\n"
+        "[green]Use instead:[/green] [bold cyan]geeadd utils search[/bold cyan]\n\n"
+        "[dim]Redirecting you to the new command...[/dim]",
+        title="[bold red]Deprecated Command[/bold red]",
+        border_style="red"
+    ))
+    ctx.invoke(utils_search, keywords=keywords, source=source, max_results=max_results,
+               include_docs=include_docs, allow_subsets=allow_subsets)
+
+
+@cli.command('ee_report', hidden=True)
+@click.option('--outfile', required=True)
+@click.option('--path', default=None)
+@click.option('--format', 'output_format', default='csv')
+@click.pass_context
+def deprecated_ee_report(ctx, outfile, path, output_format):
+    """Deprecated: Use 'geeadd utils report' instead."""
+    console.print(Panel(
+        "[yellow]Command[/yellow] [bold red]'geeadd ee_report'[/bold red] [yellow]is deprecated![/yellow]\n\n"
+        "[green]Use instead:[/green] [bold cyan]geeadd utils report[/bold cyan]\n\n"
+        "[dim]Redirecting you to the new command...[/dim]",
+        title="[bold red]Deprecated Command[/bold red]",
+        border_style="red"
+    ))
+    ctx.invoke(utils_report, outfile=outfile, path=path, output_format=output_format)
+
+
+@cli.command('assetsize', hidden=True)
+@click.argument('asset', required=True)
+@click.pass_context
+def deprecated_assetsize(ctx, asset):
+    """Deprecated: Use 'geeadd assets size' instead."""
+    console.print(Panel(
+        "[yellow]Command[/yellow] [bold red]'geeadd assetsize'[/bold red] [yellow]is deprecated![/yellow]\n\n"
+        "[green]Use instead:[/green] [bold cyan]geeadd assets size[/bold cyan]\n\n"
+        "[dim]Redirecting you to the new command...[/dim]",
+        title="[bold red]Deprecated Command[/bold red]",
+        border_style="red"
+    ))
+    ctx.invoke(assets_size, asset=asset)
+
+
+def main():
+    """Main entry point."""
+    cli()
