@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=65.5.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geeadd"
+version = "2.0.0"
+description = "Google Earth Engine Batch Assets Manager with Addons"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [
+    {name = "Samapriya Roy", email = "samapriya.roy@gmail.com"}
+]
+keywords = ["earth engine", "gee", "google earth engine", "cli", "asset manager"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+
+dependencies = [
+    "click>=8.0.0",
+    "colorama>=0.4.6",
+    "earthengine-api>=1.1.2",
+    "google-auth>=2.0.0",
+    "jsbeautifier>=1.15.1",
+    "packaging>=24.2",
+    "pyperclip>=1.8.0",
+    "requests>=2.32.3",
+    "rich>=13.0.0",
+    "tqdm>=4.66.5",
+    "urllib3>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/samapriya/gee_asset_manager_addon"
+Documentation = "https://geeadd.geetools.xyz/"
+Repository = "https://github.com/samapriya/gee_asset_manager_addon"
+"Bug Tracker" = "https://github.com/samapriya/gee_asset_manager_addon/issues"
+
+[project.scripts]
+geeadd = "geeadd.geeadd:main"
+
+[tool.setuptools]
+packages = ["geeadd"]
+
+[tool.setuptools.package-data]
+geeadd = ["LICENSE"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311', 'py312']
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

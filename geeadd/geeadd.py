@@ -12,6 +12,7 @@ from .ee_projects import get_projects
 from .ee_projects_dash import get_projects_with_dashboard
 from .ee_report import ee_report
 from .search_fast import EnhancedGEESearch
+from .ee_asset_info import display_asset_info
 
 __copyright__ = """
     Copyright 2025 Samapriya Roy
@@ -405,6 +406,13 @@ def assets():
     pass
 
 
+@assets.command('info', help="Display detailed information about an Earth Engine asset")
+@click.argument('asset_id', required=True)
+def assets_info(asset_id):
+    """Display detailed asset information with beautiful formatting."""
+    display_asset_info(asset_id)
+
+
 @assets.command('copy', help="Copy folders, collections, images or tables")
 @click.option('--initial', required=True, help='Existing path of assets')
 @click.option('--final', required=True, help='New path for assets')
@@ -693,303 +701,6 @@ def tasks_cancel(target):
         console.print(f"[red]Error in cancel_tasks: {e}[/red]")
 
 
-# Projects group
-@cli.group(help="Manage Earth Engine projects", context_settings=dict(help_option_names=['-h', '--help']))
-def projects():
-    """Project management commands."""
-    pass
-
-
-@projects.command('enabled', help="List Google Cloud Projects with Earth Engine API enabled")
-def projects_enabled():
-    """List all projects with EE enabled."""
-    get_projects()
-
-
-@projects.command('dashboard', help="Create interactive HTML dashboard of EE projects")
-@click.option('--outdir', default=None, help='Output directory for dashboard files')
-def projects_dashboard(outdir):
-    """Generate projects dashboard."""
-    get_projects_with_dashboard(output_dir=outdir)
-
-
-@projects.command('quota', help="Display Earth Engine quota information")
-@click.option('--project', default=None, help='Specific project path (e.g., projects/my-project or users/username)')
-def projects_quota(project):
-    """Display quota information."""
-    session = AuthorizedSession(ee.data.get_persistent_credentials())
-
-    def draw_bar(percent, width=30):
-        """Draw a simple progress bar"""
-        filled = int(width * percent / 100)
-        bar = "█" * filled + "░" * (width - filled)
-        return f"[{bar}] {percent:.1f}%"
-
-    def display_quota_info(project_name, info, project_type="Project"):
-        """Display quota info uniformly"""
-        if "quota" in info:
-            quota_info = info["quota"]
-            
-            table = Table(title=f"[bold cyan]{project_type}: {project_name}[/bold cyan]", 
-                         show_header=False, box=None)
-            
-            # Size quota
-            used_size = int(quota_info.get("sizeBytes", 0))
-            max_size = int(quota_info.get("maxSizeBytes", 1))
-            percent = (used_size / max_size * 100) if max_size > 0 else 0
-            
-            table.add_row("[cyan]Storage:[/cyan]", f"{humansize(used_size)} of {humansize(max_size)}")
-            table.add_row("", draw_bar(percent))
-            
-            # Asset count quota
-            used_assets = int(quota_info.get("assetCount", 0))
-            max_assets = int(quota_info.get("maxAssets", 1))
-            percent = (used_assets / max_assets * 100) if max_assets > 0 else 0
-            
-            table.add_row("[cyan]Assets:[/cyan]", f"{used_assets:,} of {max_assets:,}")
-            table.add_row("", draw_bar(percent))
-            
-            console.print(table)
-            console.print()
-            return True
-        elif "asset_size" in info:
-            # Legacy format
-            table = Table(title=f"[bold cyan]{project_type}: {project_name}[/bold cyan]", 
-                         show_header=False, box=None)
-            
-            size_usage = info["asset_size"]["usage"]
-            size_limit = info["asset_size"]["limit"]
-            size_percent = (size_usage / size_limit * 100) if size_limit > 0 else 0
-
-            count_usage = info["asset_count"]["usage"]
-            count_limit = info["asset_count"]["limit"]
-            count_percent = (count_usage / count_limit * 100) if count_limit > 0 else 0
-
-            table.add_row("[cyan]Storage:[/cyan]", f"{humansize(size_usage)} of {humansize(size_limit)}")
-            table.add_row("", draw_bar(size_percent))
-            table.add_row("[cyan]Assets:[/cyan]", f"{count_usage:,} of {count_limit:,}")
-            table.add_row("", draw_bar(count_percent))
-            
-            console.print(table)
-            console.print()
-            return True
-        else:
-            return False
-
-    def get_legacy_roots():
-        """Get all legacy root assets"""
-        legacy_roots = []
-        try:
-            url = 'https://earthengine.googleapis.com/v1/projects/earthengine-legacy:listAssets'
-            response = session.get(url=url)
-            for asset in response.json().get('assets', []):
-                legacy_roots.append(asset['id'])
-        except Exception as e:
-            console.print(f"[yellow]Warning: Could not retrieve legacy roots: {str(e)}[/yellow]")
-        return legacy_roots
-
-    def try_get_quota(path, is_legacy=False):
-        """Try multiple methods to get quota for a given path"""
-        try:
-            asset_info = ee.data.getInfo(path)
-            if asset_info and "quota" in asset_info:
-                return asset_info
-        except:
-            pass
-
-        if is_legacy:
-            try:
-                quota_info = ee.data.getAssetRootQuota(path)
-                if quota_info:
-                    return quota_info
-            except:
-                pass
-
-        if path.startswith("projects/") and "/assets" not in path:
-            for suffix in ["/assets", "/assets/"]:
-                try:
-                    asset_info = ee.data.getAsset(path + suffix)
-                    if asset_info and "quota" in asset_info:
-                        return asset_info
-                except:
-                    pass
-
-        return None
-
-    # If no path provided, display all projects
-    if project is None:
-        console.print("[bold cyan]Earth Engine Quota Summary[/bold cyan]\n")
-
-        displayed_projects = set()
-        found_any = False
-
-        with console.status("[bold cyan]Fetching quota information...", spinner="dots"):
-            try:
-                roots = ee.data.getAssetRoots()
-
-                for root in roots:
-                    root_path = root["id"]
-                    parent_project = root_path.split("/assets/")[0] if "/assets/" in root_path else root_path
-
-                    if parent_project in displayed_projects:
-                        continue
-
-                    is_legacy = parent_project.startswith("users/")
-                    quota_info = try_get_quota(parent_project, is_legacy=is_legacy)
-
-                    if quota_info:
-                        project_type = "Legacy Project" if is_legacy else "Cloud Project"
-                        display_quota_info(parent_project, quota_info, project_type)
-                        displayed_projects.add(parent_project)
-                        found_any = True
-
-            except Exception as e:
-                console.print(f"[yellow]Warning: Could not list asset roots: {str(e)}[/yellow]")
-
-            legacy_roots = get_legacy_roots()
-
-            for legacy_path in legacy_roots:
-                if legacy_path in displayed_projects:
-                    continue
-
-                quota_info = try_get_quota(legacy_path, is_legacy=True)
-
-                if quota_info:
-                    display_quota_info(legacy_path, quota_info, "Legacy Root")
-                    displayed_projects.add(legacy_path)
-                    found_any = True
-
-        if not found_any:
-            console.print("[yellow]No quota information available for any projects.[/yellow]")
-
-        return
-
-    # Handle specific project path
-    if not project.startswith("projects/") and not project.startswith("users/"):
-        try:
-            cloud_path = f"projects/{project}"
-            test_info = ee.data.getInfo(cloud_path)
-            if test_info:
-                project = cloud_path
-        except:
-            try:
-                legacy_path = f"users/{project}"
-                test_info = ee.data.getAssetRootQuota(legacy_path)
-                if test_info:
-                    project = legacy_path
-            except:
-                pass
-
-    is_legacy = project.startswith("users/")
-    quota_info = try_get_quota(project, is_legacy=is_legacy)
-
-    if quota_info:
-        project_type = "Legacy Project" if is_legacy else "Cloud Project"
-        display_quota_info(project, quota_info, project_type)
-    else:
-        console.print(f"[red]Could not retrieve quota information for {project}[/red]")
-
-
-# Assets group
-@cli.group(help="Manage Earth Engine assets", context_settings=dict(help_option_names=['-h', '--help']))
-def assets():
-    """Asset management commands."""
-    pass
-
-
-@assets.command('copy', help="Copy folders, collections, images or tables")
-@click.option('--initial', required=True, help='Existing path of assets')
-@click.option('--final', required=True, help='New path for assets')
-def assets_copy(initial, final):
-    """Copy assets."""
-    copy(path=initial, fpath=final)
-
-
-@assets.command('move', help="Move folders, collections, images or tables")
-@click.option('--initial', required=True, help='Existing path of assets')
-@click.option('--final', required=True, help='New path for assets')
-@click.option('--no-cleanup', 'cleanup', is_flag=True, default=True, 
-              help='Keep empty source folders after moving')
-def assets_move(initial, final, cleanup):
-    """Move assets."""
-    mover(path=initial, fpath=final, cleanup=cleanup)
-
-
-@assets.command('access', help="Set permissions for assets")
-@click.option('--asset', required=True, help='Path to the Earth Engine asset')
-@click.option('--user', required=True, help='User email, service account, group, or "allUsers"')
-@click.option('--role', required=True, type=click.Choice(['reader', 'writer', 'delete']), 
-              help='Permission role')
-def assets_access(asset, user, role):
-    """Set asset permissions."""
-    access(collection_path=asset, user=user, role=role)
-
-
-@assets.command('delete', help="Delete folders or collections recursively")
-@click.option('--id', 'asset_id', required=True, help='Full path to asset for deletion')
-@click.option('--workers', default=5, help='Number of concurrent workers')
-@click.option('--retries', default=5, help='Maximum retry attempts per asset')
-@click.option('--verbose', '-v', is_flag=True, help='Enable verbose debug logging')
-def assets_delete(asset_id, workers, retries, verbose):
-    """Delete assets recursively."""
-    delete(ids=asset_id, max_workers=workers, max_retries=retries, verbose=verbose)
-
-
-@assets.command('delete-meta', help="Delete metadata from collection or image")
-@click.option('--asset', required=True, help='Path to the Earth Engine asset')
-@click.option('--property', required=True, help='Metadata property name to delete')
-def assets_delete_meta(asset, property):
-    """Delete asset metadata."""
-    delprop(collection_path=asset, property=property)
-
-
-@assets.command('size', help="Display asset size and item count")
-@click.argument('asset', required=True)
-def assets_size(asset):
-    """Print asset size information."""
-    asset_info = ee.data.getAsset(asset)
-    header = asset_info["type"]
-
-    if header in ["IMAGE_COLLECTION", "IMAGE", "TABLE", "FEATURE_VIEW"]:
-        with console.status(f"[bold cyan]Calculating size for {header}...", spinner="dots"):
-            if header == "IMAGE_COLLECTION":
-                collc = ee.ImageCollection(asset)
-                size = sum(collc.aggregate_array("system:asset_size").getInfo())
-                item_count = collc.size().getInfo()
-            elif header == "IMAGE":
-                collc = ee.ImageCollection.fromImages([ee.Image(asset)])
-                size = sum(collc.aggregate_array("system:asset_size").getInfo())
-                item_count = 1
-            elif header == "TABLE":
-                collc = ee.FeatureCollection(asset)
-                size = float(collc.get("system:asset_size").getInfo())
-                item_count = collc.size().getInfo()
-            elif header == "FEATURE_VIEW":
-                collc = ee.data.getAsset(asset)
-                size = float(collc['sizeBytes'])
-                item_count = collc['featureCount']
-
-        table = Table(show_header=False, box=None)
-        table.add_row("[cyan]Asset:[/cyan]", asset)
-        table.add_row("[cyan]Type:[/cyan]", header.title())
-        table.add_row("[cyan]Size:[/cyan]", humansize(size))
-        table.add_row("[cyan]Items:[/cyan]", str(item_count))
-        console.print(table)
-
-    elif header == "FOLDER":
-        with console.status("[bold cyan]Calculating folder size...", spinner="dots"):
-            out = subprocess.check_output(f"earthengine du {asset} -s", shell=True).decode("ascii")
-            size = humansize(float(out.split()[0]))
-            num = subprocess.check_output(f"earthengine ls -r {asset}", shell=True).decode("ascii")
-            num = [i for i in num.split("\n") if i and len(i) > 1 and not i.startswith("Running")]
-
-        table = Table(show_header=False, box=None)
-        table.add_row("[cyan]Folder:[/cyan]", asset)
-        table.add_row("[cyan]Size:[/cyan]", size)
-        table.add_row("[cyan]Total items:[/cyan]", str(len(num)))
-        console.print(table)
-
-
 # Utils group
 @cli.group(help="Utility commands", context_settings=dict(help_option_names=['-h', '--help']))
 def utils():
@@ -1046,21 +757,6 @@ def utils_report(outfile, path, output_format):
     ee_report(output_path=outfile, asset_path=path, output_format=output_format)
 
 
-@cli.command('readme', help="Open the geeadd documentation webpage")
-def readme():
-    """Open documentation in browser."""
-    try:
-        opened = webbrowser.open("https://samapriya.github.io/gee_asset_manager_addon/", new=2)
-        if not opened:
-            console.print("[yellow]Your setup does not have a monitor to display the webpage[/yellow]")
-            console.print("[cyan]Go to: https://samapriya.github.io/gee_asset_manager_addon/[/cyan]")
-        else:
-            console.print("[green]Opening documentation in browser...[/green]")
-    except Exception as e:
-        console.print(f"[red]Error opening browser: {e}[/red]")
-        console.print("[cyan]Visit: https://samapriya.github.io/gee_asset_manager_addon/[/cyan]")
-
-
 # Deprecated command handlers - show migration messages
 @cli.command('quota', hidden=True)
 @click.option('--project', default=None)
@@ -1074,7 +770,6 @@ def deprecated_quota(ctx, project):
         title="[bold red]Deprecated Command[/bold red]",
         border_style="red"
     ))
-    # Extract any arguments and forward them
     ctx.invoke(projects_quota, project=project)
 
 
