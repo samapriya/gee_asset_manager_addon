@@ -73,11 +73,11 @@
 - Fixed issue with copy and move function for single collections
 
 ### v0.4.6
-- Now inclues asset_url and thumbnail_url for search.
+- Now includes asset_url and thumbnail_url for search.
 - Formatting and general improvements.
 
 ### v0.4.5
-- Now inclues license in sdist
+- Now includes license in sdist
 - Fixed issue with app2script tool and string and text parsing.
 - Added readme and version tools.
 - Added readme docs and deployed environment.
@@ -132,7 +132,7 @@
 
 ### v0.2.5
 - Handles bandnames during upload thanks to Lukasz for original upload code
-- Removed manifest option, that can be handled by seperate tool (ppipe)
+- Removed manifest option, that can be handled by separate tool (ppipe)
 
 ### v0.2.3
 - Removing the initialization loop error
