@@ -61,7 +61,7 @@ geeadd = "geeadd.geeadd:main"
 packages = ["geeadd"]
 
 [tool.setuptools.package-data]
-geeadd = ["LICENSE"]
+geeadd = ["LICENSE", "palettes.json"]
 
 [tool.black]
 line-length = 100

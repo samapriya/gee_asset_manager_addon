@@ -13,6 +13,7 @@ from .ee_projects_dash import get_projects_with_dashboard
 from .ee_report import ee_report
 from .search_fast import EnhancedGEESearch
 from .ee_asset_info import display_asset_info
+from .color_brewer import generate_palette, list_palettes as list_color_palettes, load_palettes, PYPERCLIP_AVAILABLE
 
 __copyright__ = """
     Copyright 2025 Samapriya Roy
@@ -701,7 +702,7 @@ def tasks_cancel(target):
         console.print(f"[red]Error in cancel_tasks: {e}[/red]")
 
 
-# Utils group
+# 5. Utils group (fifth)
 @cli.group(help="Utility commands", context_settings=dict(help_option_names=['-h', '--help']))
 def utils():
     """Utility commands."""
@@ -757,7 +758,88 @@ def utils_report(outfile, path, output_format):
     ee_report(output_path=outfile, asset_path=path, output_format=output_format)
 
 
-# Deprecated command handlers - show migration messages
+@utils.command('palette', help="Generate ColorBrewer color palettes for data visualization")
+@click.option('--name', help='Palette name (e.g., Blues, RdYlGn, Set1)')
+@click.option('--classes', type=int, help='Number of colors to generate (minimum 3)')
+@click.option('--list', 'show_list', is_flag=True, help='List all available palettes')
+@click.option('--type', 'palette_type', 
+              type=click.Choice(['sequential', 'diverging', 'qualitative']),
+              help='Filter palette list by type')
+@click.option('--format', 'output_format', 
+              type=click.Choice(['json', 'hex', 'list', 'css', 'python', 'js']), 
+              default='json',
+              help='Output format')
+@click.option('--copy', 'auto_copy', is_flag=True, 
+              help='Automatically copy output to clipboard')
+def utils_palette(name, classes, show_list, palette_type, output_format, auto_copy):
+    """
+    Generate ColorBrewer color palettes for data visualization.
+    
+    Inspired by https://colorbrewer2.org/
+    
+    \b
+    Output Formats:
+      json   - JSON array (default)
+      hex    - Hex codes, one per line
+      list   - Comma-separated hex codes
+      css    - CSS custom properties
+      python - Python list variable
+      js     - JavaScript array constant
+    
+    \b
+    Examples:
+    
+    \b
+      # List all available palettes
+      geeadd utils palette --list
+      
+    \b
+      # List only sequential palettes
+      geeadd utils palette --list --type sequential
+      
+    \b
+      # Generate 5 colors from Blues palette
+      geeadd utils palette --name Blues --classes 5
+      
+    \b
+      # Generate colors in hex format and copy to clipboard
+      geeadd utils palette --name RdYlGn --classes 9 --format hex --copy
+      
+    \b
+      # Generate CSS custom properties
+      geeadd utils palette --name Set1 --classes 8 --format css
+      
+    \b
+      # Generate Python list
+      geeadd utils palette --name Spectral --classes 11 --format python --copy
+      
+    \b
+      # Generate JavaScript array
+      geeadd utils palette --name Blues --classes 7 --format js --copy
+    """
+    if show_list:
+        palettes = load_palettes()
+        list_color_palettes(palettes, palette_type)
+        
+        # Show clipboard availability info
+        if not PYPERCLIP_AVAILABLE:
+            console.print("\n[dim]💡 Tip: Install pyperclip for clipboard support: pip install pyperclip[/dim]")
+        
+    elif name and classes:
+        generate_palette(name, classes, output_format, auto_copy)
+    else:
+        console.print("[red]Error: Either use --list or provide both --name and --classes[/red]")
+        console.print("\n[yellow]Examples:[/yellow]")
+        console.print("  geeadd utils palette --list")
+        console.print("  geeadd utils palette --name Blues --classes 5")
+        console.print("  geeadd utils palette --name RdYlGn --classes 9 --format hex --copy")
+        sys.exit(1)
+
+
+# ============================================================================
+# DEPRECATED COMMAND HANDLERS - Show migration messages
+# ============================================================================
+
 @cli.command('quota', hidden=True)
 @click.option('--project', default=None)
 @click.pass_context
