@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 __copyright__ = """
 
     Copyright 2024 Samapriya Roy
@@ -41,7 +39,7 @@ def humansize(nbytes):
         nbytes /= 1024.0
         i += 1
     f = ("%.2f" % nbytes).rstrip("0").rstrip(".")
-    return "%s %s" % (f, suffixes[i])
+    return f"{f} {suffixes[i]}"
 
 
 def recprocess(gee_type, location):
@@ -105,13 +103,13 @@ def assetsize(asset):
         return [str(humansize(collc.get("system:asset_size").getInfo())), 1]
     elif header == "FOLDER":
         b = subprocess.Popen(
-            "earthengine du {} -s".format(asset), shell=True, stdout=subprocess.PIPE
+            f"earthengine du {asset} -s", shell=True, stdout=subprocess.PIPE
         )
         out, err = b.communicate()
         val = [item for item in out.decode("ascii").split(" ") if item.isdigit()]
         size = humansize(float(val[0]))
         num = subprocess.Popen(
-            "earthengine ls {}".format(asset), shell=True, stdout=subprocess.PIPE
+            f"earthengine ls {asset}", shell=True, stdout=subprocess.PIPE
         )
         out, err = num.communicate()
         out = out.decode("ascii")
@@ -157,7 +155,7 @@ def ee_report(output, path):
         "Go grab some coffee.....",
     ]  # adding something fun
     path_list = []
-    logger.debug("This might take sometime. {}".format(random.choice(choicelist)))
+    logger.debug(f"This might take sometime. {random.choice(choicelist)}")
     ee.Initialize()
     with open(output, "w") as csvfile:
         writer = csv.DictWriter(
@@ -204,7 +202,7 @@ def ee_report(output, path):
             if not folder in path_list:
                 gee_id = ee.data.getAsset(folder)["name"]
                 gee_type = "folder"
-                logger.info("Processing Folder {}".format(gee_id))
+                logger.info(f"Processing Folder {gee_id}")
                 total_size, total_count = assetsize(gee_id)
                 o, r, w = recprocess(gee_type, gee_id)
                 try:
@@ -220,7 +218,7 @@ def ee_report(output, path):
         for collection in collection_list:
             gee_id = ee.data.getAsset(collection)["name"]
             gee_type = "collection"
-            logger.info("Processing Collection {}".format(gee_id))
+            logger.info(f"Processing Collection {gee_id}")
             total_size, total_count = assetsize(gee_id)
             o, r, w = recprocess(gee_type, gee_id)
             # print(gee_id,gee_type,total_size,total_count,o,r,w)
@@ -232,7 +230,7 @@ def ee_report(output, path):
         for table in table_list:
             gee_id = ee.data.getAsset(table)["name"]
             gee_type = "table"
-            logger.info("Processing table {}".format(gee_id))
+            logger.info(f"Processing table {gee_id}")
             total_size, total_count = assetsize(gee_id)
             o, r, w = recprocess(gee_type, gee_id)
             # print(gee_id,gee_type,total_size,total_count,o,r,w)
@@ -244,7 +242,7 @@ def ee_report(output, path):
         for image in image_list:
             gee_id = ee.data.getAsset(image)["name"]
             gee_type = "image"
-            logger.info("Processing image {}".format(gee_id))
+            logger.info(f"Processing image {gee_id}")
             total_size, total_count = assetsize(gee_id)
             o, r, w = recprocess(gee_type, gee_id)
             # print(gee_id,gee_type,total_size,total_count,o,r,w)

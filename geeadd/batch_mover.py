@@ -274,7 +274,7 @@ def mover(path, fpath, max_workers=10):
                 # Get the final path
                 final_path_suffix = fpath.split("/")[-1]
                 replaced_string = (
-                    ee.data.getAsset(("/".join(fpath.split("/")[:-1]) + "/"))["name"]
+                    ee.data.getAsset("/".join(fpath.split("/")[:-1]) + "/")["name"]
                     + "/"
                     + final_path_suffix
                 )

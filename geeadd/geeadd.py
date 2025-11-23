@@ -150,7 +150,7 @@ def humansize(nbytes):
         nbytes /= 1024.0
         i += 1
     f = ("%.2f" % nbytes).rstrip("0").rstrip(".")
-    return "%s %s" % (f, suffixes[i])
+    return f"{f} {suffixes[i]}"
 
 
 def cancel_tasks(tasks):
@@ -640,7 +640,7 @@ def search(mname, source):
             "https://raw.githubusercontent.com/samapriya/awesome-gee-community-datasets/master/community_datasets.json"
         )
         community_list = r.json()
-        print("Looking within {} community datasets".format(len(community_list)))
+        print(f"Looking within {len(community_list)} community datasets")
         i = 1
         for rows in community_list:
             if mname.lower() in str(rows["title"]).lower():
@@ -733,7 +733,7 @@ def search(mname, source):
             "https://raw.githubusercontent.com/samapriya/Earth-Engine-Datasets-List/master/gee_catalog.json"
         )
         catalog_list = r.json()
-        print("Looking within {} gee catalog datasets".format(len(catalog_list)))
+        print(f"Looking within {len(catalog_list)} gee catalog datasets")
         i = 1
         for rows in catalog_list:
             if mname.lower() in str(rows["title"]).lower():
