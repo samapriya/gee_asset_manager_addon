@@ -1,0 +1,1888 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>geeadd | Google Earth Engine Batch Asset Manager</title>
+    <meta name="description"
+        content="Documentation for geeadd: A CLI for managing Google Earth Engine assets in batch.">
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Montserrat:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                        dashboard: ['Montserrat', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            900: '#0c4a6e',
+                        },
+                        emerald: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                            900: '#064e3b',
+                        },
+                        dark: {
+                            bg: '#0B1120',
+                            surface: '#1e293b',
+                            border: '#334155'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+
+        /* Code Block Styling */
+        pre {
+            position: relative;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            padding: 1rem;
+            padding-bottom: 1rem;
+            padding-right: 4rem;
+            line-height: 1.5;
+        }
+
+        /* The Copy Button */
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            opacity: 0;
+            transform: translateY(-2px);
+            transition: all 0.2s ease;
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 10;
+        }
+
+        pre:hover .copy-btn,
+        .copy-btn:focus {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .glass-nav {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .active-nav {
+            background-color: rgba(14, 165, 233, 0.1);
+            color: #0ea5e9;
+            border-right: 3px solid #0ea5e9;
+        }
+
+        .dark .active-nav {
+            background-color: rgba(14, 165, 233, 0.15);
+            color: #38bdf8;
+            border-right: 3px solid #38bdf8;
+        }
+
+        /* Accordion Animations for Sidebar */
+        .sidebar-group details>summary {
+            list-style: none;
+        }
+
+        .sidebar-group details>summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .sidebar-group details[open] summary~* {
+            animation: slideDown 0.2s ease-in-out;
+        }
+
+        /* Accordion Animations for Migration Guide */
+        .migration-group details>summary {
+            list-style: none;
+        }
+
+        .migration-group details>summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .migration-group details[open] summary~* {
+            animation: slideDown 0.2s ease-in-out;
+        }
+
+
+        @keyframes slideDown {
+            0% {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .rotate-icon {
+            transition: transform 0.3s ease;
+        }
+
+        details[open] .rotate-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Dashboard Preview Styles (Scoped) */
+        .dashboard-preview-wrapper {
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .dashboard-stat-card {
+            transition: all 0.3s ease;
+        }
+
+        .dashboard-stat-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .dashboard-stat-card.active {
+            box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.4);
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+
+<body
+    class="bg-gray-50 text-slate-800 dark:bg-dark-bg dark:text-slate-300 transition-colors duration-300 antialiased selection:bg-brand-500 selection:text-white pt-10">
+
+    <!-- Social Follow Header -->
+    <div
+        class="fixed top-0 left-0 w-full z-[60] bg-[#161b22] text-white py-2.5 flex items-center justify-center gap-6 text-sm font-medium border-b border-gray-800 shadow-md">
+        <span class="text-gray-400 font-semibold hidden sm:inline">Follow me on</span>
+        <a href="https://linkedin.com/in/samapriya" target="_blank"
+            class="flex items-center gap-1.5 hover:text-brand-400 transition-colors group">
+            <i data-lucide="linkedin" class="w-4 h-4 fill-current"></i>
+            <span class="group-hover:underline decoration-brand-400 underline-offset-4">LinkedIn</span>
+        </a>
+        <a href="https://github.com/samapriya" target="_blank"
+            class="flex items-center gap-1.5 hover:text-brand-400 transition-colors group">
+            <i data-lucide="github" class="w-4 h-4 fill-current"></i>
+            <span class="group-hover:underline decoration-brand-400 underline-offset-4">GitHub</span>
+        </a>
+        <a href="https://datacommons.substack.com" target="_blank"
+            class="flex items-center gap-1.5 hover:text-brand-400 transition-colors group">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="lucide lucide-bookmark">
+                <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+            </svg>
+            <span class="group-hover:underline decoration-brand-400 underline-offset-4">Substack</span>
+        </a>
+    </div>
+
+    <!-- Mobile Header -->
+    <div
+        class="lg:hidden fixed top-10 w-full z-50 bg-white/90 dark:bg-dark-bg/90 glass-nav border-b border-gray-200 dark:border-dark-border px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <!-- Mobile Logo -->
+            <img src="https://i.imgur.com/VP6DuMy.png" alt="geeadd logo" class="w-8 h-8 drop-shadow-sm">
+            <span class="font-bold text-lg tracking-tight text-slate-900 dark:text-white">geeadd</span>
+        </div>
+        <button id="menu-toggle" class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-dark-surface">
+            <i data-lucide="menu"></i>
+        </button>
+    </div>
+
+    <div class="flex min-h-screen pt-16 lg:pt-0">
+
+        <!-- Sidebar -->
+        <aside id="sidebar"
+            class="fixed inset-y-0 left-0 z-40 w-72 mt-10 lg:mt-0 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 bg-white dark:bg-dark-surface border-r border-gray-200 dark:border-dark-border flex flex-col h-screen lg:h-[calc(100vh-40px)] lg:top-10">
+            <!-- Logo Area -->
+            <div class="p-6 border-b border-gray-100 dark:border-dark-border hidden lg:block">
+                <a href="#" class="flex items-center gap-3">
+                    <div class="relative group">
+                        <!-- Main Logo Icon -->
+                        <img src="https://i.imgur.com/VP6DuMy.png" alt="geeadd"
+                            class="w-12 h-12 transition-transform group-hover:scale-105 drop-shadow-md">
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-2xl text-slate-900 dark:text-white leading-none">geeadd</h1>
+                        <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-1.5">Asset Manager
+                            Addons</p>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Search -->
+            <div class="px-5 py-4">
+                <div class="relative group">
+                    <i data-lucide="search"
+                        class="absolute left-3 top-2.5 text-gray-400 w-4 h-4 group-focus-within:text-brand-500 transition-colors"></i>
+                    <input type="text" id="search-input" placeholder="Search docs..."
+                        class="w-full bg-gray-100 dark:bg-gray-900/50 text-sm rounded-lg pl-9 pr-3 py-2 border border-transparent focus:border-brand-500 focus:ring-1 focus:ring-brand-500 focus:outline-none dark:text-white transition-all placeholder:text-gray-500">
+                </div>
+            </div>
+
+            <!-- Accordion Navigation -->
+            <nav class="flex-1 overflow-y-auto px-3 pb-6 space-y-1" id="nav-container">
+                <!-- Top Level Links -->
+                <a href="#introduction"
+                    class="nav-item block px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Introduction</a>
+                <a href="#interface"
+                    class="nav-item block px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Main
+                    Interface</a>
+                <a href="#installation"
+                    class="nav-item block px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Installation</a>
+                <a href="#migration"
+                    class="nav-item block px-3 py-2 rounded-md text-sm font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/10 hover:bg-amber-100 dark:hover:bg-amber-900/20 transition-colors mt-2 mb-4">
+                    <i data-lucide="alert-circle" class="inline w-3 h-3 mr-1"></i> Migration Guide
+                </a>
+
+                <!-- Projects Group -->
+                <div class="sidebar-group">
+                    <details class="group">
+                        <summary
+                            class="flex items-center justify-between px-3 py-2 rounded-md cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm font-bold text-gray-500 uppercase tracking-wider">
+                            <span class="flex items-center gap-2"><i data-lucide="folder-kanban" size="14"></i>
+                                Projects</span>
+                            <i data-lucide="chevron-down" size="14" class="rotate-icon"></i>
+                        </summary>
+                        <div class="pl-2 space-y-1 mt-1">
+                            <a href="#projects-quota"
+                                class="nav-item block px-3 py-2 rounded-md text-sm text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-l-2 border-transparent hover:border-brand-500">Quota</a>
+                            <a href="#projects-enabled"
+                                class="nav-item block px-3 py-2 rounded-md text-sm text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-l-2 border-transparent hover:border-brand-500">Enabled
+                                Projects</a>
+                            <a href="#projects-dash"
+                                class="nav-item block px-3 py-2 rounded-md text-sm text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-l-2 border-transparent hover:border-brand-500">Dashboard</a>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- Assets Group -->
+                <div class="sidebar-group">
+                    <details class="group">
+                        <summary
+                            class="flex items-center justify-between px-3 py-2 rounded-md cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm font-bold text-gray-500 uppercase tracking-wider">
+                            <span class="flex items-center gap-2"><i data-lucide="layers" size="14"></i> Assets</span>
+                            <i data-lucide="chevron-down" size="14" class="rotate-icon"></i>
+                        </summary>
+                        <div class="pl-2 space-y-1 mt-1">
+                            <a href="#assets-info"
+                                class="nav-item block px-3 py-2 rounded-md text-sm text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-l-2 border-transparent hover:border-brand-500">Info</a>
+                            <a href="#assets-copy"
+                                class="nav-item block px-3 py-2 rounded-md text-sm text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-l-2 border-transparent hover:border-brand-500">Copy</a>
+                            <a href="#assets-move"
+                                class="nav-item block px-3 py-2 rounded-md text-sm text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-l-2 border-transparent hover:border-brand-500">Move</a>
+                            <a href="#assets-delete"
+                                class="nav-item block px-3 py-2 rounded-md text-sm text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-l-2 border-transparent hover:border-brand-500">Delete</a>
+                            <a href="#assets-delete-meta"
+                                class="nav-item block px-3 py-2 rounded-md text-sm text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-l-2 border-transparent hover:border-brand-500">Delete
+                                Metadata</a>
+                            <a href="#assets-access"
+                                class="nav-item block px-3 py-2 rounded-md text-sm text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-l-2 border-transparent hover:border-brand-500">Access
+                                (ACL)</a>
+                            <a href="#assets-size"
+                                class="nav-item block px-3 py-2 rounded-md text-sm text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-l-2 border-transparent hover:border-brand-500">Size</a>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- Tasks Group -->
+                <div class="sidebar-group">
+                    <details class="group">
+                        <summary
+                            class="flex items-center justify-between px-3 py-2 rounded-md cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm font-bold text-gray-500 uppercase tracking-wider">
+                            <span class="flex items-center gap-2"><i data-lucide="list-checks" size="14"></i>
+                                Tasks</span>
+                            <i data-lucide="chevron-down" size="14" class="rotate-icon"></i>
+                        </summary>
+                        <div class="pl-2 space-y-1 mt-1">
+                            <a href="#tasks-list"
+                                class="nav-item block px-3 py-2 rounded-md text-sm text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-l-2 border-transparent hover:border-brand-500">List
+                                & Status</a>
+                            <a href="#tasks-cancel"
+                                class="nav-item block px-3 py-2 rounded-md text-sm text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-l-2 border-transparent hover:border-brand-500">Cancel</a>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- Utils Group -->
+                <div class="sidebar-group">
+                    <details class="group">
+                        <summary
+                            class="flex items-center justify-between px-3 py-2 rounded-md cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm font-bold text-gray-500 uppercase tracking-wider">
+                            <span class="flex items-center gap-2"><i data-lucide="wrench" size="14"></i> Utils</span>
+                            <i data-lucide="chevron-down" size="14" class="rotate-icon"></i>
+                        </summary>
+                        <div class="pl-2 space-y-1 mt-1">
+                            <a href="#utils-search"
+                                class="nav-item block px-3 py-2 rounded-md text-sm text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-l-2 border-transparent hover:border-brand-500">Search</a>
+                            <a href="#utils-app2script"
+                                class="nav-item block px-3 py-2 rounded-md text-sm text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-l-2 border-transparent hover:border-brand-500">App
+                                to Script</a>
+                            <a href="#utils-report"
+                                class="nav-item block px-3 py-2 rounded-md text-sm text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-l-2 border-transparent hover:border-brand-500">Asset
+                                Report</a>
+                            <a href="#utils-palette"
+                                class="nav-item block px-3 py-2 rounded-md text-sm text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-l-2 border-transparent hover:border-brand-500">Palette</a>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- Examples Link -->
+                <a href="#examples"
+                    class="nav-item block px-3 py-2 rounded-md text-sm font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/10 hover:bg-emerald-100 dark:hover:bg-emerald-900/20 transition-colors mt-4">
+                    <i data-lucide="book-open" class="inline w-3 h-3 mr-1"></i> Examples & Guides
+                </a>
+            </nav>
+
+            <!-- Sidebar Footer -->
+            <div
+                class="p-4 border-t border-gray-200 dark:border-dark-border flex items-center justify-between bg-gray-50 dark:bg-black/20">
+                <button id="theme-toggle"
+                    class="p-2 rounded-md text-gray-500 hover:bg-white dark:hover:bg-gray-700 dark:text-gray-400 transition-all shadow-sm">
+                    <i data-lucide="moon" class="block dark:hidden" size="18"></i>
+                    <i data-lucide="sun" class="hidden dark:block" size="18"></i>
+                </button>
+                <a href="https://github.com/samapriya/gee_asset_manager_addon" target="_blank"
+                    class="flex items-center gap-2 text-sm text-slate-600 hover:text-brand-600 dark:text-slate-400 dark:hover:text-brand-400 transition-colors font-medium">
+                    <i data-lucide="github" size="16"></i> GitHub
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="lg:ml-72 flex-1 max-w-5xl mx-auto px-6 py-12 lg:px-12 w-full">
+
+            <!-- Hero -->
+            <section id="introduction" class="mb-16 relative">
+
+                <div
+                    class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300 text-xs font-bold mb-6 border border-brand-100 dark:border-brand-800">
+                    <span class="relative flex h-2 w-2">
+                        <span
+                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-brand-500"></span>
+                    </span>
+                    New in v2.0.0: Nested Commands
+                </div>
+
+                <div class="flex flex-col md:flex-row items-center gap-8 mb-6">
+                    <div class="flex-1">
+                        <h1
+                            class="text-4xl lg:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-6">
+                            Manage Earth Engine Assets <br class="hidden lg:block" />
+                            <span
+                                class="bg-clip-text text-transparent bg-gradient-to-r from-brand-500 via-brand-600 to-purple-600">Like
+                                a Power User.</span>
+                        </h1>
+                        <p class="text-lg lg:text-xl text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl mb-8">
+                            <b>geeadd</b> extends the Google Earth Engine CLI with powerful batch operations.
+                            Recursively copy, move, and delete assets, manage permissions, and query quotas with a
+                            modern,
+                            structured interface.
+                        </p>
+                    </div>
+                    <!-- Hero Image / Secondary Logo -->
+                    <div class="hidden md:block w-48 opacity-90 hover:opacity-100 transition-opacity">
+                        <img src="https://i.imgur.com/1v5fDby.png" alt="Hexagonal geeadd logo"
+                            class="w-full drop-shadow-2xl">
+                    </div>
+                </div>
+
+                <!-- Badges (Moved Above Buttons) -->
+                <div class="flex flex-wrap gap-2 items-center mb-8">
+                    <a href="https://www.linkedin.com/in/samapriya/" target="_blank"><img
+                            src="https://img.shields.io/badge/LinkedIn-0077B5?style=plastic&logo=linkedin&logoColor=white"
+                            alt="LinkedIn"></a>
+                    <img src="https://img.shields.io/pypi/v/geeadd" alt="PyPI">
+                    <img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/samapriya/20118b6b318dca285d4e1ddb8c9b5e35/raw"
+                        alt="Downloads">
+                    <img src="https://github.com/samapriya/gee_asset_manager_addon/workflows/CI%20geeadd/badge.svg"
+                        alt="CI">
+                    <a href="https://www.buymeacoffee.com/samapriya" target="_blank"><img
+                            src="https://img.shields.io/badge/Donate-Buy%20me%20a%20Chai-teal" alt="Donate"></a>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-4 items-center">
+                    <a href="#installation"
+                        class="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 border border-transparent text-base font-semibold rounded-xl text-white bg-brand-600 hover:bg-brand-700 transition shadow-lg shadow-brand-500/30 hover:shadow-brand-500/50">
+                        <i data-lucide="terminal" class="mr-2" size="20"></i> Install Now
+                    </a>
+
+                    <a href="https://github.com/samapriya/gee_asset_manager_addon" target="_blank"
+                        class="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 border border-gray-300 dark:border-gray-600 text-base font-medium rounded-xl text-slate-700 dark:text-slate-200 bg-white dark:bg-dark-surface hover:bg-gray-50 dark:hover:bg-gray-800 transition shadow-sm">
+                        <i data-lucide="star" class="mr-2 text-yellow-500 fill-yellow-500" size="20"></i> Star on GitHub
+                    </a>
+                </div>
+            </section>
+
+            <!-- Interface Section -->
+            <section id="interface" class="mb-24 scroll-mt-28">
+                <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
+                    <div class="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg"><i data-lucide="command"
+                            class="text-brand-500"></i></div>
+                    Main Interface
+                </h2>
+                <p class="mb-6 text-slate-600 dark:text-slate-400">
+                    The <code>geeadd</code> tool uses a grouped command structure. Run <code>geeadd --help</code> to see
+                    the available groups.
+                </p>
+
+                <!-- TERMINAL BLOCK -->
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                    </div>
+                    <div class="relative">
+                        <pre class="font-mono text-sm text-white"><code>Usage: geeadd [OPTIONS] COMMAND [ARGS]...
+
+  Google Earth Engine Batch Asset Manager with Addons
+
+  A modern CLI tool for managing GEE assets, tasks, and projects.
+
+Options:
+  --version   Show the version and exit.
+  -h, --help  Show this message and exit.
+
+Commands:
+  readme    Open the geeadd documentation webpage
+  projects  Manage Earth Engine projects
+  assets    Manage Earth Engine assets
+  tasks     Manage Earth Engine tasks
+  utils     Utility commands
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Installation -->
+            <section id="installation" class="mb-24 scroll-mt-28">
+                <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
+                    <div class="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg"><i data-lucide="download"
+                            class="text-brand-500"></i></div>
+                    Installation
+                </h2>
+
+                <div class="prose dark:prose-invert max-w-none text-slate-600 dark:text-slate-400 mb-8">
+                    <p>You can install `geeadd` using pip, git, or build it from source using `pyproject.toml`.</p>
+                </div>
+
+                <!-- Installation Methods -->
+                <div class="grid gap-8">
+                    <!-- Method 1: PIP -->
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-2 uppercase tracking-wide">Method
+                            1: PyPI (Recommended)</h3>
+                        <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                            <div
+                                class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                                <div class="flex gap-1.5">
+                                    <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                    <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                    <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                                </div>
+                                <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                            </div>
+                            <div class="relative">
+                                <pre
+                                    class="font-mono text-sm text-white p-2"><code>pip install geeadd</code><button class="copy-btn text-white text-xs px-2.5 py-1.5 rounded-md font-medium" onclick="copyCode(this)">Copy</button></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Method 2: GIT -->
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-2 uppercase tracking-wide">Method
+                            2: GitHub Source</h3>
+                        <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                            <div
+                                class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                                <div class="flex gap-1.5">
+                                    <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                    <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                    <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                                </div>
+                                <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                            </div>
+                            <div class="relative">
+                                <pre
+                                    class="font-mono text-sm text-white p-2"><code>git clone https://github.com/samapriya/gee_asset_manager_addon.git
+cd gee_asset_manager_addon
+pip install .</code><button class="copy-btn text-white text-xs px-2.5 py-1.5 rounded-md font-medium" onclick="copyCode(this)">Copy</button></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="mt-8 p-4 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-400 rounded-r-lg flex gap-4">
+                    <i data-lucide="alert-triangle" class="text-amber-600 dark:text-amber-400 shrink-0"></i>
+                    <p class="text-sm text-amber-800 dark:text-amber-200">
+                        <strong>Requirement:</strong> Ensure you have the Earth Engine Python API installed and
+                        authenticated via <code
+                            class="bg-amber-100 dark:bg-amber-900/50 px-1 py-0.5 rounded font-mono text-amber-900 dark:text-amber-100">earthengine authenticate</code>.
+                    </p>
+                </div>
+            </section>
+
+            <!-- Migration Guide -->
+            <section id="migration" class="mb-24 scroll-mt-28">
+                <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
+                    <div class="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg"><i data-lucide="git-pull-request"
+                            class="text-purple-500"></i></div>
+                    Migration Guide: v1.2.1 to 2.0.0
+                </h2>
+                <p class="mb-6 text-slate-600 dark:text-slate-400">
+                    Version 2.0.0 organizes commands into logical groups. Click a group below to see how the commands
+                    have
+                    changed.
+                </p>
+
+                <!-- Collapsible Sections -->
+                <div class="space-y-4 migration-group">
+
+                    <!-- Group: Projects -->
+                    <details
+                        class="group bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl shadow-sm overflow-hidden">
+                        <summary
+                            class="flex items-center justify-between p-5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg">
+                                    <i data-lucide="folder-kanban" size="20"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 dark:text-white text-lg">Projects Group</h3>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">Quota, Enabled Projects,
+                                        Dashboards</p>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-down" class="rotate-icon text-gray-400"></i>
+                        </summary>
+                        <div
+                            class="p-0 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-800">
+                                    <tr>
+                                        <th
+                                            class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                            Old Command</th>
+                                        <th
+                                            class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                            New Command</th>
+                                    </tr>
+                                </thead>
+                                <tbody
+                                    class="bg-white dark:bg-dark-surface divide-y divide-gray-200 dark:divide-gray-700 font-mono text-sm">
+                                    <tr>
+                                        <td class="px-6 py-4 text-red-500 line-through opacity-75">geeadd quota</td>
+                                        <td class="px-6 py-4 text-green-600 dark:text-green-400 font-bold">geeadd
+                                            projects quota</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-6 py-4 text-red-500 line-through opacity-75">geeadd projects</td>
+                                        <td class="px-6 py-4 text-green-600 dark:text-green-400 font-bold">geeadd
+                                            projects enabled</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-6 py-4 text-red-500 line-through opacity-75">geeadd projects_dash
+                                        </td>
+                                        <td class="px-6 py-4 text-green-600 dark:text-green-400 font-bold">geeadd
+                                            projects dashboard</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+
+                    <!-- Group: Assets -->
+                    <details
+                        class="group bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl shadow-sm overflow-hidden">
+                        <summary
+                            class="flex items-center justify-between p-5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="p-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg">
+                                    <i data-lucide="layers" size="20"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 dark:text-white text-lg">Assets Group</h3>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">Copy, Move, Delete, Access,
+                                        Size</p>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-down" class="rotate-icon text-gray-400"></i>
+                        </summary>
+                        <div
+                            class="p-0 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-800">
+                                    <tr>
+                                        <th
+                                            class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                            Old Command</th>
+                                        <th
+                                            class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                            New Command</th>
+                                    </tr>
+                                </thead>
+                                <tbody
+                                    class="bg-white dark:bg-dark-surface divide-y divide-gray-200 dark:divide-gray-700 font-mono text-sm">
+                                    <tr>
+                                        <td class="px-6 py-4 text-red-500 line-through opacity-75">geeadd copy</td>
+                                        <td class="px-6 py-4 text-green-600 dark:text-green-400 font-bold">geeadd assets
+                                            copy</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-6 py-4 text-red-500 line-through opacity-75">geeadd move</td>
+                                        <td class="px-6 py-4 text-green-600 dark:text-green-400 font-bold">geeadd assets
+                                            move</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-6 py-4 text-red-500 line-through opacity-75">geeadd delete</td>
+                                        <td class="px-6 py-4 text-green-600 dark:text-green-400 font-bold">geeadd assets
+                                            delete</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-6 py-4 text-red-500 line-through opacity-75">geeadd
+                                            delete_metadata</td>
+                                        <td class="px-6 py-4 text-green-600 dark:text-green-400 font-bold">geeadd assets
+                                            delete-meta</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-6 py-4 text-red-500 line-through opacity-75">geeadd access</td>
+                                        <td class="px-6 py-4 text-green-600 dark:text-green-400 font-bold">geeadd assets
+                                            access</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-6 py-4 text-red-500 line-through opacity-75">geeadd assetsize</td>
+                                        <td class="px-6 py-4 text-green-600 dark:text-green-400 font-bold">geeadd assets
+                                            size</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+
+                    <!-- Group: Tasks -->
+                    <details
+                        class="group bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl shadow-sm overflow-hidden">
+                        <summary
+                            class="flex items-center justify-between p-5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="p-2 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-lg">
+                                    <i data-lucide="list-checks" size="20"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 dark:text-white text-lg">Tasks Group</h3>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">List, Status, Cancel</p>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-down" class="rotate-icon text-gray-400"></i>
+                        </summary>
+                        <div
+                            class="p-0 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-800">
+                                    <tr>
+                                        <th
+                                            class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                            Old Command</th>
+                                        <th
+                                            class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                            New Command</th>
+                                    </tr>
+                                </thead>
+                                <tbody
+                                    class="bg-white dark:bg-dark-surface divide-y divide-gray-200 dark:divide-gray-700 font-mono text-sm">
+                                    <tr>
+                                        <td class="px-6 py-4 text-red-500 line-through opacity-75">geeadd tasks</td>
+                                        <td class="px-6 py-4 text-green-600 dark:text-green-400 font-bold">geeadd tasks
+                                            list</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-6 py-4 text-red-500 line-through opacity-75">geeadd cancel</td>
+                                        <td class="px-6 py-4 text-green-600 dark:text-green-400 font-bold">geeadd tasks
+                                            cancel</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+
+                    <!-- Group: Utils -->
+                    <details
+                        class="group bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl shadow-sm overflow-hidden">
+                        <summary
+                            class="flex items-center justify-between p-5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="p-2 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg">
+                                    <i data-lucide="wrench" size="20"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 dark:text-white text-lg">Utils Group</h3>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">Search, Reports, App2Script
+                                    </p>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-down" class="rotate-icon text-gray-400"></i>
+                        </summary>
+                        <div
+                            class="p-0 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-800">
+                                    <tr>
+                                        <th
+                                            class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                            Old Command</th>
+                                        <th
+                                            class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                            New Command</th>
+                                    </tr>
+                                </thead>
+                                <tbody
+                                    class="bg-white dark:bg-dark-surface divide-y divide-gray-200 dark:divide-gray-700 font-mono text-sm">
+                                    <tr>
+                                        <td class="px-6 py-4 text-red-500 line-through opacity-75">geeadd search</td>
+                                        <td class="px-6 py-4 text-green-600 dark:text-green-400 font-bold">geeadd utils
+                                            search</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-6 py-4 text-red-500 line-through opacity-75">geeadd app2script
+                                        </td>
+                                        <td class="px-6 py-4 text-green-600 dark:text-green-400 font-bold">geeadd utils
+                                            app2script</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-6 py-4 text-red-500 line-through opacity-75">geeadd ee_report</td>
+                                        <td class="px-6 py-4 text-green-600 dark:text-green-400 font-bold">geeadd utils
+                                            report</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                </div>
+            </section>
+
+            <hr class="border-gray-100 dark:border-gray-800 mb-16">
+
+            <!-- PROJECTS GROUP -->
+            <div class="mb-10"><span class="text-sm font-bold text-brand-500 uppercase tracking-wider">Group:
+                    Projects</span></div>
+
+            <section id="projects-quota" class="mb-20 scroll-mt-28">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Quota & Configuration</h3>
+                <p class="mb-4 text-slate-600 dark:text-slate-400">
+                    The Quota tool is your primary utility for monitoring Earth Engine storage and asset counts.
+                    It automatically detects whether you are using a legacy folder or a Google Cloud Project.
+                </p>
+
+                <div class="grid md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                        <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                            <div class="flex gap-1.5">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            </div>
+                            <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                        </div>
+                        <div class="relative">
+                            <span class="text-xs text-slate-500 block font-mono px-4 pt-4"># Check all accessible
+                                quotas</span>
+                            <pre class="font-mono text-sm text-white"><code>geeadd projects quota
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                        <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                            <div class="flex gap-1.5">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            </div>
+                            <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                        </div>
+                        <div class="relative">
+                            <span class="text-xs text-slate-500 block font-mono px-4 pt-4"># Specific Cloud
+                                Project</span>
+                            <pre class="font-mono text-sm text-white"><code>geeadd projects quota --project "projects/my-project"
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Example Output</span>
+                    </div>
+                    <div class="relative overflow-x-auto">
+                        <pre class="font-mono text-xs md:text-sm text-gray-300">(geetools) λ geeadd projects quota
+Earth Engine Quota Summary
+
+     Cloud Project: projects/my-project
+ Storage:  231.33 GB of 250 GB
+           [███████████████████████████░░░] 92.5%
+ Assets:   4,133 of 50,000
+           [██░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 8.3%
+
+           Legacy Root: users/username
+ Storage:  7.92 TB of 10 TB
+           [███████████████████████░░░░░░░] 79.2%
+ Assets:   57,271 of 90,000
+           [███████████████████░░░░░░░░░░░] 63.6%</pre>
+                    </div>
+                </div>
+            </section>
+
+            <section id="projects-enabled" class="mb-20 scroll-mt-28">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Enabled Projects</h3>
+                <p class="mb-4 text-slate-600 dark:text-slate-400">
+                    Quickly identify all Google Cloud Projects where you have the Earth Engine API enabled.
+                </p>
+
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group mb-4">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                    </div>
+                    <div class="relative">
+                        <pre class="font-mono text-sm text-white"><code>geeadd projects enabled
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Example Output</span>
+                    </div>
+                    <div class="relative">
+                        <pre class="font-mono text-sm text-gray-300">(geetools) λ geeadd projects enabled
+Enabled Earth Engine Projects
+
+ projects/my-gee-project
+ projects/research-project
+ users/myusername</pre>
+                    </div>
+                </div>
+            </section>
+
+            <section id="projects-dash" class="mb-24 scroll-mt-28">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Project Dashboard</h3>
+                <p class="mb-4 text-slate-600 dark:text-slate-400">
+                    Creates an interactive HTML dashboard summarizing your projects, their storage usage, and asset
+                    counts in a visual format.
+                </p>
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group mb-8">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                    </div>
+                    <div class="relative">
+                        <pre class="font-mono text-sm text-white"><code>geeadd projects dashboard or geeadd projects dashboard --outdir ./my_dashboard.html
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                    </div>
+                </div>
+
+                <!-- Live Preview of Dashboard -->
+                <div
+                    class="mt-8 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-xl bg-white dashboard-preview-wrapper">
+                    <div class="bg-gray-100 border-b border-gray-200 px-4 py-2 flex items-center gap-2">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-400"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-400"></div>
+                        </div>
+                        <div class="text-xs text-gray-500 font-mono ml-2">ee_projects_dashboard.html (Preview)</div>
+                    </div>
+
+                    <!-- Embedded Dashboard Content -->
+                    <div class="p-4 sm:p-8 bg-gray-50 text-gray-800">
+                        <div class="max-w-7xl mx-auto relative z-10">
+                            <!-- Header Card -->
+                            <div
+                                class="border border-gray-200 bg-white shadow-sm rounded-2xl p-6 mb-6 flex flex-col sm:flex-row items-center justify-between">
+                                <div class="mb-4 sm:mb-0 text-center sm:text-left">
+                                    <h1 class="text-2xl lg:text-3xl font-bold text-gray-900 mb-1">Earth Engine Projects
+                                    </h1>
+                                    <p class="text-gray-500 text-sm">Overview of your Google Earth Engine enabled
+                                        projects</p>
+                                </div>
+                                <div class="flex items-center space-x-4">
+                                    <div
+                                        class="w-16 h-16 rounded-full bg-gray-200 border-2 border-gray-300 flex items-center justify-center text-gray-400 text-xs font-bold">
+                                        LOGO</div>
+                                </div>
+                            </div>
+
+                            <!-- Stats Container -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                                <div class="dashboard-stat-card rounded-2xl p-5 shadow-sm bg-white border border-gray-200 cursor-pointer"
+                                    onclick="toggleActive(this)">
+                                    <div class="text-gray-500 text-xs font-medium mb-1">Total Projects</div>
+                                    <div class="text-blue-600 text-2xl font-bold">11</div>
+                                </div>
+                                <div class="dashboard-stat-card rounded-2xl p-5 shadow-sm bg-white border border-gray-200 cursor-pointer"
+                                    onclick="toggleActive(this)">
+                                    <div class="text-gray-500 text-xs font-medium mb-1">Commercial</div>
+                                    <div class="text-green-600 text-2xl font-bold">1</div>
+                                </div>
+                                <div class="dashboard-stat-card rounded-2xl p-5 shadow-sm bg-white border border-gray-200 cursor-pointer"
+                                    onclick="toggleActive(this)">
+                                    <div class="text-gray-500 text-xs font-medium mb-1">Non-Commercial</div>
+                                    <div class="text-yellow-600 text-2xl font-bold">7</div>
+                                </div>
+                                <div class="dashboard-stat-card rounded-2xl p-5 shadow-sm bg-white border border-gray-200 cursor-pointer"
+                                    onclick="toggleActive(this)">
+                                    <div class="text-gray-500 text-xs font-medium mb-1">Not Registered</div>
+                                    <div class="text-red-600 text-2xl font-bold">3</div>
+                                </div>
+                            </div>
+
+                            <!-- Projects Container (Sample) -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- Card 1 -->
+                                <div
+                                    class="rounded-2xl p-5 bg-white border border-gray-200 shadow-sm flex flex-col justify-between">
+                                    <div>
+                                        <div class="flex items-center justify-between mb-3">
+                                            <h3 class="text-lg font-semibold text-gray-900 truncate">carmen-sandiego
+                                            </h3>
+                                        </div>
+                                        <div class="space-y-2 mb-4">
+                                            <div>
+                                                <div class="text-gray-400 text-[10px] font-medium uppercase">Project ID
+                                                </div>
+                                                <div class="text-gray-700 text-xs font-mono">392847561092</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-gray-400 text-[10px] font-medium uppercase mb-1">Status
+                                                </div>
+                                                <span
+                                                    class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">
+                                                    REGISTERED NOT COMMERCIALLY
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="pt-3 border-t border-gray-100 flex gap-2">
+                                        <button
+                                            class="flex-1 py-1.5 px-3 rounded-md bg-blue-500 text-white text-xs font-bold hover:bg-blue-600 transition">Manage
+                                            Quota</button>
+                                    </div>
+                                </div>
+
+                                <!-- Card 2 -->
+                                <div
+                                    class="rounded-2xl p-5 bg-white border border-gray-200 shadow-sm flex flex-col justify-between">
+                                    <div>
+                                        <div class="flex items-center justify-between mb-3">
+                                            <h3 class="text-lg font-semibold text-gray-900 truncate">andes-cache</h3>
+                                        </div>
+                                        <div class="space-y-2 mb-4">
+                                            <div>
+                                                <div class="text-gray-400 text-[10px] font-medium uppercase">Project ID
+                                                </div>
+                                                <div class="text-gray-700 text-xs font-mono">847561092392</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-gray-400 text-[10px] font-medium uppercase mb-1">Status
+                                                </div>
+                                                <span
+                                                    class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-yellow-100 text-yellow-800 border border-yellow-200">
+                                                    NOT REGISTERED
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="pt-3 border-t border-gray-100 flex gap-2">
+                                        <button
+                                            class="flex-1 py-1.5 px-3 rounded-md bg-blue-500 text-white text-xs font-bold hover:bg-blue-600 transition">Register
+                                            Now</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- ASSETS GROUP -->
+            <div class="mb-10 border-t border-gray-100 dark:border-gray-800 pt-10"><span
+                    class="text-sm font-bold text-brand-500 uppercase tracking-wider">Group: Assets</span></div>
+
+            <section id="assets-info" class="mb-20 scroll-mt-28">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Asset Info</h3>
+                <p class="mb-4 text-slate-600 dark:text-slate-400">
+                    Display detailed information about an Earth Engine asset with beautiful formatting.
+                </p>
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                    </div>
+                    <div class="relative">
+                        <pre class="font-mono text-sm text-white"><code>geeadd assets info "LANDSAT/LC08/C02/T1_L2/LC08_044034_20140318"
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section id="assets-copy" class="mb-20 scroll-mt-28">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Copy Assets</h3>
+                <p class="mb-4 text-slate-600 dark:text-slate-400">
+                    Offers a versatile solution for copying Earth Engine assets recursively.
+                </p>
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                    </div>
+                    <div class="relative">
+                        <pre class="font-mono text-sm text-white"><code>geeadd assets copy --initial "users/me/folder" --final "users/me/backup"
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section id="assets-move" class="mb-20 scroll-mt-28">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Move Assets</h3>
+                <p class="mb-4 text-slate-600 dark:text-slate-400">
+                    Recursively move assets from one location to another.
+                    <span class="text-amber-600 dark:text-amber-400">Use <code>--no-cleanup</code> to keep source
+                        folders.</span>
+                </p>
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                    </div>
+                    <div class="relative">
+                        <pre class="font-mono text-sm text-white"><code>geeadd assets move --initial "users/me/old" --final "users/me/new"
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section id="assets-delete" class="mb-20 scroll-mt-28">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4 text-red-600 dark:text-red-400">Delete
+                    Assets</h3>
+                <div class="p-4 mb-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                    <div class="flex items-center gap-2 text-red-700 dark:text-red-300 font-bold mb-1">
+                        <i data-lucide="alert-octagon" size="18"></i> Caution
+                    </div>
+                    <p class="text-sm text-red-600 dark:text-red-200">
+                        This tool will permanently remove the specified asset and <strong>all its children</strong>.
+                    </p>
+                </div>
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                    </div>
+                    <div class="relative">
+                        <pre class="font-mono text-sm text-white"><code>geeadd assets delete --id "users/me/folder_to_delete"
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section id="assets-delete-meta" class="mb-20 scroll-mt-28">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Delete Metadata</h3>
+                <p class="mb-4 text-slate-600 dark:text-slate-400">
+                    Selectively delete a specific property from the metadata associated with an asset.
+                </p>
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                    </div>
+                    <div class="relative">
+                        <pre class="font-mono text-sm text-white"><code>geeadd assets delete-meta --asset "users/me/image" --property "description"
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section id="assets-access" class="mb-20 scroll-mt-28">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Permissions (ACL)</h3>
+                <p class="mb-4 text-slate-600 dark:text-slate-400">
+                    Set read/write permissions for assets recursively.
+                </p>
+                <div class="space-y-4">
+                    <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                        <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                            <div class="flex gap-1.5">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            </div>
+                            <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                        </div>
+                        <div class="relative">
+                            <span class="text-xs text-slate-500 block font-mono px-4 pt-4"># Grant Read Access</span>
+                            <pre class="font-mono text-sm text-white"><code>geeadd assets access --user "email@gmail.com" --role "reader" --asset "users/me/asset"
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="assets-size" class="mb-24 scroll-mt-28">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Asset Size</h3>
+                <p class="mb-4 text-slate-600 dark:text-slate-400">
+                    Calculates the size and item count of a collection, image, feature view, or folder.
+                </p>
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group mb-4">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                    </div>
+                    <div class="relative">
+                        <pre class="font-mono text-sm text-white"><code>geeadd assets size "users/me/collection"
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                    </div>
+                </div>
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Example Output</span>
+                    </div>
+                    <div class="relative">
+                        <pre class="font-mono text-sm text-gray-300">Asset:  projects/my-project/assets/my-collection
+Type:   Image Collection
+Size:   45.67 GB
+Items:   1,234</pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TASKS GROUP -->
+            <div class="mb-10 border-t border-gray-100 dark:border-gray-800 pt-10"><span
+                    class="text-sm font-bold text-brand-500 uppercase tracking-wider">Group: Tasks</span></div>
+
+            <section id="tasks-list" class="mb-20 scroll-mt-28">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">List Tasks</h3>
+                <p class="mb-4 text-slate-600 dark:text-slate-400">
+                    View summaries of task states or filter by state (COMPLETED, READY, RUNNING, FAILED, CANCELLED).
+                </p>
+                <div class="grid md:grid-cols-2 gap-6 mb-4">
+                    <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                        <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                            <div class="flex gap-1.5">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            </div>
+                            <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                        </div>
+                        <div class="relative">
+                            <span class="text-xs text-slate-500 block font-mono px-4 pt-4"># Summary Table</span>
+                            <pre class="font-mono text-sm text-white"><code>geeadd tasks list
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                        <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                            <div class="flex gap-1.5">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            </div>
+                            <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                        </div>
+                        <div class="relative">
+                            <span class="text-xs text-slate-500 block font-mono px-4 pt-4"># List Running JSON</span>
+                            <pre class="font-mono text-sm text-white"><code>geeadd tasks list --state RUNNING
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Example Output</span>
+                    </div>
+                    <div class="relative">
+                        <pre class="font-mono text-sm text-gray-300">(geetools) λ geeadd tasks list
+Status             Count
+Running            12
+Pending            45
+Completed          1,234
+Failed             3
+Cancelled          0</pre>
+                    </div>
+                </div>
+            </section>
+
+            </section>
+
+            <section id="tasks-cancel" class="mb-24 scroll-mt-28">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Cancel Tasks</h3>
+                <p class="mb-4 text-slate-600 dark:text-slate-400">
+                    Cancel specific tasks or bulk cancel by state.
+                </p>
+                <div class="grid gap-4">
+                    <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                        <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                            <div class="flex gap-1.5">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            </div>
+                            <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                        </div>
+                        <div class="relative">
+                            <span class="text-xs text-slate-500 block font-mono px-4 pt-4"># Cancel All Tasks</span>
+                            <pre class="font-mono text-sm text-white"><code>geeadd tasks cancel all
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                        <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                            <div class="flex gap-1.5">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            </div>
+                            <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                        </div>
+                        <div class="relative">
+                            <span class="text-xs text-slate-500 block font-mono px-4 pt-4"># Cancel Specific ID</span>
+                            <pre class="font-mono text-sm text-white"><code>geeadd tasks cancel "ABC123XYZ..."
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- UTILS GROUP -->
+            <div class="mb-10 border-t border-gray-100 dark:border-gray-800 pt-10"><span
+                    class="text-sm font-bold text-brand-500 uppercase tracking-wider">Group: Utils</span></div>
+
+            <section id="utils-search" class="mb-20 scroll-mt-28">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Search Catalog</h3>
+                <p class="mb-4 text-slate-600 dark:text-slate-400">
+                    Search the GEE official catalog and the Community Catalog using keywords.
+                </p>
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group mb-4">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                    </div>
+                    <div class="relative">
+                        <pre class="font-mono text-sm text-white"><code>geeadd utils search --keywords "Sentinel-2" --allow-subsets
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                    </div>
+                </div>
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Example Output</span>
+                    </div>
+                    <div class="relative">
+                        <pre class="font-mono text-sm text-gray-300">[
+  {
+    "id": "COPERNICUS/S2_SR",
+    "title": "Sentinel-2 MSI: MultiSpectral Instrument, Level-2A",
+    "provider": "European Union/ESA/Copernicus",
+    "tags": ["sentinel", "copernicus", "msi", "reflectance"],
+    "relevance_score": 0.98
+  }
+]</pre>
+                    </div>
+                </div>
+            </section>
+
+            <section id="utils-app2script" class="mb-20 scroll-mt-28">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">App to Script</h3>
+                <p class="mb-4 text-slate-600 dark:text-slate-400">
+                    Extract the underlying JavaScript code from any public Earth Engine App URL.
+                </p>
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                    </div>
+                    <div class="relative">
+                        <pre class="font-mono text-sm text-white"><code>geeadd utils app2script --url "https://username.users.earthengine.app/view/app" --outfile "./script.js"
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section id="utils-report" class="mb-20 scroll-mt-28">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Asset Report</h3>
+                <p class="mb-4 text-slate-600 dark:text-slate-400">Generate a detailed CSV or JSON report of your
+                    assets.</p>
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                    </div>
+                    <div class="relative">
+                        <pre class="font-mono text-sm text-white"><code>geeadd utils report --outfile report.csv --format csv
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section id="utils-palette" class="mb-24 scroll-mt-28">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                    Color Palette Generator
+                    <span
+                        class="bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300 text-xs px-2 py-0.5 rounded-full font-bold">NEW</span>
+                </h3>
+                <p class="mb-4 text-slate-600 dark:text-slate-400">Generate ColorBrewer palettes for your
+                    visualizations. Supports JSON, Hex, CSS, Python, and JS output formats.</p>
+
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group mb-4">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                    </div>
+                    <div class="relative">
+                        <span class="text-xs text-slate-500 block font-mono px-4 pt-4"># Example: Generating a 5-class
+                            Blues palette to clipboard</span>
+                        <pre class="font-mono text-sm text-white"><code>geeadd utils palette --name Blues --classes 5 --copy
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 mb-4">
+                    <div class="h-8 w-1/5 bg-[#eff3ff] rounded"></div>
+                    <div class="h-8 w-1/5 bg-[#bdd7e7] rounded"></div>
+                    <div class="h-8 w-1/5 bg-[#6baed6] rounded"></div>
+                    <div class="h-8 w-1/5 bg-[#3182bd] rounded"></div>
+                    <div class="h-8 w-1/5 bg-[#08519c] rounded"></div>
+                </div>
+                <div class="text-xs font-mono text-gray-500 mb-6 text-center">["#eff3ff", "#bdd7e7", "#6baed6",
+                    "#3182bd", "#08519c"]</div>
+
+                <div class="grid lg:grid-cols-2 gap-4">
+                    <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                        <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                            <div class="flex gap-1.5">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            </div>
+                            <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                        </div>
+                        <div class="relative">
+                            <span class="text-xs text-slate-500 block font-mono px-4 pt-4"># List available
+                                palettes</span>
+                            <pre class="font-mono text-sm text-white"><code>geeadd utils palette --list
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <hr class="border-gray-100 dark:border-gray-800 mb-16">
+
+            <!-- EXAMPLES & GUIDES SECTION -->
+            <section id="examples" class="mb-24 scroll-mt-28">
+                <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
+                    <div class="bg-emerald-100 dark:bg-emerald-900/30 p-2 rounded-lg"><i data-lucide="book-open"
+                            class="text-emerald-600 dark:text-emerald-400"></i></div>
+                    Examples & Guides
+                </h2>
+
+                <div class="prose dark:prose-invert max-w-none text-slate-600 dark:text-slate-400 mb-12">
+                    <p>Real-world workflows and best practices to help you get the most out of geeadd.</p>
+                </div>
+
+                <!-- Workflow 1 -->
+                <div class="mb-12">
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span
+                            class="flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-xs">1</span>
+                        Project Setup & Organization
+                    </h3>
+                    <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                        <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                            <div class="flex gap-1.5">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            </div>
+                            <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                        </div>
+                        <div class="relative">
+                            <pre
+                                class="font-mono text-sm text-white"><code># 1. List your projects
+geeadd projects enabled
+
+# 2. Check quota
+geeadd projects quota
+
+# 3. Create a dashboard
+geeadd projects dashboard --outdir ~/gee-reports</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Workflow 2 -->
+                <div class="mb-12">
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span
+                            class="flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-xs">2</span>
+                        Complete Asset Management Cycle
+                    </h3>
+                    <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                        <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                            <div class="flex gap-1.5">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            </div>
+                            <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                        </div>
+                        <div class="relative">
+                            <pre
+                                class="font-mono text-sm text-white"><code># 1. Check current assets
+geeadd assets info projects/my-project/assets
+
+# 2. Copy important data for backup
+geeadd assets copy \
+  --initial projects/my-project/assets/production \
+  --final projects/my-project/assets/backup-2024
+
+# 3. Share with collaborators
+geeadd assets access \
+  --asset projects/my-project/assets/shared-data \
+  --user colleague@university.edu \
+  --role reader</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Workflow 3 -->
+                <div class="mb-12">
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span
+                            class="flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-xs">3</span>
+                        Task Monitoring & Cleanup
+                    </h3>
+                    <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                        <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                            <div class="flex gap-1.5">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            </div>
+                            <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                        </div>
+                        <div class="relative">
+                            <pre
+                                class="font-mono text-sm text-white"><code># 1. Check task status
+geeadd tasks list
+
+# 2. Monitor running tasks
+geeadd tasks list --state RUNNING
+
+# 3. Cancel stuck pending tasks
+geeadd tasks cancel pending</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-8 mt-12">
+                    <!-- Tips -->
+                    <div
+                        class="bg-white dark:bg-dark-surface p-6 rounded-xl border border-gray-200 dark:border-dark-border shadow-sm">
+                        <h4 class="font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                            <i data-lucide="lightbulb" class="text-yellow-500" size="18"></i> Best Practices
+                        </h4>
+                        <ul class="space-y-3 text-sm text-slate-600 dark:text-slate-400">
+                            <li class="flex gap-2">
+                                <i data-lucide="check" class="text-green-500 mt-0.5" size="14"></i>
+                                <span>Use <code>--workers 10-15</code> for large folders, but stick to default (5) for
+                                    smaller jobs to avoid rate limits.</span>
+                            </li>
+                            <li class="flex gap-2">
+                                <i data-lucide="check" class="text-green-500 mt-0.5" size="14"></i>
+                                <span>Generate weekly asset reports using <code>geeadd utils report</code> to keep track
+                                    of growth.</span>
+                            </li>
+                            <li class="flex gap-2">
+                                <i data-lucide="check" class="text-green-500 mt-0.5" size="14"></i>
+                                <span>Use the <code>delete</code> role in permissions to revoke access from former
+                                    collaborators.</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Troubleshooting -->
+                    <div
+                        class="bg-white dark:bg-dark-surface p-6 rounded-xl border border-gray-200 dark:border-dark-border shadow-sm">
+                        <h4 class="font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                            <i data-lucide="life-buoy" class="text-blue-500" size="18"></i> Troubleshooting
+                        </h4>
+                        <div class="space-y-4 text-sm">
+                            <div>
+                                <span class="font-bold text-slate-800 dark:text-slate-200 block mb-1">Quota
+                                    Exceeded?</span>
+                                <p class="text-slate-600 dark:text-slate-400">Run <code>geeadd projects quota</code> to
+                                    find full projects, then clear old data with <code>geeadd assets delete</code>.</p>
+                            </div>
+                            <div>
+                                <span class="font-bold text-slate-800 dark:text-slate-200 block mb-1">Tasks
+                                    Stuck?</span>
+                                <p class="text-slate-600 dark:text-slate-400">Tasks in READY state for too long can be
+                                    cleared with <code>geeadd tasks cancel pending</code>.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Footer -->
+            <footer class="border-t border-gray-200 dark:border-dark-border py-12 text-center">
+                <div class="flex items-center justify-center gap-2 mb-4">
+                    <img src="https://i.imgur.com/VP6DuMy.png" alt="geeadd" class="w-6 h-6">
+                    <span class="font-bold text-slate-900 dark:text-white">geeadd</span>
+                </div>
+                <p class="text-sm text-gray-500 mb-2">&copy; 2025 Samapriya Roy. Apache 2.0 License.</p>
+            </footer>
+
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // Theme Toggle Logic
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const htmlElement = document.documentElement;
+
+        // Check local storage
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            htmlElement.classList.add('dark');
+        } else {
+            htmlElement.classList.remove('dark');
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            htmlElement.classList.toggle('dark');
+            if (htmlElement.classList.contains('dark')) {
+                localStorage.setItem('theme', 'dark');
+            } else {
+                localStorage.setItem('theme', 'light');
+            }
+        });
+
+        // Mobile Menu Logic
+        const menuToggle = document.getElementById('menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        let isMenuOpen = false;
+
+        menuToggle.addEventListener('click', () => {
+            isMenuOpen = !isMenuOpen;
+            if (isMenuOpen) {
+                sidebar.classList.remove('-translate-x-full');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+            }
+        });
+
+        // Close sidebar when clicking a link on mobile
+        document.querySelectorAll('.nav-item').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth < 1024) {
+                    sidebar.classList.add('-translate-x-full');
+                    isMenuOpen = false;
+                }
+            });
+        });
+
+        // Accordion Logic for Sidebar
+        const detailsElements = document.querySelectorAll('.sidebar-group details');
+
+        detailsElements.forEach((targetDetail) => {
+            targetDetail.addEventListener('click', () => {
+                // Close other details when one is opened
+                detailsElements.forEach((detail) => {
+                    if (detail !== targetDetail) {
+                        detail.removeAttribute('open');
+                    }
+                });
+            });
+        });
+
+        // Accordion Logic for Migration Guide
+        const migrationDetails = document.querySelectorAll('.migration-group details');
+
+        migrationDetails.forEach((targetDetail) => {
+            targetDetail.addEventListener('click', () => {
+                // Close other details when one is opened
+                migrationDetails.forEach((detail) => {
+                    if (detail !== targetDetail) {
+                        detail.removeAttribute('open');
+                    }
+                });
+            });
+        });
+
+
+        // Copy to Clipboard
+        function copyCode(button) {
+            const pre = button.parentElement;
+            const code = pre.querySelector('code').innerText;
+
+            navigator.clipboard.writeText(code).then(() => {
+                const originalText = button.innerText;
+                button.innerText = 'Copied!';
+                button.classList.add('bg-green-600');
+                setTimeout(() => {
+                    button.innerText = originalText;
+                    button.classList.remove('bg-green-600');
+                }, 2000);
+            });
+        }
+
+        // Search Functionality
+        const searchInput = document.getElementById('search-input');
+        const navItems = document.querySelectorAll('.nav-item');
+        const mainContent = document.querySelector('main');
+
+        // Highlighting function
+        function highlight(text) {
+            // Clear existing highlights
+            const marks = mainContent.querySelectorAll('mark');
+            marks.forEach(mark => {
+                const parent = mark.parentNode;
+                parent.replaceChild(document.createTextNode(mark.textContent), mark);
+                parent.normalize();
+            });
+
+            if (!text) return;
+
+            const regex = new RegExp(`(${text})`, 'gi');
+
+            // Helper to determine if a node should be processed
+            const filter = {
+                acceptNode: function (node) {
+                    if (node.parentNode.tagName === 'MARK' ||
+                        node.parentNode.tagName === 'SCRIPT' ||
+                        node.parentNode.tagName === 'STYLE' ||
+                        node.parentNode.tagName === 'PRE' ||
+                        node.parentNode.tagName === 'CODE') {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            };
+
+            const walker = document.createTreeWalker(mainContent, NodeFilter.SHOW_TEXT, filter, false);
+            const nodes = [];
+            while (walker.nextNode()) nodes.push(walker.currentNode);
+
+            nodes.forEach(node => {
+                if (node.nodeValue.toLowerCase().includes(text.toLowerCase())) {
+                    const span = document.createElement('span');
+                    // Use a simple replace for visual highlighting.
+                    // Note: This is a basic implementation for documentation text.
+                    span.innerHTML = node.nodeValue.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-800 text-slate-900 dark:text-white rounded-sm">$1</mark>');
+                    if (node.parentNode) {
+                        node.parentNode.replaceChild(span, node);
+                    }
+                }
+            });
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase().trim();
+
+            // 1. Highlight matches in the main content area
+            highlight(term);
+
+            // 2. Filter Sidebar based on content matches
+            navItems.forEach(item => {
+                const targetId = item.getAttribute('href');
+                let match = false;
+
+                // Check nav text match
+                if (item.innerText.toLowerCase().includes(term)) {
+                    match = true;
+                }
+
+                // Check target section text match
+                if (!match && targetId && targetId.startsWith('#')) {
+                    const targetSection = document.querySelector(targetId);
+                    if (targetSection && targetSection.innerText.toLowerCase().includes(term)) {
+                        match = true;
+                    }
+                }
+
+                const parentDetails = item.closest('details');
+
+                if (match || term === '') {
+                    item.style.display = 'block';
+                    // Auto-expand sidebar group if a match is found inside
+                    if (parentDetails && term !== '') parentDetails.setAttribute('open', '');
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+
+        // Scroll Spy
+        const sections = document.querySelectorAll('section');
+        const navLinks = document.querySelectorAll('.nav-item');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (pageYOffset >= (sectionTop - 300)) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active-nav');
+                if (link.getAttribute('href').includes(current)) {
+                    link.classList.add('active-nav');
+                }
+            });
+        });
+
+        // Dashboard Preview Logic (Simple Toggling for demo)
+        function toggleActive(element) {
+            // Remove active class from all siblings
+            const siblings = element.parentElement.children;
+            for (let sibling of siblings) {
+                sibling.classList.remove('active');
+            }
+            // Add active class to clicked element
+            element.classList.add('active');
+        }
+    </script>
+</body>
+
+</html>

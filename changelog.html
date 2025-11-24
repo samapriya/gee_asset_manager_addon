@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Changelog | geeadd v2.0.0</title>
+    <meta name="description" content="Changelog for geeadd: Moving from v1 (argparse) to v2 (click & rich).">
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Montserrat:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                        dashboard: ['Montserrat', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            900: '#0c4a6e',
+                        },
+                        emerald: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                            900: '#064e3b',
+                        },
+                        dark: {
+                            bg: '#0B1120',
+                            surface: '#1e293b',
+                            border: '#334155'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+
+        /* Code Block Styling */
+        pre {
+            position: relative;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            padding: 1rem;
+            padding-bottom: 1rem;
+            padding-right: 4rem;
+            line-height: 1.5;
+        }
+
+        /* The Copy Button */
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            opacity: 0;
+            transform: translateY(-2px);
+            transition: all 0.2s ease;
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 10;
+        }
+
+        pre:hover .copy-btn,
+        .copy-btn:focus {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .glass-nav {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .active-nav {
+            background-color: rgba(14, 165, 233, 0.1);
+            color: #0ea5e9;
+            border-right: 3px solid #0ea5e9;
+        }
+
+        .dark .active-nav {
+            background-color: rgba(14, 165, 233, 0.15);
+            color: #38bdf8;
+            border-right: 3px solid #38bdf8;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-gray-50 text-slate-800 dark:bg-dark-bg dark:text-slate-300 transition-colors duration-300 antialiased selection:bg-brand-500 selection:text-white pt-10">
+
+    <!-- Mobile Header -->
+    <div
+        class="lg:hidden fixed top-0 w-full z-50 bg-white/90 dark:bg-dark-bg/90 glass-nav border-b border-gray-200 dark:border-dark-border px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <i data-lucide="git-merge" class="text-brand-500"></i>
+            <span class="font-bold text-lg tracking-tight text-slate-900 dark:text-white">geeadd <span
+                    class="text-slate-400 font-normal">Changelog</span></span>
+        </div>
+        <button id="menu-toggle" class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-dark-surface">
+            <i data-lucide="menu"></i>
+        </button>
+    </div>
+
+    <div class="flex min-h-screen pt-16 lg:pt-0">
+
+        <!-- Sidebar -->
+        <aside id="sidebar"
+            class="fixed inset-y-0 left-0 z-40 w-72 mt-10 lg:mt-0 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 bg-white dark:bg-dark-surface border-r border-gray-200 dark:border-dark-border flex flex-col h-screen lg:h-screen lg:top-0">
+            <!-- Logo Area -->
+            <div class="p-6 border-b border-gray-100 dark:border-dark-border hidden lg:block">
+                <a href="#" class="flex items-center gap-3">
+                    <div class="relative group">
+                        <!-- Main Logo Icon -->
+                        <div
+                            class="w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center shadow-lg">
+                            <span class="font-mono font-bold text-xl">v2</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-2xl text-slate-900 dark:text-white leading-none">geeadd</h1>
+                        <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-1.5">Version History
+                        </p>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Accordion Navigation -->
+            <nav class="flex-1 overflow-y-auto px-3 py-6 space-y-1" id="nav-container">
+                <a href="#summary"
+                    class="nav-item block px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Executive
+                    Summary</a>
+                <a href="#architecture"
+                    class="nav-item block px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Core
+                    Architecture</a>
+                <a href="#structure"
+                    class="nav-item block px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Command
+                    Structure</a>
+                <a href="#ui-ux"
+                    class="nav-item block px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">UI
+                    & Rich Output</a>
+                <a href="#features"
+                    class="nav-item block px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">New
+                    Features</a>
+
+                <a href="https://geeadd.geetools.xyz"
+                    class="nav-item block px-3 py-2 rounded-md text-sm font-medium text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/10 hover:bg-brand-100 dark:hover:bg-brand-900/20 transition-colors mt-8">
+                    <i data-lucide="arrow-left" class="inline w-3 h-3 mr-1"></i> Back to Docs
+                </a>
+            </nav>
+
+            <!-- Sidebar Footer -->
+            <div
+                class="p-4 border-t border-gray-200 dark:border-dark-border flex items-center justify-between bg-gray-50 dark:bg-black/20">
+                <button id="theme-toggle"
+                    class="p-2 rounded-md text-gray-500 hover:bg-white dark:hover:bg-gray-700 dark:text-gray-400 transition-all shadow-sm">
+                    <i data-lucide="moon" class="block dark:hidden" size="18"></i>
+                    <i data-lucide="sun" class="hidden dark:block" size="18"></i>
+                </button>
+                <div class="text-xs text-slate-400 font-mono">v1.0 &rarr; v2.0</div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="lg:ml-72 flex-1 max-w-5xl mx-auto px-6 py-12 lg:px-12 w-full">
+
+            <!-- Hero -->
+            <section id="summary" class="mb-16 relative">
+
+                <div
+                    class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 text-xs font-bold mb-6 border border-emerald-100 dark:border-emerald-800">
+                    <i data-lucide="check-circle" size="14"></i>
+                    Stable Release: v2.0.0
+                </div>
+
+                <div class="flex flex-col md:flex-row items-center gap-8 mb-6">
+                    <div class="flex-1">
+                        <h1
+                            class="text-4xl lg:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-6">
+                            Refactored. <br class="hidden lg:block" />
+                            <span
+                                class="bg-clip-text text-transparent bg-gradient-to-r from-brand-500 via-brand-600 to-purple-600">Modernized.</span>
+                        </h1>
+                        <p class="text-lg lg:text-xl text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl mb-8">
+                            A complete rewrite of the core logic. We've moved from <code>argparse</code> to
+                            <code>click</code>,
+                            introduced <code>rich</code> for beautiful terminal output, and reorganized the command
+                            structure for scalability.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div
+                        class="bg-white dark:bg-dark-surface p-6 rounded-xl border border-gray-200 dark:border-dark-border shadow-sm">
+                        <div
+                            class="p-3 bg-brand-100 dark:bg-brand-900/30 rounded-lg w-fit text-brand-600 dark:text-brand-400 mb-4">
+                            <i data-lucide="layout-grid"></i>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2 text-slate-900 dark:text-white">Nested Commands</h3>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Commands are now logically grouped (e.g.,
+                            <code>projects quota</code> instead of just <code>quota</code>).</p>
+                    </div>
+                    <div
+                        class="bg-white dark:bg-dark-surface p-6 rounded-xl border border-gray-200 dark:border-dark-border shadow-sm">
+                        <div
+                            class="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg w-fit text-purple-600 dark:text-purple-400 mb-4">
+                            <i data-lucide="sparkles"></i>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2 text-slate-900 dark:text-white">Rich UI</h3>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Beautiful tables, panels, and spinners
+                            replace standard text output and basic progress bars.</p>
+                    </div>
+                    <div
+                        class="bg-white dark:bg-dark-surface p-6 rounded-xl border border-gray-200 dark:border-dark-border shadow-sm">
+                        <div
+                            class="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg w-fit text-orange-600 dark:text-orange-400 mb-4">
+                            <i data-lucide="alert-triangle"></i>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2 text-slate-900 dark:text-white">Deprecations</h3>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Legacy commands are caught and provide
+                            helpful redirection messages to the new syntax.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Architecture -->
+            <section id="architecture" class="mb-24 scroll-mt-28">
+                <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
+                    <div class="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg"><i data-lucide="cpu"
+                            class="text-brand-500"></i></div>
+                    Core Architecture
+                </h2>
+
+                <p class="mb-6 text-slate-600 dark:text-slate-400">
+                    The underlying CLI framework has been completely swapped to improve maintainability and help
+                    generation.
+                </p>
+
+                <div class="grid lg:grid-cols-2 gap-6">
+                    <!-- OLD -->
+                    <div class="relative group">
+                        <div
+                            class="absolute -top-3 left-4 bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 text-xs font-bold px-2 py-1 rounded border border-red-200 dark:border-red-800 z-10">
+                            BEFORE (v1)</div>
+                        <div
+                            class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 opacity-75 grayscale hover:grayscale-0 transition-all">
+                            <div
+                                class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                                <span class="text-xs text-slate-500 font-mono">geeadd_old.py</span>
+                            </div>
+                            <div class="relative">
+                                <pre class="font-mono text-sm text-gray-400"><code>import argparse
+
+# Flat argument parsing
+parser = argparse.ArgumentParser()
+subparsers = parser.add_subparsers()
+
+parser_quota = subparsers.add_parser("quota")
+parser_quota.set_defaults(func=quota_from_parser)
+
+parser_copy = subparsers.add_parser("copy")
+parser_copy.set_defaults(func=copy_from_parser)</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NEW -->
+                    <div class="relative group">
+                        <div
+                            class="absolute -top-3 left-4 bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300 text-xs font-bold px-2 py-1 rounded border border-green-200 dark:border-green-800 z-10">
+                            AFTER (v2)</div>
+                        <div
+                            class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 ring-2 ring-green-500/20">
+                            <div
+                                class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                                <span class="text-xs text-slate-500 font-mono">geeadd.py</span>
+                            </div>
+                            <div class="relative">
+                                <pre
+                                    class="font-mono text-sm text-white"><code>import click
+from click import Group
+
+# Nested Group Structure
+@click.group(cls=OrderedGroup)
+def cli(): pass
+
+@cli.group()
+def projects(): pass
+
+@projects.command('quota')
+def projects_quota(project): ...</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Structure Changes -->
+            <section id="structure" class="mb-24 scroll-mt-28">
+                <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
+                    <div class="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg"><i data-lucide="git-branch"
+                            class="text-brand-500"></i></div>
+                    Command Restructuring
+                </h2>
+
+                <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-800">
+                            <tr>
+                                <th scope="col"
+                                    class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                    Old Command</th>
+                                <th scope="col"
+                                    class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                    New Command Group</th>
+                                <th scope="col"
+                                    class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                    Reasoning</th>
+                            </tr>
+                        </thead>
+                        <tbody
+                            class="bg-white dark:bg-dark-surface divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                            <tr>
+                                <td class="px-6 py-4 font-mono text-red-500">geeadd quota</td>
+                                <td class="px-6 py-4 font-mono text-green-600 dark:text-green-400 font-bold">geeadd
+                                    projects quota</td>
+                                <td class="px-6 py-4 text-gray-500">Grouped under 'projects' management.</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 font-mono text-red-500">geeadd projects</td>
+                                <td class="px-6 py-4 font-mono text-green-600 dark:text-green-400 font-bold">geeadd
+                                    projects enabled</td>
+                                <td class="px-6 py-4 text-gray-500">Clarified action (listing enabled projects).</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 font-mono text-red-500">geeadd copy</td>
+                                <td class="px-6 py-4 font-mono text-green-600 dark:text-green-400 font-bold">geeadd
+                                    assets copy</td>
+                                <td class="px-6 py-4 text-gray-500">All file operations moved to 'assets' group.</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 font-mono text-red-500">geeadd search</td>
+                                <td class="px-6 py-4 font-mono text-green-600 dark:text-green-400 font-bold">geeadd
+                                    utils search</td>
+                                <td class="px-6 py-4 text-gray-500">Moved generic tools to 'utils' group.</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 font-mono text-red-500">geeadd cancel</td>
+                                <td class="px-6 py-4 font-mono text-green-600 dark:text-green-400 font-bold">geeadd
+                                    tasks cancel</td>
+                                <td class="px-6 py-4 text-gray-500">Consolidated task operations.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- UI/UX -->
+            <section id="ui-ux" class="mb-24 scroll-mt-28">
+                <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
+                    <div class="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg"><i data-lucide="terminal"
+                            class="text-brand-500"></i></div>
+                    UI & Rich Output
+                </h2>
+                <p class="mb-6 text-slate-600 dark:text-slate-400">
+                    We removed <code>colorama</code> and basic <code>print()</code> statements in favor of the
+                    <code>rich</code> library.
+                </p>
+
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group mb-6">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <span class="text-xs text-slate-500 font-mono">Example: Quota Output</span>
+                    </div>
+                    <div class="relative p-6 font-mono text-sm">
+                        <!-- Simulated Rich Output -->
+                        <div class="text-cyan-400 font-bold mb-2">Cloud Project: projects/samapriya</div>
+                        <div class="flex gap-4 mb-1 text-gray-300">
+                            <span class="w-20 text-cyan-500">Storage:</span>
+                            <span>231.33 GB of 250 GB</span>
+                        </div>
+                        <div class="text-purple-400 mb-3">[███████████████████████████░░░] 92.5%</div>
+
+                        <div class="flex gap-4 mb-1 text-gray-300">
+                            <span class="w-20 text-cyan-500">Assets:</span>
+                            <span>4,133 of 50,000</span>
+                        </div>
+                        <div class="text-purple-400 mb-1">[██░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 8.3%</div>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 rounded-r-lg">
+                    <h4 class="font-bold text-blue-800 dark:text-blue-200 mb-1">Code Implementation</h4>
+                    <p class="text-sm text-blue-700 dark:text-blue-300">
+                        Tables are now constructed using <code>rich.table.Table</code>, enabling auto-sizing columns and
+                        consistent coloring across the application. Panels are used for error messages and deprecation
+                        warnings.
+                    </p>
+                </div>
+            </section>
+
+            <!-- New Features -->
+            <section id="features" class="mb-24 scroll-mt-28">
+                <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
+                    <div class="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg"><i data-lucide="plus-circle"
+                            class="text-brand-500"></i></div>
+                    New Features
+                </h2>
+
+                <div class="grid gap-8">
+                    <!-- Feature 1 -->
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+                            <i data-lucide="palette" class="text-purple-500"></i> Palette Generator
+                        </h3>
+                        <p class="text-slate-600 dark:text-slate-400 mb-4 text-sm">
+                            A completely new tool based on ColorBrewer logic. It generates hex codes for data
+                            visualization and can output directly to CSS, Python lists, or JSON.
+                        </p>
+                        <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                            <div
+                                class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                                <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                            </div>
+                            <div class="relative">
+                                <pre class="font-mono text-sm text-white"><code># Generate a 5-class sequential blue palette
+geeadd utils palette --name Blues --classes 5 --format hex
+
+# Output:
+# ['#eff3ff', '#bdd7e7', '#6baed6', '#3182bd', '#08519c']</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Feature 2 -->
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+                            <i data-lucide="layout-dashboard" class="text-blue-500"></i> Project Dashboard
+                        </h3>
+                        <p class="text-slate-600 dark:text-slate-400 mb-4 text-sm">
+                            Generates an interactive HTML dashboard summarizing all your enabled Earth Engine projects,
+                            their types (Commercial/Non-Commercial), and states.
+                        </p>
+                        <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                            <div
+                                class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                                <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                            </div>
+                            <div class="relative">
+                                <pre class="font-mono text-sm text-white"><code># Create dashboard
+geeadd projects dashboard --outdir ./reports</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Footer -->
+            <footer class="border-t border-gray-200 dark:border-dark-border py-12 text-center">
+                <div class="flex items-center justify-center gap-2 mb-4">
+                    <span class="font-bold text-slate-900 dark:text-white">geeadd</span>
+                    <span class="text-slate-400">v2.0.0</span>
+                </div>
+                <p class="text-sm text-gray-500 mb-2">&copy; 2025 Samapriya Roy. Apache 2.0 License.</p>
+            </footer>
+
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // Theme Toggle Logic
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const htmlElement = document.documentElement;
+
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            htmlElement.classList.add('dark');
+        } else {
+            htmlElement.classList.remove('dark');
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            htmlElement.classList.toggle('dark');
+            if (htmlElement.classList.contains('dark')) {
+                localStorage.setItem('theme', 'dark');
+            } else {
+                localStorage.setItem('theme', 'light');
+            }
+        });
+
+        // Mobile Menu Logic
+        const menuToggle = document.getElementById('menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        let isMenuOpen = false;
+
+        menuToggle.addEventListener('click', () => {
+            isMenuOpen = !isMenuOpen;
+            if (isMenuOpen) {
+                sidebar.classList.remove('-translate-x-full');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+            }
+        });
+
+        // Copy to Clipboard
+        function copyCode(button) {
+            const pre = button.parentElement;
+            const code = pre.querySelector('code').innerText;
+
+            navigator.clipboard.writeText(code).then(() => {
+                const originalText = button.innerText;
+                button.innerText = 'Copied!';
+                button.classList.add('bg-green-600');
+                setTimeout(() => {
+                    button.innerText = originalText;
+                    button.classList.remove('bg-green-600');
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+
+</html>

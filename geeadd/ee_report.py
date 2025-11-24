@@ -1,254 +1,380 @@
-from __future__ import print_function
-
-__copyright__ = """
-
-    Copyright 2024 Samapriya Roy
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-
 """
-__license__ = "Apache 2.0"
+Copyright 2025 Samapriya Roy
+Licensed under the Apache License, Version 2.0
+"""
+
 import csv
-import random
-import subprocess
+import json
+import logging
+import signal
 import sys
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import asdict, dataclass
+from typing import Dict, List, Optional
 
 import ee
-from logzero import logger
+from google.auth.transport.requests import AuthorizedSession
 
-# Empty Lists
-folder_paths = []
-image_list = []
-collection_list = []
-table_list = []
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-suffixes = ["B", "KB", "MB", "GB", "TB", "PB"]
-
-
-def humansize(nbytes):
-    i = 0
-    while nbytes >= 1024 and i < len(suffixes) - 1:
-        nbytes /= 1024.0
-        i += 1
-    f = ("%.2f" % nbytes).rstrip("0").rstrip(".")
-    return "%s %s" % (f, suffixes[i])
+# Global flag for graceful shutdown
+shutdown_requested = False
 
 
-def recprocess(gee_type, location):
+def signal_handler(sig, frame):
+    """Handle Ctrl+C gracefully"""
+    global shutdown_requested
+    print("\nShutdown requested. Finishing current tasks...")
+    shutdown_requested = True
+
+
+# Register signal handler
+signal.signal(signal.SIGINT, signal_handler)
+
+
+@dataclass
+class AssetInfo:
+    """Data class for asset information"""
+    asset_type: str
+    path: str
+    owner: str
+    readers: str
+    writers: str
+
+
+def legacy_roots(session: AuthorizedSession) -> List[str]:
+    """Get all legacy root asset paths"""
+    legacy_root_list = []
+    url = 'https://earthengine.googleapis.com/v1/projects/earthengine-legacy:listAssets'
+
     try:
-        if gee_type == "collection":
-            own = ee.data.getAssetAcl(location)
-            o = ",".join(own["owners"])
-            r = ",".join(own["readers"])
-            w = ",".join(own["writers"])
-            return [o, r, w]
-        elif gee_type == "image":
-            own = ee.data.getAssetAcl(location)
-            o = ",".join(own["owners"])
-            r = ",".join(own["readers"])
-            w = ",".join(own["writers"])
-            return [o, r, w]
-        elif gee_type == "table":
-            own = ee.data.getAssetAcl(location)
-            o = ",".join(own["owners"])
-            r = ",".join(own["readers"])
-            w = ",".join(own["writers"])
-            return [o, r, w]
-        elif gee_type == "folder":
-            own = ee.data.getAssetAcl(location)
-            o = ",".join(own["owners"])
-            r = ",".join(own["readers"])
-            w = ",".join(own["writers"])
-            # print(o,r,w)
-            return [o, r, w]
+        response = session.get(url=url)
+        for asset in response.json().get('assets', []):
+            legacy_root_list.append(asset['id'])
     except Exception as e:
-        print(e)
+        logger.error(f"Error getting legacy roots: {e}")
+
+    return legacy_root_list
 
 
-# Recursive folder paths
-def recursive(path):
-    if ee.data.getAsset(path)["type"].lower() == "folder":
-        children = ee.data.listAssets({"parent": path})
-    folder_paths.append(path)
-    val = [child["type"].lower() == "folder" for child in children["assets"]]
-    while len(val) > 0 and True in val:
-        for child in children["assets"]:
-            if child["type"].lower() == "folder":
-                folder_paths.append(child["name"])
-                children = ee.data.listAssets({"parent": child["name"]})
-        val = [child["type"].lower() == "folder" for child in children["assets"]]
-    return folder_paths
+def is_legacy_path(path: str, legacy_root_list: List[str]) -> bool:
+    """Check if a path is a legacy asset path"""
+    # Users paths are always legacy
+    if path.startswith('users/'):
+        return True
+
+    # Check if path itself is a legacy root
+    if path in legacy_root_list:
+        return True
+
+    # Check if path is under any legacy root
+    for root in legacy_root_list:
+        if path.startswith(root + '/'):
+            return True
+
+    return False
 
 
-def assetsize(asset):
-    ee.Initialize()
-    header = ee.data.getAsset(asset)["type"]
-    if header == "IMAGE_COLLECTION":
-        collc = ee.ImageCollection(asset)
-        size = collc.aggregate_array("system:asset_size")
-        return [str(humansize(sum(size.getInfo()))), str(collc.size().getInfo())]
-    elif header == "IMAGE":
-        collc = ee.Image(asset)
-        return [str(humansize(collc.get("system:asset_size").getInfo())), 1]
-    elif header == "TABLE":
-        collc = ee.FeatureCollection(asset)
-        return [str(humansize(collc.get("system:asset_size").getInfo())), 1]
-    elif header == "FOLDER":
-        b = subprocess.Popen(
-            "earthengine du {} -s".format(asset), shell=True, stdout=subprocess.PIPE
-        )
-        out, err = b.communicate()
-        val = [item for item in out.decode("ascii").split(" ") if item.isdigit()]
-        size = humansize(float(val[0]))
-        num = subprocess.Popen(
-            "earthengine ls {}".format(asset), shell=True, stdout=subprocess.PIPE
-        )
-        out, err = num.communicate()
-        out = out.decode("ascii")
-        num = [
-            i for i in out.split("\n") if i if len(i) > 1 if not i.startswith("Running")
-        ]
-        return [str(size), str(len(num))]
-
-
-# folder parse
-
-
-def fparse(path):
-    ee.Initialize()
-    if ee.data.getAsset(path)["type"].lower() == "folder":
-        gee_folder_path = recursive(path)
-        for folders in gee_folder_path:
-            children = ee.data.listAssets({"parent": folders})
-            for child in children["assets"]:
-                if child["type"].lower() == "image_collection":
-                    collection_list.append(child["id"])
-                elif child["type"].lower() == "image":
-                    image_list.append(child["id"])
-                elif child["type"].lower() == "table":
-                    table_list.append(child["id"])
-    elif ee.data.getAsset(path)["type"].lower() == "image":
-        image_list.append(path)
-    elif ee.data.getAsset(path)["type"].lower() == "image_collection":
-        collection_list.append(path)
-    elif ee.data.getAsset(path)["type"].lower() == "table":
-        table_list.append(path)
+def list_assets_legacy(parent: str, session: AuthorizedSession) -> List[Dict]:
+    """List assets using legacy API"""
+    # Extract the path after 'projects/'
+    if parent.startswith('projects/'):
+        parent_path = parent
+    elif parent.startswith('users/'):
+        parent_path = parent
     else:
-        print(ee.data.getAsset(path)["type"].lower())
-    return [collection_list, table_list, image_list, folder_paths]
+        parent_path = f'projects/{parent}'
+
+    url = f'https://earthengine.googleapis.com/v1/projects/earthengine-legacy/assets/{parent_path}:listAssets'
+
+    try:
+        response = session.get(url=url)
+        return response.json().get('assets', [])
+    except Exception as e:
+        logger.error(f"Error listing legacy assets in {parent}: {e}")
+        return []
 
 
-# request type of asset, asset path and user to give permission
-def ee_report(output, path):
-    choicelist = [
-        "Go grab some tea.....",
-        "Go Stretch.....",
-        "Go take a walk.....",
-        "Go grab some coffee.....",
-    ]  # adding something fun
-    path_list = []
-    logger.debug("This might take sometime. {}".format(random.choice(choicelist)))
+def list_assets_modern(parent: str, session: AuthorizedSession) -> List[Dict]:
+    """List assets using modern API"""
+    # Extract project ID - parent could be:
+    # - "space-geographer" (just project ID)
+    # - "projects/space-geographer" (with projects/ prefix)
+    # - "space-geographer/assets/subfolder" (project ID with path)
+
+    if parent.startswith('projects/'):
+        # Remove 'projects/' prefix
+        parent = parent[9:]
+
+    # Now parent is like: "space-geographer" or "space-geographer/assets/subfolder"
+    url = f'https://earthengine.googleapis.com/v1/projects/{parent}:listAssets'
+
+    try:
+        response = session.get(url=url)
+        return response.json().get('assets', [])
+    except Exception as e:
+        logger.error(f"Error listing modern assets in {parent}: {e}")
+        return []
+
+
+def get_asset_acl(asset_path: str) -> tuple[str, str, str]:
+    """Get asset ACL (owners, readers, writers)"""
+    try:
+        acl = ee.data.getAssetAcl(asset_path)
+        owners = ",".join(acl.get("owners", []))
+        readers = ",".join(acl.get("readers", []))
+        writers = ",".join(acl.get("writers", []))
+        return owners, readers, writers
+    except Exception as e:
+        logger.error(f"Error getting ACL for {asset_path}: {e}")
+        return "", "", ""
+
+
+def list_assets_recursive(
+    parent_path: str,
+    session: AuthorizedSession,
+    is_legacy: bool,
+    asset_list: Optional[List[Dict]] = None,
+    stats: Optional[Dict] = None
+) -> List[Dict]:
+    """
+    Recursively list all assets in a folder and subfolders.
+
+    Args:
+        parent_path: Path to the Earth Engine folder
+        session: Authorized session for API calls
+        is_legacy: Whether to use legacy API
+        asset_list: List to accumulate results
+        stats: Dictionary to track statistics
+
+    Returns:
+        List of dicts with asset information
+    """
+    global shutdown_requested
+
+    if shutdown_requested:
+        return asset_list or []
+
+    if asset_list is None:
+        asset_list = []
+
+    if stats is None:
+        stats = defaultdict(int)
+
+    try:
+        # Get assets based on legacy or modern API
+        if is_legacy:
+            assets = list_assets_legacy(parent_path, session)
+        else:
+            assets = list_assets_modern(parent_path, session)
+
+        for asset in assets:
+            if shutdown_requested:
+                break
+
+            # Use 'id' field which has the clean path (without projects/earthengine-legacy/assets/ prefix)
+            asset_id = asset.get('id', asset.get('name'))
+            asset_type = asset['type']
+
+            # Add to list
+            asset_list.append({
+                'type': asset_type,
+                'path': asset_id
+            })
+
+            # Update stats
+            stats[asset_type] += 1
+            stats['total'] += 1
+
+            # Print dynamic update
+            print(f"\rProcessed: {stats['total']} assets | "
+                  f"FOLDER: {stats.get('FOLDER', 0)} | "
+                  f"IMAGE: {stats.get('IMAGE', 0)} | "
+                  f"IMAGE_COLLECTION: {stats.get('IMAGE_COLLECTION', 0)} | "
+                  f"TABLE: {stats.get('TABLE', 0)} | "
+                  f"FEATURE_VIEW: {stats.get('FEATURE_VIEW', 0)}",
+                  end='', flush=True)
+
+            # Recurse into folders
+            if asset_type == 'FOLDER':
+                list_assets_recursive(asset_id, session, is_legacy, asset_list, stats)
+
+    except Exception as e:
+        logger.error(f"Error listing assets in {parent_path}: {e}")
+
+    return asset_list
+
+
+def process_asset(asset: Dict) -> Optional[AssetInfo]:
+    """Process a single asset and return its info"""
+    global shutdown_requested
+
+    if shutdown_requested:
+        return None
+
+    try:
+        asset_path = asset['path']
+        asset_type = asset['type']
+
+        # Get ACL
+        owner, readers, writers = get_asset_acl(asset_path)
+
+        return AssetInfo(
+            asset_type=asset_type.lower(),
+            path=asset_path,
+            owner=owner,
+            readers=readers,
+            writers=writers
+        )
+    except Exception as e:
+        logger.error(f"Error processing {asset['path']}: {e}")
+        return None
+
+
+def write_csv(output_path: str, results: List[AssetInfo]):
+    """Write results to CSV file"""
+    with open(output_path, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["type", "path", "owner", "readers", "writers"])
+
+        for result in results:
+            writer.writerow([
+                result.asset_type,
+                result.path,
+                result.owner,
+                result.readers,
+                result.writers
+            ])
+
+
+def write_json(output_path: str, results: List[AssetInfo]):
+    """Write results to JSON file"""
+    json_data = [asdict(result) for result in results]
+
+    with open(output_path, 'w') as jsonfile:
+        json.dump(json_data, jsonfile, indent=2)
+
+
+def ee_report(output_path: str, asset_path: Optional[str] = None, max_workers: int = 5, output_format: str = 'csv'):
+    """
+    Generate Earth Engine asset report.
+
+    Args:
+        output_path: Path to output file
+        asset_path: Specific asset path to report on (None = all root assets)
+        max_workers: Number of parallel workers for processing
+        output_format: Output format ('csv' or 'json')
+    """
+    global shutdown_requested
+
     ee.Initialize()
-    with open(output, "w") as csvfile:
-        writer = csv.DictWriter(
-            csvfile,
-            fieldnames=[
-                "type",
-                "path",
-                "No of Assets",
-                "size",
-                "owner",
-                "readers",
-                "writers",
-            ],
-            delimiter=",",
-            lineterminator="\n",
-        )
-        writer.writeheader()
-    if path is not None:
-        if not path.endswith("/") and path.endswith("assets"):
-            path = path + "/"
-        parser = ee.data.getAsset(path)
-        if parser["type"].lower() == "folder" and path.startswith("user"):
-            path = parser["name"]
-        path_list.append(path)
-        logger.debug(f"Processing your folder: {path}")
-        collection_list, table_list, image_list, folder_paths = fparse(path)
+
+    # Create authorized session
+    session = AuthorizedSession(ee.data.get_persistent_credentials())
+
+    logger.info("Starting Earth Engine asset report generation...")
+
+    # Get legacy roots
+    legacy_root_list = legacy_roots(session)
+    logger.info(f"Found {len(legacy_root_list)} legacy root locations")
+
+    # Determine which paths to process
+    paths_to_process = []
+
+    if asset_path:
+        # Check if it's a legacy path
+        is_legacy = is_legacy_path(asset_path, legacy_root_list)
+        paths_to_process.append((asset_path, is_legacy))
+        logger.info(f"Processing {'legacy' if is_legacy else 'modern'} asset path: {asset_path}")
     else:
-        collection_path = ee.data.getAssetRoots()
-        for roots in collection_path:
-            path_list.append(roots["id"])
-            logger.debug("Processing your root folder: {}".format(roots["id"]))
-            collection_list, table_list, image_list, folder_paths = fparse(roots["id"])
-    logger.debug(
-        "Processing a total of: {} folders {} collections {} images {} tables".format(
-            len(folder_paths),
-            len(collection_list),
-            len(image_list),
-            len(table_list),
-        )
-        + "\n"
-    )
-    if folder_paths:
-        for folder in folder_paths:
-            if not folder in path_list:
-                gee_id = ee.data.getAsset(folder)["name"]
-                gee_type = "folder"
-                logger.info("Processing Folder {}".format(gee_id))
-                total_size, total_count = assetsize(gee_id)
-                o, r, w = recprocess(gee_type, gee_id)
-                try:
-                    with open(output, "a") as csvfile:
-                        writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
-                        writer.writerow(
-                            [gee_type, gee_id, total_count, total_size, o, r, w]
-                        )
-                    csvfile.close()
-                except Exception as e:
-                    print(e)
-    if collection_list:
-        for collection in collection_list:
-            gee_id = ee.data.getAsset(collection)["name"]
-            gee_type = "collection"
-            logger.info("Processing Collection {}".format(gee_id))
-            total_size, total_count = assetsize(gee_id)
-            o, r, w = recprocess(gee_type, gee_id)
-            # print(gee_id,gee_type,total_size,total_count,o,r,w)
-            with open(output, "a") as csvfile:
-                writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
-                writer.writerow([gee_type, gee_id, total_count, total_size, o, r, w])
-            csvfile.close()
-    if table_list:
-        for table in table_list:
-            gee_id = ee.data.getAsset(table)["name"]
-            gee_type = "table"
-            logger.info("Processing table {}".format(gee_id))
-            total_size, total_count = assetsize(gee_id)
-            o, r, w = recprocess(gee_type, gee_id)
-            # print(gee_id,gee_type,total_size,total_count,o,r,w)
-            with open(output, "a") as csvfile:
-                writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
-                writer.writerow([gee_type, gee_id, total_count, total_size, o, r, w])
-            csvfile.close()
-    if image_list:
-        for image in image_list:
-            gee_id = ee.data.getAsset(image)["name"]
-            gee_type = "image"
-            logger.info("Processing image {}".format(gee_id))
-            total_size, total_count = assetsize(gee_id)
-            o, r, w = recprocess(gee_type, gee_id)
-            # print(gee_id,gee_type,total_size,total_count,o,r,w)
-            with open(output, "a") as csvfile:
-                writer = csv.writer(csvfile, delimiter=",", lineterminator="\n")
-                writer.writerow([gee_type, gee_id, total_count, total_size, o, r, w])
-            csvfile.close()
+        # Process all root assets
+        roots = ee.data.getAssetRoots()
+        for root in roots:
+            root_id = root['id']
+            is_legacy = is_legacy_path(root_id, legacy_root_list)
+            paths_to_process.append((root_id, is_legacy))
+        logger.info(f"Discovering assets in {len(paths_to_process)} root location(s)...")
+
+    # Collect all assets
+    print()  # New line for dynamic updates
+    all_assets = []
+    stats = defaultdict(int)
+
+    for path, is_legacy in paths_to_process:
+        if shutdown_requested:
+            break
+
+        try:
+            # For modern projects, we need to get asset info differently
+            if is_legacy:
+                asset_info = ee.data.getAsset(path)
+                asset_type = asset_info['type']
+            else:
+                # For modern projects, just treat the root as a folder
+                # and start listing directly
+                asset_type = 'FOLDER'
+
+            all_assets.append({'type': asset_type, 'path': path})
+            stats[asset_type] += 1
+            stats['total'] += 1
+
+            # If it's a folder, get all children
+            if asset_type == 'FOLDER':
+                children = list_assets_recursive(path, session, is_legacy, [], stats)
+                all_assets.extend(children)
+
+        except Exception as e:
+            logger.error(f"Error accessing {path}: {e}")
+            continue
+
+    print()  # New line after dynamic updates
+
+    if shutdown_requested:
+        logger.info("Discovery interrupted by user.")
+        sys.exit(0)
+
+    logger.info(f"Found {len(all_assets)} assets. Processing ACLs...")
+
+    # Process assets in parallel
+    results = []
+    processed = 0
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_asset = {
+            executor.submit(process_asset, asset): asset
+            for asset in all_assets
+        }
+
+        for future in as_completed(future_to_asset):
+            if shutdown_requested:
+                logger.info("Cancelling remaining tasks...")
+                executor.shutdown(wait=False, cancel_futures=True)
+                break
+
+            result = future.result()
+            if result:
+                results.append(result)
+                processed += 1
+
+                # Show progress
+                if processed % 100 == 0 or processed == len(all_assets):
+                    print(f"\rProcessing ACLs: {processed}/{len(all_assets)}", end='', flush=True)
+
+    print()  # New line after progress
+
+    if shutdown_requested:
+        logger.info(f"Report generation interrupted. Partial results ({len(results)} assets) will be saved.")
+
+    # Write output based on format
+    if output_format.lower() == 'json':
+        write_json(output_path, results)
+    else:
+        write_csv(output_path, results)
+
+    logger.info(f"Report complete! {len(results)} assets written to: {output_path}")

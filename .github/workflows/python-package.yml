@@ -1,61 +1,67 @@
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-
-name: CI geeadd
+name: Installation and Help Test
 
 on:
   push:
     branches: [master]
   pull_request:
     branches: [master]
+  workflow_dispatch:
 
 jobs:
-  build:
+  test-installation:
+    name: Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
-        python-version: ["3.9", "3.10"]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
     steps:
-      - name: Checkout repository
-        continue-on-error: true
-        uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
         with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Create whl files
-        continue-on-error: true
+          python-version: "3.11"
+
+      - name: Display Python version
+        run: python --version
+
+      - name: Install package
         run: |
-          pip install setuptools
-          pip install wheel
-          python setup.py sdist bdist_wheel
-          cd dist
-      - name: List & install wheel files(ubuntu)
-        continue-on-error: true
-        if: matrix.os == 'ubuntu-latest'
+          python -m pip install --upgrade pip
+          pip install .
+
+      - name: Verify geeadd installation
         run: |
-          for file in dist/*.whl; do
-            echo "Installing $file..."
-            pip install "$file"
-          done
-      - name: List & install wheel files(mac)
-        continue-on-error: true
-        if: matrix.os == 'macos-latest'
+          geeadd --version
+
+      - name: Test geeadd help
         run: |
-          for file in dist/*.whl; do
-            echo "Installing $file..."
-            pip install "$file"
-          done
-      - name: List & install wheel files(windows)
-        continue-on-error: true
-        if: matrix.os == 'windows-latest'
-        run: |
-          foreach ($file in Get-ChildItem -Path dist -Filter *.whl) {
-            Write-Host "Installing $file..."
-            pip.exe install "$file"
-          }
-      - name: test pkg
+          geeadd --help
+
+      - name: Test geeadd -h
         run: |
           geeadd -h
+
+      - name: Test subcommand help (projects)
+        run: |
+          geeadd projects --help
+
+      - name: Test subcommand help (assets)
+        run: |
+          geeadd assets --help
+
+      - name: Test subcommand help (tasks)
+        run: |
+          geeadd tasks --help
+
+      - name: Test subcommand help (utils)
+        run: |
+          geeadd utils --help
+
+      - name: Installation summary
+        run: |
+          echo "✅ Installation successful on ${{ matrix.os }}"
+          echo "✅ All help commands working correctly"
