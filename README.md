@@ -3,8 +3,7 @@
 [![Documentation](https://img.shields.io/badge/docs-geeadd.geetools.xyz-blue?style=for-the-badge&logo=read-the-docs)](https://samapriya.github.io/gee_asset_manager_addon/)
 [![PyPI](https://img.shields.io/pypi/v/geeadd?style=for-the-badge&logo=pypi)](https://pypi.org/project/geeadd/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
-[![CI](https://img.shields.io/github/actions/workflow/status/samapriya/gee_asset_manager_addon/ci.yml?style=flat-square&logo=github)](https://github.com/samapriya/gee_asset_manager_addon/actions)
-
+[![CI geeadd](https://img.shields.io/github/actions/workflow/status/samapriya/gee_asset_manager_addon/python-package.yml?style=for-the-badge&logo=github&label=CI%20geeadd)](https://github.com/samapriya/gee_asset_manager_addon/actions/workflows/python-package.yml)
 
 **Powerful CLI tools for batch asset management in Google Earth Engine**
 
