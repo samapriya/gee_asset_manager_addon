@@ -1,4 +1,4 @@
-name: Installation and Help Test
+name: CI geeadd
 
 on:
   push:
