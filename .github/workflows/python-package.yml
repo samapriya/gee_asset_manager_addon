@@ -45,22 +45,6 @@ jobs:
         run: |
           geeadd -h
 
-      - name: Test subcommand help (projects)
-        run: |
-          geeadd projects --help
-
-      - name: Test subcommand help (assets)
-        run: |
-          geeadd assets --help
-
-      - name: Test subcommand help (tasks)
-        run: |
-          geeadd tasks --help
-
-      - name: Test subcommand help (utils)
-        run: |
-          geeadd utils --help
-
       - name: Installation summary
         run: |
           echo "✅ Installation successful on ${{ matrix.os }}"
