@@ -30,7 +30,7 @@
 ## Installation
 
 ### Requirements
-- Python 3.6+
+- Python 3.10+
 - Earth Engine Python API (authenticated)
 
 ### Install via pip
@@ -124,9 +124,10 @@ The documentation includes:
 - Best practices and troubleshooting
 - Interactive examples
 
-## 💡 Common Use Cases
+## Common Use Cases
 
 ### Monitor project storage
+
 ```bash
 # Generate an interactive dashboard
 geeadd projects dashboard --outdir ./dashboard.html
@@ -136,6 +137,7 @@ geeadd projects quota --project "projects/my-project"
 ```
 
 ### Batch asset management
+
 ```bash
 # Copy entire folder structure
 geeadd assets copy --initial "users/me/production" --final "users/me/archive"
@@ -148,6 +150,7 @@ geeadd assets size "users/me/collection"
 ```
 
 ### Task monitoring
+
 ```bash
 # View task summary
 geeadd tasks list
@@ -160,6 +163,7 @@ geeadd tasks cancel pending
 ```
 
 ### Utilities
+
 ```bash
 # Search Earth Engine catalog
 geeadd utils search --keywords "Sentinel-2"
