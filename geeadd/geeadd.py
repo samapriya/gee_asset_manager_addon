@@ -155,7 +155,7 @@ def check_package_version(package_name):
         ))
 
 
-#check_package_version("geeadd")
+check_package_version("geeadd")
 
 suffixes = ["B", "KB", "MB", "GB", "TB", "PB"]
 
