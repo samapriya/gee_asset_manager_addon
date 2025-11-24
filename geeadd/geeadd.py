@@ -7,13 +7,15 @@ from .app2script import jsext
 from .batch_copy import copy
 from .batch_delete import delete
 from .batch_mover import mover
+from .color_brewer import PYPERCLIP_AVAILABLE, generate_palette
+from .color_brewer import list_palettes as list_color_palettes
+from .color_brewer import load_palettes
+from .ee_asset_info import display_asset_info
 from .ee_del_meta import delprop
 from .ee_projects import get_projects
 from .ee_projects_dash import get_projects_with_dashboard
 from .ee_report import ee_report
 from .search_fast import EnhancedGEESearch
-from .ee_asset_info import display_asset_info
-from .color_brewer import generate_palette, list_palettes as list_color_palettes, load_palettes, PYPERCLIP_AVAILABLE
 
 __copyright__ = """
     Copyright 2025 Samapriya Roy
@@ -41,19 +43,20 @@ from datetime import datetime
 import click
 import ee
 import requests
+from click import Group
 from google.auth.transport.requests import AuthorizedSession
 from packaging import version as pkg_version
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from rich.tree import Tree
 from tqdm import tqdm
-from click import Group
+
 
 class OrderedGroup(Group):
     def list_commands(self, ctx):
-        return list(self.commands) 
+        return list(self.commands)
 
 console = Console()
 
@@ -152,7 +155,7 @@ def check_package_version(package_name):
         ))
 
 
-check_package_version("geeadd")
+#check_package_version("geeadd")
 
 suffixes = ["B", "KB", "MB", "GB", "TB", "PB"]
 
@@ -177,7 +180,7 @@ def epoch_convert_time(epoch_timestamp):
 # Main CLI group
 @click.group(
     cls=OrderedGroup,
-    help="[bold cyan]Google Earth Engine Batch Asset Manager with Addons[/bold cyan]\n\n"
+    help="Google Earth Engine Batch Asset Manager with Addons\n\n"
          "A modern CLI tool for managing GEE assets, tasks, and projects.",
     context_settings=dict(help_option_names=['-h', '--help'])
 )
@@ -239,34 +242,34 @@ def projects_quota(project):
         """Display quota info uniformly"""
         if "quota" in info:
             quota_info = info["quota"]
-            
-            table = Table(title=f"[bold cyan]{project_type}: {project_name}[/bold cyan]", 
+
+            table = Table(title=f"[bold cyan]{project_type}: {project_name}[/bold cyan]",
                          show_header=False, box=None)
-            
+
             # Size quota
             used_size = int(quota_info.get("sizeBytes", 0))
             max_size = int(quota_info.get("maxSizeBytes", 1))
             percent = (used_size / max_size * 100) if max_size > 0 else 0
-            
+
             table.add_row("[cyan]Storage:[/cyan]", f"{humansize(used_size)} of {humansize(max_size)}")
             table.add_row("", draw_bar(percent))
-            
+
             # Asset count quota
             used_assets = int(quota_info.get("assetCount", 0))
             max_assets = int(quota_info.get("maxAssets", 1))
             percent = (used_assets / max_assets * 100) if max_assets > 0 else 0
-            
+
             table.add_row("[cyan]Assets:[/cyan]", f"{used_assets:,} of {max_assets:,}")
             table.add_row("", draw_bar(percent))
-            
+
             console.print(table)
             console.print()
             return True
         elif "asset_size" in info:
             # Legacy format
-            table = Table(title=f"[bold cyan]{project_type}: {project_name}[/bold cyan]", 
+            table = Table(title=f"[bold cyan]{project_type}: {project_name}[/bold cyan]",
                          show_header=False, box=None)
-            
+
             size_usage = info["asset_size"]["usage"]
             size_limit = info["asset_size"]["limit"]
             size_percent = (size_usage / size_limit * 100) if size_limit > 0 else 0
@@ -279,7 +282,7 @@ def projects_quota(project):
             table.add_row("", draw_bar(size_percent))
             table.add_row("[cyan]Assets:[/cyan]", f"{count_usage:,} of {count_limit:,}")
             table.add_row("", draw_bar(count_percent))
-            
+
             console.print(table)
             console.print()
             return True
@@ -425,7 +428,7 @@ def assets_copy(initial, final):
 @assets.command('move', help="Move folders, collections, images or tables")
 @click.option('--initial', required=True, help='Existing path of assets')
 @click.option('--final', required=True, help='New path for assets')
-@click.option('--no-cleanup', 'cleanup', is_flag=True, default=True, 
+@click.option('--no-cleanup', 'cleanup', is_flag=True, default=True,
               help='Keep empty source folders after moving')
 def assets_move(initial, final, cleanup):
     """Move assets."""
@@ -435,7 +438,7 @@ def assets_move(initial, final, cleanup):
 @assets.command('access', help="Set permissions for assets")
 @click.option('--asset', required=True, help='Path to the Earth Engine asset')
 @click.option('--user', required=True, help='User email, service account, group, or "allUsers"')
-@click.option('--role', required=True, type=click.Choice(['reader', 'writer', 'delete']), 
+@click.option('--role', required=True, type=click.Choice(['reader', 'writer', 'delete']),
               help='Permission role')
 def assets_access(asset, user, role):
     """Set asset permissions."""
@@ -527,7 +530,7 @@ def tasks_list(state, task_id):
             for status in ee.data.getTaskList()
             if status["state"] == state.upper()
         ]
-        
+
         with console.status(f"[bold cyan]Fetching {state.upper()} tasks...", spinner="dots"):
             for operation in operations:
                 task_id_val = operation["id"]
@@ -550,9 +553,9 @@ def tasks_list(state, task_id):
                 if 'batch_eecu_usage_seconds' in operation:
                     item['eecu_usage'] = operation['batch_eecu_usage_seconds']
                 task_bundle.append(item)
-        
+
         console.print_json(data=task_bundle)
-        
+
     elif task_id is not None:
         operations = [
             status
@@ -585,17 +588,17 @@ def tasks_list(state, task_id):
         st = []
         for status in statuses:
             st.append(status["state"])
-        
+
         table = Table(title="[bold cyan]Task Summary[/bold cyan]", show_header=True, header_style="bold magenta")
         table.add_column("Status", style="cyan", width=20)
         table.add_column("Count", justify="right", style="green")
-        
+
         table.add_row("Running", str(st.count('RUNNING')))
         table.add_row("Pending", str(st.count('READY')))
         table.add_row("Completed", str(st.count('COMPLETED') + st.count('SUCCEEDED')))
         table.add_row("Failed", str(st.count('FAILED')))
         table.add_row("Cancelled", str(st.count('CANCELLED') + st.count('CANCELLING')))
-        
+
         console.print(table)
 
 
@@ -617,7 +620,7 @@ def tasks_cancel(target):
                 console=console
             ) as progress:
                 task = progress.add_task("[cyan]Cancelling tasks...", total=len(statuses))
-                
+
                 for status in statuses:
                     state = status['state']
                     task_id = status['id']
@@ -751,7 +754,7 @@ def utils_search(keywords, source, max_results, include_docs, allow_subsets):
 @utils.command('report', help="Generate detailed asset report")
 @click.option('--outfile', required=True, help='Output file path for report')
 @click.option('--path', default=None, help='Path to folder or project')
-@click.option('--format', 'output_format', default='csv', 
+@click.option('--format', 'output_format', default='csv',
               type=click.Choice(['csv', 'json']), help='Output format')
 def utils_report(outfile, path, output_format):
     """Generate Earth Engine asset report."""
@@ -762,21 +765,21 @@ def utils_report(outfile, path, output_format):
 @click.option('--name', help='Palette name (e.g., Blues, RdYlGn, Set1)')
 @click.option('--classes', type=int, help='Number of colors to generate (minimum 3)')
 @click.option('--list', 'show_list', is_flag=True, help='List all available palettes')
-@click.option('--type', 'palette_type', 
+@click.option('--type', 'palette_type',
               type=click.Choice(['sequential', 'diverging', 'qualitative']),
               help='Filter palette list by type')
-@click.option('--format', 'output_format', 
-              type=click.Choice(['json', 'hex', 'list', 'css', 'python', 'js']), 
+@click.option('--format', 'output_format',
+              type=click.Choice(['json', 'hex', 'list', 'css', 'python', 'js']),
               default='json',
               help='Output format')
-@click.option('--copy', 'auto_copy', is_flag=True, 
+@click.option('--copy', 'auto_copy', is_flag=True,
               help='Automatically copy output to clipboard')
 def utils_palette(name, classes, show_list, palette_type, output_format, auto_copy):
     """
     Generate ColorBrewer color palettes for data visualization.
-    
+
     Inspired by https://colorbrewer2.org/
-    
+
     \b
     Output Formats:
       json   - JSON array (default)
@@ -785,34 +788,34 @@ def utils_palette(name, classes, show_list, palette_type, output_format, auto_co
       css    - CSS custom properties
       python - Python list variable
       js     - JavaScript array constant
-    
+
     \b
     Examples:
-    
+
     \b
       # List all available palettes
       geeadd utils palette --list
-      
+
     \b
       # List only sequential palettes
       geeadd utils palette --list --type sequential
-      
+
     \b
       # Generate 5 colors from Blues palette
       geeadd utils palette --name Blues --classes 5
-      
+
     \b
       # Generate colors in hex format and copy to clipboard
       geeadd utils palette --name RdYlGn --classes 9 --format hex --copy
-      
+
     \b
       # Generate CSS custom properties
       geeadd utils palette --name Set1 --classes 8 --format css
-      
+
     \b
       # Generate Python list
       geeadd utils palette --name Spectral --classes 11 --format python --copy
-      
+
     \b
       # Generate JavaScript array
       geeadd utils palette --name Blues --classes 7 --format js --copy
@@ -820,11 +823,11 @@ def utils_palette(name, classes, show_list, palette_type, output_format, auto_co
     if show_list:
         palettes = load_palettes()
         list_color_palettes(palettes, palette_type)
-        
+
         # Show clipboard availability info
         if not PYPERCLIP_AVAILABLE:
             console.print("\n[dim]💡 Tip: Install pyperclip for clipboard support: pip install pyperclip[/dim]")
-        
+
     elif name and classes:
         generate_palette(name, classes, output_format, auto_copy)
     else:

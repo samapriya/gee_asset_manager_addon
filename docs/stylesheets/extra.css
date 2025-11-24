@@ -1,0 +1,59 @@
+/* Container for the fake window */
+.mac-window {
+    background-color: #1e1e2e;
+    /* Dark terminal background */
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    margin: 1em 0;
+    padding-top: 35px;
+    /* Space for the "title bar" */
+    position: relative;
+    overflow: hidden;
+}
+
+/* The Red/Yellow/Green buttons */
+.mac-window::before {
+    content: "";
+    position: absolute;
+    top: 12px;
+    left: 15px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #ff5f56;
+    /* Red dot */
+    box-shadow:
+        20px 0 0 #ffbd2e,
+        /* Yellow dot (offset 20px) */
+        40px 0 0 #27c93f;
+    /* Green dot (offset 40px) */
+    z-index: 2;
+}
+
+/* Optional: Add a title in the center of the bar */
+.mac-window[data-title]::after {
+    content: attr(data-title);
+    position: absolute;
+    top: 10px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #888;
+    font-family: sans-serif;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* Fix the inner code block styling to blend in */
+.mac-window .md-typeset__scrollwrap,
+.mac-window .highlight {
+    margin: 0 !important;
+    border-radius: 0 0 8px 8px !important;
+    background: transparent !important;
+}
+
+.mac-window code {
+    background-color: transparent !important;
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    /* Optional fancy font */
+}

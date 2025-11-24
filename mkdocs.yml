@@ -9,7 +9,7 @@ repo_name: gee_asset_manager_addon
 repo_url: https://github.com/samapriya/gee_asset_manager_addon
 
 # Copyright
-copyright: "Copyright &copy; 2021 - 2024 Samapriya Roy"
+copyright: "Copyright &copy; 2021 - 2025 Samapriya Roy"
 
 # Configuration
 theme:
@@ -26,10 +26,16 @@ theme:
     - search.share
     - search.suggest
     - toc.follow
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
 
   # 404 page
   static_templates:
     - 404.html
+  extra_css:
+    - stylesheets/extra.css
 
   # Don't include MkDocs' JavaScript
   include_search_page: false
@@ -39,20 +45,20 @@ theme:
   language: en
   palette:
     - scheme: default
-      primary: yellow
+      primary: deep purple
       accent: indigo
       toggle:
         icon: material/toggle-switch-off-outline
         name: Switch to dark mode
     - scheme: slate
-      primary: red
-      accent: red
+      primary: deep purple
+      accent: indigo
       toggle:
         icon: material/toggle-switch
         name: Switch to light mode
   font:
     text: Google Sans
-    code: Regular
+    code: Roboto Mono
   favicon: assets/favicon.png
   icon:
     logo: logo
@@ -101,12 +107,15 @@ markdown_extensions:
   - pymdownx.critic
   - pymdownx.details
   - pymdownx.emoji:
-      emoji_index: !!python/name:materialx.emoji.twemoji
-      emoji_generator: !!python/name:materialx.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
       options:
         custom_icons:
           - overrides/.icons
-  - pymdownx.highlight
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.keys
   - pymdownx.magiclink:
@@ -120,30 +129,45 @@ markdown_extensions:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
-  - pymdownx.tabbed
+  - pymdownx.tabbed:
+      alternate_style: true
   - pymdownx.tasklist:
       custom_checkbox: true
   - pymdownx.tilde
 
 # Page tree
 nav:
-  - Google Earth Engine Batch Asset Manager with Addons: index.md
-  - License: license.md
-  - Prerequisites and Installation: installation.md
-  - Setup and Search Tools:
-      - Quota tool: projects/quota.md
-      - EE API Enabled Projects tool: projects/projects.md
-      - GEE App to Script tool: projects/app2script.md
-      - Search tool: projects/search.md
-  - Asset management tools:
-      - Asset Size tool: projects/size.md
-      - Copy Assets tool: projects/copy.md
-      - Move Assets tool: projects/move.md
-      - Change asset permissions: projects/access.md
-      - Delete Assets tool: projects/delete.md
-      - Assets Report tool: projects/report.md
-  - Tasks and Metadata tools:
-      - Tasks tool: projects/task_status.md
-      - Cancel Tasks tool: projects/cancel_tasks.md
-      - Delete metadata tool: projects/delete_metadata.md
-  - Changelog: changelog.md
+  - Home:
+      - Introduction: index.md
+      - License: license.md
+      - Installation: installation.md
+      - Changelog: changelog.md
+      - Quota Tool: proj/quota.md
+      - Quota Tool New: proj/ai_studio.md
+
+  # - Projects Management:
+  #     - Overview: projects/overview.md
+  #     - List EE-Enabled Projects: projects/projects.md
+  #     - Projects Dashboard: projects/dashboard.md
+
+  # - Assets Management:
+  #     - Overview: assets/overview.md
+  #     - Asset Info: assets/info.md
+  #     - Asset Size: assets/size.md
+  #     - Copy Assets: assets/copy.md
+  #     - Move Assets: assets/move.md
+  #     - Access Control: assets/access.md
+  #     - Delete Assets: assets/delete.md
+  #     - Delete Metadata: assets/delete-meta.md
+
+  # - Tasks Management:
+  #     - Overview: tasks/overview.md
+  #     - List Tasks: tasks/list.md
+  #     - Cancel Tasks: tasks/cancel.md
+
+  # - Utilities:
+  #     - Overview: utils/overview.md
+  #     - App to Script: utils/app2script.md
+  #     - Search Catalog: utils/search.md
+  #     - Assets Report: utils/report.md
+  #     - ColorBrewer Palettes: utils/palette.md
