@@ -22,14 +22,13 @@ __copyright__ = """
 """
 __license__ = "Apache 2.0"
 
+from datetime import datetime
 import concurrent.futures
 import json
 import logging
 import signal
 import sys
 import time
-from datetime import datetime
-from typing import Dict, List, Optional, Tuple
 
 import ee
 from tqdm import tqdm
@@ -56,7 +55,7 @@ def handle_interrupt(sig, frame):
         sys.exit(1)
 
 
-def get_asset(path: str) -> Tuple[Optional[str], Optional[str]]:
+def get_asset(path: str) -> tuple[str | None, str | None]:
     """
     Get asset information and add to asset_list.
 
@@ -76,7 +75,7 @@ def get_asset(path: str) -> Tuple[Optional[str], Optional[str]]:
         return None, None
 
 
-def recursive_parallel(path: str, max_workers: int = 10) -> List[Dict]:
+def recursive_parallel(path: str, max_workers: int = 10) -> list[dict]:
     """
     Recursively gather all assets under a path using parallel execution.
 
@@ -110,7 +109,7 @@ def recursive_parallel(path: str, max_workers: int = 10) -> List[Dict]:
     return asset_list
 
 
-def delete_with_retry(asset_path: str, max_retries: int = 3) -> Dict[str, any]:
+def delete_with_retry(asset_path: str, max_retries: int = 3) -> dict[str, any]:
     """
     Delete a single asset with retry logic and specific error handling.
 
@@ -194,7 +193,7 @@ def delete_with_retry(asset_path: str, max_retries: int = 3) -> Dict[str, any]:
     }
 
 
-def save_failed_assets(failed_assets: List[Dict], filename: Optional[str] = None) -> None:
+def save_failed_assets(failed_assets: list[dict], filename: str | None = None) -> None:
     """
     Save list of failed assets to a JSON file.
 
@@ -219,7 +218,7 @@ def save_failed_assets(failed_assets: List[Dict], filename: Optional[str] = None
 
 
 def delete(ids: str, max_workers: int = 10, max_retries: int = 3,
-           verbose: bool = False) -> Optional[Dict[str, any]]:
+           verbose: bool = False) -> dict[str, any] | None:
     """
     Delete assets recursively with concurrent processing.
 
@@ -356,4 +355,3 @@ def delete(ids: str, max_workers: int = 10, max_retries: int = 3,
         if interrupt_received:
             print("\nDelete operation was interrupted and has been stopped.")
             print("Some assets may have been deleted while others were not.")
-
