@@ -19,7 +19,6 @@ __license__ = "Apache 2.0"
 
 import itertools
 import logging
-from typing import List, Tuple
 
 import ee
 
@@ -54,12 +53,12 @@ class AssetCollector:
         self.tables.clear()
         self.folders.clear()
 
-    def get_all_assets(self) -> List[str]:
+    def get_all_assets(self) -> list[str]:
         """Get a flat list of all collected assets."""
         return list(set(itertools.chain(self.collections, self.tables, self.images)))
 
 
-def get_folder_recursive(path: str, folder_list: List[str]) -> None:
+def get_folder_recursive(path: str, folder_list: list[str]) -> None:
     """
     Recursively collect all folder paths.
 
@@ -82,7 +81,7 @@ def get_folder_recursive(path: str, folder_list: List[str]) -> None:
         logger.error(f"Error accessing folder {path}: {e}")
 
 
-def parse_asset_path(path: str) -> Tuple[List[str], List[str], List[str], List[str]]:
+def parse_asset_path(path: str) -> tuple[list[str], list[str], list[str], list[str]]:
     """
     Parse an asset path and collect all assets within it.
 

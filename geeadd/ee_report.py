@@ -11,7 +11,6 @@ import sys
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
-from typing import Dict, List, Optional
 
 import ee
 from google.auth.transport.requests import AuthorizedSession
@@ -48,7 +47,7 @@ class AssetInfo:
     writers: str
 
 
-def legacy_roots(session: AuthorizedSession) -> List[str]:
+def legacy_roots(session: AuthorizedSession) -> list[str]:
     """Get all legacy root asset paths"""
     legacy_root_list = []
     url = 'https://earthengine.googleapis.com/v1/projects/earthengine-legacy:listAssets'
@@ -63,7 +62,7 @@ def legacy_roots(session: AuthorizedSession) -> List[str]:
     return legacy_root_list
 
 
-def is_legacy_path(path: str, legacy_root_list: List[str]) -> bool:
+def is_legacy_path(path: str, legacy_root_list: list[str]) -> bool:
     """Check if a path is a legacy asset path"""
     # Users paths are always legacy
     if path.startswith('users/'):
@@ -81,7 +80,7 @@ def is_legacy_path(path: str, legacy_root_list: List[str]) -> bool:
     return False
 
 
-def list_assets_legacy(parent: str, session: AuthorizedSession) -> List[Dict]:
+def list_assets_legacy(parent: str, session: AuthorizedSession) -> list[dict]:
     """List assets using legacy API"""
     # Extract the path after 'projects/'
     if parent.startswith('projects/'):
@@ -101,7 +100,7 @@ def list_assets_legacy(parent: str, session: AuthorizedSession) -> List[Dict]:
         return []
 
 
-def list_assets_modern(parent: str, session: AuthorizedSession) -> List[Dict]:
+def list_assets_modern(parent: str, session: AuthorizedSession) -> list[dict]:
     """List assets using modern API"""
     # Extract project ID - parent could be:
     # - "space-geographer" (just project ID)
@@ -140,9 +139,9 @@ def list_assets_recursive(
     parent_path: str,
     session: AuthorizedSession,
     is_legacy: bool,
-    asset_list: Optional[List[Dict]] = None,
-    stats: Optional[Dict] = None
-) -> List[Dict]:
+    asset_list: list[dict] | None = None,
+    stats: dict | None = None
+) -> list[dict]:
     """
     Recursively list all assets in a folder and subfolders.
 
@@ -211,7 +210,7 @@ def list_assets_recursive(
     return asset_list
 
 
-def process_asset(asset: Dict) -> Optional[AssetInfo]:
+def process_asset(asset: dict) -> AssetInfo | None:
     """Process a single asset and return its info"""
     global shutdown_requested
 
@@ -237,7 +236,7 @@ def process_asset(asset: Dict) -> Optional[AssetInfo]:
         return None
 
 
-def write_csv(output_path: str, results: List[AssetInfo]):
+def write_csv(output_path: str, results: list[AssetInfo]):
     """Write results to CSV file"""
     with open(output_path, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
@@ -253,7 +252,7 @@ def write_csv(output_path: str, results: List[AssetInfo]):
             ])
 
 
-def write_json(output_path: str, results: List[AssetInfo]):
+def write_json(output_path: str, results: list[AssetInfo]):
     """Write results to JSON file"""
     json_data = [asdict(result) for result in results]
 
@@ -261,7 +260,7 @@ def write_json(output_path: str, results: List[AssetInfo]):
         json.dump(json_data, jsonfile, indent=2)
 
 
-def ee_report(output_path: str, asset_path: Optional[str] = None, max_workers: int = 5, output_format: str = 'csv'):
+def ee_report(output_path: str, asset_path: str | None = None, max_workers: int = 5, output_format: str = 'csv'):
     """
     Generate Earth Engine asset report.
 

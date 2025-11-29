@@ -1,0 +1,10 @@
+# Testing dependencies for geeadd
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.1
+python-box>=7.0.0
+click>=8.1.0
+
+# Optional: for better test output
+pytest-xdist>=3.3.0  # Run tests in parallel
+pytest-timeout>=2.1.0  # Add timeouts to tests

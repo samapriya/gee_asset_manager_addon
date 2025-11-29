@@ -155,7 +155,7 @@ def check_package_version(package_name):
         ))
 
 
-#check_package_version("geeadd")
+check_package_version("geeadd")
 
 suffixes = ["B", "KB", "MB", "GB", "TB", "PB"]
 
@@ -167,7 +167,7 @@ def humansize(nbytes):
         nbytes /= 1024.0
         i += 1
     f = ("%.2f" % nbytes).rstrip("0").rstrip(".")
-    return "%s %s" % (f, suffixes[i])
+    return f"{f} {suffixes[i]}"
 
 
 def epoch_convert_time(epoch_timestamp):

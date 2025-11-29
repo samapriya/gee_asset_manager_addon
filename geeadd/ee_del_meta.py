@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 __copyright__ = """
 
     Copyright 2024 Samapriya Roy
