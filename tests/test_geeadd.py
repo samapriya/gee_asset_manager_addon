@@ -11,7 +11,7 @@ import sys
 from . import fake_ee
 
 # Now import geeadd components
-from geeadd import cli, humansize, epoch_convert_time
+from geeadd.geeadd import cli, humansize, epoch_convert_time
 
 
 @pytest.fixture
@@ -30,7 +30,7 @@ def mock_ee_initialize():
 @pytest.fixture
 def mock_session():
     """Mock AuthorizedSession."""
-    with patch('geeadd.AuthorizedSession') as mock:
+    with patch('geeadd.geeadd.AuthorizedSession') as mock:
         session = MagicMock()
         mock.return_value = session
         yield session
@@ -76,14 +76,14 @@ class TestProjectsCommands:
     
     def test_projects_enabled(self, runner, mock_ee_initialize):
         """Test listing enabled projects."""
-        with patch('geeadd.get_projects') as mock_get:
+        with patch('geeadd.geeadd.get_projects') as mock_get:
             result = runner.invoke(cli, ['projects', 'enabled'])
             assert result.exit_code == 0
             mock_get.assert_called_once()
     
     def test_projects_dashboard(self, runner, mock_ee_initialize):
         """Test dashboard generation."""
-        with patch('geeadd.get_projects_with_dashboard') as mock_dash:
+        with patch('geeadd.geeadd.get_projects_with_dashboard') as mock_dash:
             result = runner.invoke(cli, ['projects', 'dashboard'])
             assert result.exit_code == 0
             mock_dash.assert_called_once()
@@ -118,7 +118,7 @@ class TestAssetsCommands:
     
     def test_assets_info(self, runner, mock_ee_initialize):
         """Test asset info display."""
-        with patch('geeadd.display_asset_info') as mock_display:
+        with patch('geeadd.geeadd.display_asset_info') as mock_display:
             result = runner.invoke(
                 cli, ['assets', 'info', 'projects/test/assets/image']
             )
@@ -127,7 +127,7 @@ class TestAssetsCommands:
     
     def test_assets_copy(self, runner, mock_ee_initialize):
         """Test asset copying."""
-        with patch('geeadd.copy') as mock_copy:
+        with patch('geeadd.geeadd.copy') as mock_copy:
             result = runner.invoke(cli, [
                 'assets', 'copy',
                 '--initial', 'path/to/source',
@@ -141,7 +141,7 @@ class TestAssetsCommands:
     
     def test_assets_move(self, runner, mock_ee_initialize):
         """Test asset moving."""
-        with patch('geeadd.mover') as mock_mover:
+        with patch('geeadd.geeadd.mover') as mock_mover:
             result = runner.invoke(cli, [
                 'assets', 'move',
                 '--initial', 'path/to/source',
@@ -152,7 +152,7 @@ class TestAssetsCommands:
     
     def test_assets_access(self, runner, mock_ee_initialize):
         """Test setting asset permissions."""
-        with patch('geeadd.access') as mock_access:
+        with patch('geeadd.geeadd.access') as mock_access:
             result = runner.invoke(cli, [
                 'assets', 'access',
                 '--asset', 'path/to/asset',
@@ -164,7 +164,7 @@ class TestAssetsCommands:
     
     def test_assets_delete(self, runner, mock_ee_initialize):
         """Test asset deletion."""
-        with patch('geeadd.delete') as mock_delete:
+        with patch('geeadd.geeadd.delete') as mock_delete:
             result = runner.invoke(cli, [
                 'assets', 'delete',
                 '--id', 'path/to/asset'
@@ -177,7 +177,7 @@ class TestAssetsCommands:
         mock_asset_info = {'type': 'IMAGE'}
         
         with patch.object(fake_ee.data, 'getAsset', return_value=mock_asset_info):
-            with patch('geeadd.ee.ImageCollection') as mock_ic:
+            with patch('geeadd.geeadd.ee.ImageCollection') as mock_ic:
                 mock_collection = MagicMock()
                 mock_collection.aggregate_array.return_value.getInfo.return_value = [1000000]
                 mock_ic.fromImages.return_value = mock_collection
@@ -246,7 +246,7 @@ class TestUtilsCommands:
     
     def test_utils_app2script(self, runner, mock_ee_initialize):
         """Test extracting script from app."""
-        with patch('geeadd.jsext') as mock_jsext:
+        with patch('geeadd.geeadd.jsext') as mock_jsext:
             result = runner.invoke(cli, [
                 'utils', 'app2script',
                 '--url', 'https://example.earthengine.app/view/test'
@@ -256,7 +256,7 @@ class TestUtilsCommands:
     
     def test_utils_search(self, runner, mock_ee_initialize):
         """Test GEE catalog search."""
-        with patch('geeadd.EnhancedGEESearch') as mock_search_class:
+        with patch('geeadd.geeadd.EnhancedGEESearch') as mock_search_class:
             mock_search = MagicMock()
             mock_search.search.return_value = []
             mock_search_class.return_value = mock_search
@@ -269,7 +269,7 @@ class TestUtilsCommands:
     
     def test_utils_report(self, runner, mock_ee_initialize):
         """Test generating asset report."""
-        with patch('geeadd.ee_report') as mock_report:
+        with patch('geeadd.geeadd.ee_report') as mock_report:
             result = runner.invoke(cli, [
                 'utils', 'report',
                 '--outfile', 'report.csv'
@@ -279,15 +279,15 @@ class TestUtilsCommands:
     
     def test_utils_palette_list(self, runner, mock_ee_initialize):
         """Test listing color palettes."""
-        with patch('geeadd.load_palettes', return_value={}):
-            with patch('geeadd.list_color_palettes') as mock_list:
+        with patch('geeadd.geeadd.load_palettes', return_value={}):
+            with patch('geeadd.geeadd.list_color_palettes') as mock_list:
                 result = runner.invoke(cli, ['utils', 'palette', '--list'])
                 assert result.exit_code == 0
                 mock_list.assert_called_once()
     
     def test_utils_palette_generate(self, runner, mock_ee_initialize):
         """Test generating a palette."""
-        with patch('geeadd.generate_palette') as mock_gen:
+        with patch('geeadd.geeadd.generate_palette') as mock_gen:
             result = runner.invoke(cli, [
                 'utils', 'palette',
                 '--name', 'Blues',
@@ -309,7 +309,7 @@ class TestDeprecatedCommands:
     
     def test_deprecated_copy(self, runner, mock_ee_initialize):
         """Test deprecated copy command."""
-        with patch('geeadd.copy') as mock_copy:
+        with patch('geeadd.geeadd.copy') as mock_copy:
             result = runner.invoke(cli, [
                 'copy',
                 '--initial', 'source',
@@ -321,7 +321,7 @@ class TestDeprecatedCommands:
     
     def test_deprecated_delete(self, runner, mock_ee_initialize):
         """Test deprecated delete command."""
-        with patch('geeadd.delete') as mock_delete:
+        with patch('geeadd.geeadd.delete') as mock_delete:
             result = runner.invoke(cli, [
                 'delete',
                 '--id', 'asset-path'
