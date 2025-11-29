@@ -6,14 +6,9 @@ import pytest
 from click.testing import CliRunner
 from unittest.mock import patch, MagicMock, Mock
 import sys
-import os
 
-# Import the fake ee module before importing geeadd
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'fake_modules'))
-import fake_ee as ee
-
-# Mock ee module for geeadd imports
-sys.modules['ee'] = ee
+# Import fake_ee from conftest (already mocked in sys.modules)
+from . import fake_ee
 
 # Now import geeadd components
 from geeadd import cli, humansize, epoch_convert_time
@@ -28,7 +23,7 @@ def runner():
 @pytest.fixture
 def mock_ee_initialize():
     """Mock Earth Engine initialization."""
-    with patch('ee.Initialize') as mock:
+    with patch.object(fake_ee, 'Initialize') as mock:
         yield mock
 
 
@@ -96,14 +91,14 @@ class TestProjectsCommands:
     def test_projects_quota_no_project(self, runner, mock_ee_initialize, mock_session):
         """Test quota display without specific project."""
         # Mock ee.data methods
-        with patch('ee.data.getAssetRoots', return_value=[]):
-            with patch('ee.data.getInfo', return_value=None):
+        with patch.object(fake_ee.data, 'getAssetRoots', return_value=[]):
+            with patch.object(fake_ee.data, 'getInfo', return_value=None):
                 result = runner.invoke(cli, ['projects', 'quota'])
                 assert result.exit_code == 0
     
     def test_projects_quota_specific(self, runner, mock_ee_initialize):
         """Test quota for specific project."""
-        with patch('ee.data.getInfo') as mock_info:
+        with patch.object(fake_ee.data, 'getInfo') as mock_info:
             mock_info.return_value = {
                 'quota': {
                     'sizeBytes': '1000000',
@@ -181,8 +176,8 @@ class TestAssetsCommands:
         """Test getting size of an image."""
         mock_asset_info = {'type': 'IMAGE'}
         
-        with patch('ee.data.getAsset', return_value=mock_asset_info):
-            with patch('ee.ImageCollection') as mock_ic:
+        with patch.object(fake_ee.data, 'getAsset', return_value=mock_asset_info):
+            with patch('geeadd.ee.ImageCollection') as mock_ic:
                 mock_collection = MagicMock()
                 mock_collection.aggregate_array.return_value.getInfo.return_value = [1000000]
                 mock_ic.fromImages.return_value = mock_collection
@@ -197,7 +192,7 @@ class TestTasksCommands:
     
     def test_tasks_list_summary(self, runner, mock_ee_initialize):
         """Test listing task summary."""
-        with patch('ee.data.getTaskList') as mock_list:
+        with patch.object(fake_ee.data, 'getTaskList') as mock_list:
             mock_list.return_value = [
                 {'state': 'RUNNING'},
                 {'state': 'READY'},
@@ -209,7 +204,7 @@ class TestTasksCommands:
     
     def test_tasks_list_by_state(self, runner, mock_ee_initialize):
         """Test filtering tasks by state."""
-        with patch('ee.data.getTaskList') as mock_list:
+        with patch.object(fake_ee.data, 'getTaskList') as mock_list:
             mock_list.return_value = [
                 {
                     'id': 'task-1',
@@ -226,8 +221,8 @@ class TestTasksCommands:
     
     def test_tasks_cancel_all(self, runner, mock_ee_initialize):
         """Test cancelling all tasks."""
-        with patch('ee.data.getTaskList') as mock_list:
-            with patch('ee.data.cancelTask') as mock_cancel:
+        with patch.object(fake_ee.data, 'getTaskList') as mock_list:
+            with patch.object(fake_ee.data, 'cancelTask') as mock_cancel:
                 mock_list.return_value = [
                     {'id': 'task-1', 'state': 'RUNNING'},
                     {'id': 'task-2', 'state': 'READY'}
@@ -238,8 +233,8 @@ class TestTasksCommands:
     
     def test_tasks_cancel_specific(self, runner, mock_ee_initialize):
         """Test cancelling specific task."""
-        with patch('ee.data.getTaskStatus') as mock_status:
-            with patch('ee.data.cancelTask') as mock_cancel:
+        with patch.object(fake_ee.data, 'getTaskStatus') as mock_status:
+            with patch.object(fake_ee.data, 'cancelTask') as mock_cancel:
                 mock_status.return_value = [{'state': 'RUNNING'}]
                 result = runner.invoke(cli, ['tasks', 'cancel', 'task-123'])
                 assert result.exit_code == 0
@@ -307,7 +302,7 @@ class TestDeprecatedCommands:
     
     def test_deprecated_quota(self, runner, mock_ee_initialize):
         """Test deprecated quota command."""
-        with patch('ee.data.getAssetRoots', return_value=[]):
+        with patch.object(fake_ee.data, 'getAssetRoots', return_value=[]):
             result = runner.invoke(cli, ['quota'])
             assert result.exit_code == 0
             assert 'deprecated' in result.output.lower()
@@ -341,18 +336,18 @@ class TestIntegration:
     def test_full_workflow_with_fake_ee(self, runner, mock_ee_initialize):
         """Test a complete workflow using the fake ee module."""
         # Test that Image operations work
-        img = ee.Image.constant(0)
+        img = fake_ee.Image.constant(0)
         bands = img.bandNames()
         assert bands.getInfo() == ["B1", "B2"]
         
         # Test Geometry operations
-        geom = ee.Geometry.Point([0, 0])
+        geom = fake_ee.Geometry.Point([0, 0])
         assert geom.type().value == "Point"
         
         # Test FeatureCollection
-        fc = ee.FeatureCollection([])
+        fc = fake_ee.FeatureCollection([])
         img_from_fc = fc.style()
-        assert isinstance(img_from_fc, ee.Image)
+        assert isinstance(img_from_fc, fake_ee.Image)
     
     def test_error_handling(self, runner, mock_ee_initialize):
         """Test error handling in commands."""
