@@ -49,19 +49,30 @@ jobs:
         run: |
           pytest tests/ -v --tb=short --color=yes
 
+      - name: Create test results directory
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        run: mkdir -p tests/results
+
       - name: Run tests with coverage (Ubuntu only)
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
         run: |
-          pytest tests/ --cov=geeadd --cov-report=xml --cov-report=term
+          pytest tests/ --cov=geeadd --cov-report=xml:tests/results/coverage.xml --cov-report=term
 
-      - name: Upload coverage to Codecov (Ubuntu only)
+      - name: Upload test results as artifact
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
-        uses: codecov/codecov-action@v4
+        uses: actions/upload-artifact@v4
         with:
-          file: ./coverage.xml
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
+          name: coverage-report
+          path: tests/results/coverage.xml
+          retention-days: 30
+
+      - name: Commit coverage report
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' && github.ref == 'refs/heads/master'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add tests/results/coverage.xml
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update coverage report [skip ci]" && git push)
 
       - name: Test summary
         run: |
