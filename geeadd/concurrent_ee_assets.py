@@ -4,7 +4,6 @@ import json
 import time
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import ee
 from google.auth.transport.requests import AuthorizedSession
@@ -28,7 +27,7 @@ def legacy_roots():
     return legacy_root_list
 
 
-def legacy_list_assets(parent: str, stats: Optional[Dict] = None, show_paths: bool = True) -> List[Dict]:
+def legacy_list_assets(parent: str, stats: dict | None = None, show_paths: bool = True) -> list[dict]:
     """List assets for a given parent path"""
     url = f'https://earthengine.googleapis.com/v1/projects/earthengine-legacy/assets/{parent}:listAssets'
 
@@ -66,7 +65,7 @@ def legacy_list_assets(parent: str, stats: Optional[Dict] = None, show_paths: bo
         return []
 
 
-def list_assets(parent: str, stats: Optional[Dict] = None, show_paths: bool = True) -> List[Dict]:
+def list_assets(parent: str, stats: dict | None = None, show_paths: bool = True) -> list[dict]:
     """List assets for a given parent path (non-legacy)"""
     url = f'https://earthengine.googleapis.com/v1/projects/{parent}:listAssets'
 
@@ -105,12 +104,12 @@ def list_assets(parent: str, stats: Optional[Dict] = None, show_paths: bool = Tr
 
 
 def legacy_list_assets_concurrent(
-    parents: List[str],
+    parents: list[str],
     max_workers: int = 10,
     recursive: bool = False,
-    stats: Optional[Dict] = None,
+    stats: dict | None = None,
     show_paths: bool = True
-) -> Dict[str, List[Dict]]:
+) -> dict[str, list[dict]]:
     """
     Concurrently fetch assets for multiple parent paths
 
@@ -165,12 +164,12 @@ def legacy_list_assets_concurrent(
 
 
 def list_assets_concurrent(
-    parents: List[str],
+    parents: list[str],
     max_workers: int = 10,
     recursive: bool = False,
-    stats: Optional[Dict] = None,
+    stats: dict | None = None,
     show_paths: bool = True
-) -> Dict[str, List[Dict]]:
+) -> dict[str, list[dict]]:
     """
     Concurrently fetch assets for multiple parent paths (non-legacy)
 
@@ -224,7 +223,7 @@ def list_assets_concurrent(
     return results
 
 
-def is_legacy_path(path: str, legacy_root_list: List[str]) -> bool:
+def is_legacy_path(path: str, legacy_root_list: list[str]) -> bool:
     """Check if a path is a legacy asset path"""
     # Users paths are always legacy
     if path.startswith('users/'):
@@ -251,7 +250,7 @@ def is_legacy_path(path: str, legacy_root_list: List[str]) -> bool:
     return False
 
 
-def export_to_csv(assets: List[Dict], filepath: str) -> None:
+def export_to_csv(assets: list[dict], filepath: str) -> None:
     """Export assets to CSV file"""
     if not assets:
         print(f"No assets to export to {filepath}")
@@ -271,7 +270,7 @@ def export_to_csv(assets: List[Dict], filepath: str) -> None:
     print(f"\nExported {len(assets)} assets to {filepath}")
 
 
-def export_to_json(assets: List[Dict], filepath: str) -> None:
+def export_to_json(assets: list[dict], filepath: str) -> None:
     """Export assets to JSON file"""
     if not assets:
         print(f"No assets to export to {filepath}")
@@ -287,8 +286,8 @@ def get_all_assets(
     parent: str,
     max_workers: int = 10,
     recursive: bool = False,
-    export_path: Optional[str] = None
-) -> List[Dict]:
+    export_path: str | None = None
+) -> list[dict]:
     """
     Get all assets under a parent path. Automatically detects legacy vs modern API.
 
