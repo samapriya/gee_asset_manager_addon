@@ -52,6 +52,9 @@ coverage.xml
 .pytest_cache/
 cover/
 
+# Exception: Keep the coverage report in tests/results/
+!tests/results/coverage.xml
+
 # Translations
 *.mo
 *.pot
