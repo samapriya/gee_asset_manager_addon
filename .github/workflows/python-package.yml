@@ -8,34 +8,28 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Run comprehensive tests with Earth Engine
+  # ===========================================================
+  # Main test matrix (Python 3.11 ONLY)
+  # ===========================================================
   test:
-    name: Run Tests on ${{ matrix.os }} - Python ${{ matrix.python-version }}
+    name: Run Tests on ${{ matrix.os }} - Python 3.11
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.11"]
-        exclude:
-          # Reduce matrix size for faster CI
-          - os: macos-latest
-            python-version: "3.9"
-          - os: windows-latest
-            python-version: "3.9"
 
     env:
-      # Set service account credentials as environment variable
       CLOUD_SA: ${{ secrets.CLOUD_SA }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.11"
 
       - name: Display Python version
         run: python --version
@@ -46,33 +40,42 @@ jobs:
           pip install pytest pytest-cov pytest-mock python-box click earthengine-api google-auth
 
       - name: Install package in development mode
-        run: |
-          pip install -e .
+        run: pip install -e .
 
-      - name: Verify service account is available
-        run: |
-          python -c "import os; print('Service account available:', bool(os.environ.get('CLOUD_SA')))"
+      - name: Verify service account availability
+        run: python -c "import os; print('Service account available:', bool(os.environ.get('CLOUD_SA')))"
 
+      # -----------------------------------------------------------
+      # Run non-EE tests first
+      # -----------------------------------------------------------
       - name: Run quick tests (no EE required)
         run: |
           pytest tests/ -v -m "not slow" --tb=short --color=yes -k "not ee_initialized"
 
+      # -----------------------------------------------------------
+      # Run EE-dependent tests only if CLOUD_SA is provided
+      # -----------------------------------------------------------
       - name: Run Earth Engine tests
         if: env.CLOUD_SA != ''
         run: |
           pytest tests/ -v -m "not slow" --tb=short --color=yes
 
+      # -----------------------------------------------------------
+      # Coverage (Ubuntu + Python 3.11 only)
+      # -----------------------------------------------------------
       - name: Create test results directory
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        if: matrix.os == 'ubuntu-latest'
         run: mkdir -p tests/results
 
-      - name: Run tests with coverage (Ubuntu only)
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' && env.CLOUD_SA != ''
+      - name: Run tests with coverage
+        if: matrix.os == 'ubuntu-latest' && env.CLOUD_SA != ''
         run: |
-          pytest tests/ --cov=geeadd --cov-report=xml:tests/results/coverage.xml --cov-report=term --cov-report=html:tests/results/htmlcov
+          pytest tests/ --cov=geeadd \
+              --cov-report=xml:tests/results/coverage.xml \
+              --cov-report=html:tests/results/htmlcov
 
-      - name: Upload coverage report to artifacts
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+      - name: Upload coverage report
+        if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
@@ -81,8 +84,8 @@ jobs:
             tests/results/htmlcov
           retention-days: 30
 
-      - name: Upload coverage to Codecov (optional)
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' && env.CLOUD_SA != ''
+      - name: Upload to Codecov (optional)
+        if: matrix.os == 'ubuntu-latest' && env.CLOUD_SA != ''
         uses: codecov/codecov-action@v3
         with:
           files: ./tests/results/coverage.xml
@@ -90,11 +93,13 @@ jobs:
           name: codecov-umbrella
           fail_ci_if_error: false
 
-      - name: Test summary
-        run: |
-          echo "✅ Tests passed on ${{ matrix.os }} with Python ${{ matrix.python-version }}"
+      - name: Summary
+        run: echo "✅ Tests completed for ${{ matrix.os }} with Python 3.11"
 
-  # Installation verification
+
+  # ===========================================================
+  # Installation verification on all OS (Python 3.11)
+  # ===========================================================
   test-installation:
     name: Installation Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -112,41 +117,32 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Display Python version
-        run: python --version
-
       - name: Install package
         run: |
           python -m pip install --upgrade pip
           pip install .
 
       - name: Verify geeadd installation
-        run: |
-          geeadd --version
+        run: geeadd --version
 
-      - name: Test geeadd help
+      - name: Test help commands
         run: |
           geeadd --help
-
-      - name: Test geeadd -h
-        run: |
           geeadd -h
-
-      - name: Test all group help commands
-        run: |
           geeadd projects --help
           geeadd assets --help
           geeadd tasks --help
           geeadd utils --help
 
-      - name: Installation summary
-        run: |
-          echo "✅ Installation successful on ${{ matrix.os }}"
-          echo "✅ All help commands working correctly"
+      - name: Summary
+        run: echo "✅ Installation tests passed on ${{ matrix.os }}"
 
-  # Run slow/integration tests separately
+
+  # ===========================================================
+  # Slow / Integration Tests (Ubuntu only, Python 3.11)
+  # ===========================================================
   integration-tests:
-    name: Integration Tests
+    name: Integration Tests (slow)
     runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
@@ -169,11 +165,10 @@ jobs:
           pip install -e .
           pip install pytest pytest-cov earthengine-api google-auth
 
-      - name: Run integration tests
+      - name: Run slow integration tests
         if: env.CLOUD_SA != ''
         run: |
           pytest tests/ -v --run-slow -m "slow" --tb=short --color=yes
 
-      - name: Integration test summary
-        run: |
-          echo "✅ Integration tests completed"
+      - name: Integration summary
+        run: echo "✅ Integration tests completed"
