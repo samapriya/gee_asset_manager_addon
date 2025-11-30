@@ -50,16 +50,35 @@ jobs:
         run: |
           echo "${CLOUD_SA}" > sa.json
 
-      - name: Authenticate Earth Engine (Python headless auth)
+      - name: Authenticate Earth Engine (persistent)
         if: env.CLOUD_SA != ''
         run: |
+          echo "${CLOUD_SA}" > sa.json
+          mkdir -p ~/.config/earthengine
           python - <<EOF
-          import json, ee
+          import json, ee, os, pathlib
+
+          # Load SA
           sa = json.load(open("sa.json"))
-          creds = ee.ServiceAccountCredentials(sa["client_email"], "sa.json")
+          email = sa["client_email"]
+          key = "sa.json"
+
+          # Initialize in memory
+          creds = ee.ServiceAccountCredentials(email, key)
           ee.Initialize(creds)
-          print("Earth Engine authenticated successfully.")
+
+          # Write persistent Earth Engine credentials to disk
+          cred_path = os.path.expanduser("~/.config/earthengine/credentials")
+          with open(cred_path, "w") as f:
+              f.write(json.dumps({
+                  "client_email": email,
+                  "service_account_file": os.path.abspath(key),
+                  "scopes": ["https://www.googleapis.com/auth/earthengine"],
+                  "type": "service_account"
+              }))
+          print("EE credentials written to", cred_path)
           EOF
+
 
       - name: Verify service account is available
         run: |
