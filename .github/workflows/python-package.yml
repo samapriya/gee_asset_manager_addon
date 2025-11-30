@@ -43,17 +43,23 @@ jobs:
         run: pip install -e .
 
       # -------------------------------------------------------
-      # Earth Engine Authentication (Required for EE tests)
+      # Earth Engine Authentication (PERSISTENT CREDENTIALS)
       # -------------------------------------------------------
-      - name: Create service account file
+      - name: Save service account file
         if: env.CLOUD_SA != ''
         run: |
           echo "${CLOUD_SA}" > sa.json
 
-      - name: Authenticate Earth Engine
+      - name: Authenticate Earth Engine (Python headless auth)
         if: env.CLOUD_SA != ''
         run: |
-          earthengine --service_account_file sa.json
+          python - <<EOF
+          import json, ee
+          sa = json.load(open("sa.json"))
+          creds = ee.ServiceAccountCredentials(sa["client_email"], "sa.json")
+          ee.Initialize(creds)
+          print("Earth Engine authenticated successfully.")
+          EOF
 
       - name: Verify service account is available
         run: |
@@ -67,7 +73,7 @@ jobs:
           pytest tests/ -v -m "not slow" --tb=short --color=yes -k "not ee_initialized"
 
       # -------------------------------------------------------
-      # Run EE tests if authentication succeeded
+      # Run EE tests if authenticated credentials exist
       # -------------------------------------------------------
       - name: Run Earth Engine tests
         if: env.CLOUD_SA != ''
@@ -180,20 +186,25 @@ jobs:
           pip install pytest pytest-cov earthengine-api google-auth
 
       # -------------------------------------------------------
-      # Earth Engine Authentication
+      # Persistent Earth Engine Authentication
       # -------------------------------------------------------
-      - name: Create service account file
+      - name: Save service account file
+        if: env.CLOUD_SA != ''
+        run: echo "${CLOUD_SA}" > sa.json
+
+      - name: Authenticate Earth Engine (Python headless auth)
         if: env.CLOUD_SA != ''
         run: |
-          echo "${CLOUD_SA}" > sa.json
-
-      - name: Authenticate Earth Engine
-        if: env.CLOUD_SA != ''
-        run: |
-          earthengine --service_account_file sa.json
+          python - <<EOF
+          import json, ee
+          sa = json.load(open("sa.json"))
+          creds = ee.ServiceAccountCredentials(sa["client_email"], "sa.json")
+          ee.Initialize(creds)
+          print("Earth Engine authenticated successfully.")
+          EOF
 
       # -------------------------------------------------------
-      # Slow tests
+      # Slow tests (EE Integration)
       # -------------------------------------------------------
       - name: Run slow/integration tests
         if: env.CLOUD_SA != ''
