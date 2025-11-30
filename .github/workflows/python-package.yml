@@ -9,7 +9,7 @@ on:
 
 jobs:
   # ===========================================================
-  # Main test matrix (Python 3.11 ONLY)
+  # Main Test Matrix - Python 3.11 only
   # ===========================================================
   test:
     name: Run Tests on ${{ matrix.os }} - Python 3.11
@@ -42,37 +42,51 @@ jobs:
       - name: Install package in development mode
         run: pip install -e .
 
-      - name: Verify service account availability
-        run: python -c "import os; print('Service account available:', bool(os.environ.get('CLOUD_SA')))"
+      # -------------------------------------------------------
+      # Earth Engine Authentication (Required for EE tests)
+      # -------------------------------------------------------
+      - name: Create service account file
+        if: env.CLOUD_SA != ''
+        run: |
+          echo "${CLOUD_SA}" > sa.json
 
-      # -----------------------------------------------------------
-      # Run non-EE tests first
-      # -----------------------------------------------------------
+      - name: Authenticate Earth Engine
+        if: env.CLOUD_SA != ''
+        run: |
+          earthengine --service_account_file sa.json
+
+      - name: Verify service account is available
+        run: |
+          python -c "import os; print('Service account available:', bool(os.environ.get('CLOUD_SA')))"
+
+      # -------------------------------------------------------
+      # Run tests without EE first
+      # -------------------------------------------------------
       - name: Run quick tests (no EE required)
         run: |
           pytest tests/ -v -m "not slow" --tb=short --color=yes -k "not ee_initialized"
 
-      # -----------------------------------------------------------
-      # Run EE-dependent tests only if CLOUD_SA is provided
-      # -----------------------------------------------------------
+      # -------------------------------------------------------
+      # Run EE tests if authentication succeeded
+      # -------------------------------------------------------
       - name: Run Earth Engine tests
         if: env.CLOUD_SA != ''
         run: |
           pytest tests/ -v -m "not slow" --tb=short --color=yes
 
-      # -----------------------------------------------------------
-      # Coverage (Ubuntu + Python 3.11 only)
-      # -----------------------------------------------------------
+      # -------------------------------------------------------
+      # Coverage (Ubuntu only)
+      # -------------------------------------------------------
       - name: Create test results directory
         if: matrix.os == 'ubuntu-latest'
         run: mkdir -p tests/results
 
-      - name: Run tests with coverage
+      - name: Run tests with coverage (Ubuntu only)
         if: matrix.os == 'ubuntu-latest' && env.CLOUD_SA != ''
         run: |
           pytest tests/ --cov=geeadd \
-              --cov-report=xml:tests/results/coverage.xml \
-              --cov-report=html:tests/results/htmlcov
+            --cov-report=xml:tests/results/coverage.xml \
+            --cov-report=html:tests/results/htmlcov
 
       - name: Upload coverage report
         if: matrix.os == 'ubuntu-latest'
@@ -84,7 +98,7 @@ jobs:
             tests/results/htmlcov
           retention-days: 30
 
-      - name: Upload to Codecov (optional)
+      - name: Upload coverage to Codecov (optional)
         if: matrix.os == 'ubuntu-latest' && env.CLOUD_SA != ''
         uses: codecov/codecov-action@v3
         with:
@@ -94,11 +108,11 @@ jobs:
           fail_ci_if_error: false
 
       - name: Summary
-        run: echo "✅ Tests completed for ${{ matrix.os }} with Python 3.11"
+        run: echo "Tests completed on ${{ matrix.os }} with Python 3.11"
 
 
   # ===========================================================
-  # Installation verification on all OS (Python 3.11)
+  # Installation Verification – Python 3.11 only
   # ===========================================================
   test-installation:
     name: Installation Test on ${{ matrix.os }}
@@ -125,7 +139,7 @@ jobs:
       - name: Verify geeadd installation
         run: geeadd --version
 
-      - name: Test help commands
+      - name: Test built-in help commands
         run: |
           geeadd --help
           geeadd -h
@@ -135,11 +149,11 @@ jobs:
           geeadd utils --help
 
       - name: Summary
-        run: echo "✅ Installation tests passed on ${{ matrix.os }}"
+        run: echo "Installation tests passed on ${{ matrix.os }}"
 
 
   # ===========================================================
-  # Slow / Integration Tests (Ubuntu only, Python 3.11)
+  # Slow Integration Tests - Ubuntu, Python 3.11
   # ===========================================================
   integration-tests:
     name: Integration Tests (slow)
@@ -165,10 +179,26 @@ jobs:
           pip install -e .
           pip install pytest pytest-cov earthengine-api google-auth
 
-      - name: Run slow integration tests
+      # -------------------------------------------------------
+      # Earth Engine Authentication
+      # -------------------------------------------------------
+      - name: Create service account file
+        if: env.CLOUD_SA != ''
+        run: |
+          echo "${CLOUD_SA}" > sa.json
+
+      - name: Authenticate Earth Engine
+        if: env.CLOUD_SA != ''
+        run: |
+          earthengine --service_account_file sa.json
+
+      # -------------------------------------------------------
+      # Slow tests
+      # -------------------------------------------------------
+      - name: Run slow/integration tests
         if: env.CLOUD_SA != ''
         run: |
           pytest tests/ -v --run-slow -m "slow" --tb=short --color=yes
 
-      - name: Integration summary
-        run: echo "✅ Integration tests completed"
+      - name: Summary
+        run: echo "Integration tests complete"
