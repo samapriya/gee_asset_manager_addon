@@ -49,7 +49,7 @@ pip install .
 geeadd --version
 ```
 
-## 🎯 Quick Start
+## Quick Start
 
 ### Authenticate with Earth Engine
 ```bash
@@ -76,7 +76,7 @@ geeadd assets copy --initial "users/me/folder" --final "users/me/backup"
 geeadd tasks list
 ```
 
-## 📚 Command Structure
+## Command Structure
 
 Version 2.0.0 introduces organized command groups for better discoverability:
 
@@ -113,9 +113,9 @@ If you're upgrading from version 1.2.1 or earlier, commands have been reorganize
 - `geeadd copy` → `geeadd assets copy`
 - `geeadd tasks` → `geeadd tasks list`
 
-## 📖 Documentation
+## Documentation
 
-Comprehensive documentation is available at **[geeadd.geetools.xyz](https://samapriya.github.io/gee_asset_manager_addon/)**
+Comprehensive documentation is available at **[geeadd.geetools.xyz](https://geeadd.geetools.xyz)**
 
 The documentation includes:
 - Detailed command references
@@ -202,3 +202,17 @@ If you find this tool useful, consider:
 <div align="center">
 Made with ❤️ by <a href="https://github.com/samapriya">Samapriya Roy</a>
 </div>
+
+
+## Changelog
+
+#### Updates 12/01/2025
+* Replaced copyright headers with SPDX identifiers
+* Improved type annotations across multiple modules
+* Added or expanded docstrings for better clarity and maintainability
+* Updated batch_copy, batch_delete, batch_mover, acl_changer, color_brewer, and app2script
+* Enhanced error handling and logging
+* Refined concurrency logic
+* Removed the unused concurrent_ee_assets.py file
+* Updated the GitHub Actions workflow for improved test and installation steps
+* Applied minor bug fixes and general code quality improvements
