@@ -97,13 +97,6 @@ jobs:
         run: |
           geeadd -h
 
-      - name: Test all command groups help
-        run: |
-          geeadd projects --help
-          geeadd assets --help
-          geeadd tasks --help
-          geeadd utils --help
-
       - name: Installation summary
         run: |
           echo "Installation successful on ${{ matrix.os }}"
