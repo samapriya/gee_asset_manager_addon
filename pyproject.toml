@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "geeadd"
-version = "2.0.0"
+version = "2.1.0"
 description = "Google Earth Engine Batch Assets Manager with Addons"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -29,7 +29,7 @@ classifiers = [
 dependencies = [
     "click>=8.0.0",
     "colorama>=0.4.6",
-    "earthengine-api>=1.1.2",
+    "earthengine-api>=1.6.12",
     "google-auth>=2.0.0",
     "jsbeautifier>=1.15.1",
     "packaging>=24.2",

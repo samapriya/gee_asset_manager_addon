@@ -1,18 +1,23 @@
+"""Earth Engine Asset Information Display for Google Earth Engine.
+
+SPDX-License-Identifier: Apache-2.0
+"""
+
+import datetime
 import json
-from datetime import datetime
 
 import ee
-from rich import box
-from rich.console import Console
-from rich.panel import Panel
-from rich.syntax import Syntax
-from rich.table import Table
-from rich.tree import Tree
+import rich.box
+import rich.console
+import rich.panel
+import rich.syntax
+import rich.table
+import rich.tree
 
-console = Console()
+console = rich.console.Console()
 
 
-def format_bytes(bytes_val):
+def format_bytes(bytes_val: float) -> str:
     """Convert bytes to human-readable format."""
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
         if bytes_val < 1024.0:
@@ -21,19 +26,29 @@ def format_bytes(bytes_val):
     return f"{bytes_val:.2f} PB"
 
 
-def format_timestamp(timestamp_str):
+def format_timestamp(timestamp_str: str | None) -> str:
     """Format ISO timestamp to readable date."""
     if not timestamp_str:
         return "N/A"
     try:
-        dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+        dt = datetime.datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
         return dt.strftime('%Y-%m-%d %H:%M:%S UTC')
-    except:
+    except Exception:
         return timestamp_str
 
 
-def display_asset_info(asset_id):
-    """Display Earth Engine asset information beautifully."""
+def display_asset_info(asset_id: str) -> dict | None:
+    """Display Earth Engine asset information beautifully.
+
+    Args:
+        asset_id: The full path to the Earth Engine asset
+
+    Returns:
+        Dictionary containing asset information, or None if an error occurred
+
+    Example:
+        >>> display_asset_info("TIGER/2020/TABBLOCK20")
+    """
     try:
         asset_info = ee.data.getAsset(asset_id)
 
@@ -50,15 +65,15 @@ def display_asset_info(asset_id):
 
         # Main header
         console.print()
-        console.print(Panel(
+        console.print(rich.panel.Panel(
             f"[bold {color}]{asset_type}[/bold {color}]\n[dim]{asset_info.get('id', 'N/A')}[/dim]",
             title="[bold]Earth Engine Asset Info[/bold]",
             border_style=color,
-            box=box.DOUBLE
+            box=rich.box.DOUBLE
         ))
 
         # Basic Information Table
-        basic_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 2))
+        basic_table = rich.table.Table(show_header=False, box=rich.box.SIMPLE, padding=(0, 2))
         basic_table.add_column("Property", style="bold cyan", width=20)
         basic_table.add_column("Value", style="white")
 
@@ -77,7 +92,7 @@ def display_asset_info(asset_id):
 
         # Temporal Information (for IMAGES)
         if asset_type == 'IMAGE' and ('startTime' in asset_info or 'endTime' in asset_info):
-            temporal_table = Table(title="Temporal Coverage", box=box.ROUNDED, border_style="blue")
+            temporal_table = rich.table.Table(title="Temporal Coverage", box=rich.box.ROUNDED, border_style="blue")
             temporal_table.add_column("Period", style="bold")
             temporal_table.add_column("Date", style="cyan")
 
@@ -91,7 +106,7 @@ def display_asset_info(asset_id):
 
         # Properties (for IMAGES)
         if 'properties' in asset_info and asset_info['properties']:
-            props_table = Table(title="Properties", box=box.ROUNDED, border_style="green")
+            props_table = rich.table.Table(title="Properties", box=rich.box.ROUNDED, border_style="green")
             props_table.add_column("Key", style="bold green")
             props_table.add_column("Value", style="white")
 
@@ -103,10 +118,10 @@ def display_asset_info(asset_id):
 
         # Bands Information (for IMAGES)
         if 'bands' in asset_info and asset_info['bands']:
-            console.print(Panel("[bold cyan]Band Information[/bold cyan]", box=box.ROUNDED))
+            console.print(rich.panel.Panel("[bold cyan]Band Information[/bold cyan]", box=rich.box.ROUNDED))
 
             for idx, band in enumerate(asset_info['bands'], 1):
-                tree = Tree(f"[bold yellow]Band {idx}: {band.get('id', 'Unknown')}[/bold yellow]")
+                tree = rich.tree.Tree(f"[bold yellow]Band {idx}: {band.get('id', 'Unknown')}[/bold yellow]")
 
                 # Data Type
                 if 'dataType' in band:
@@ -149,17 +164,17 @@ def display_asset_info(asset_id):
                 try:
                     image = ee.Image(asset_id)
                     is_unbounded = image.geometry().isUnbounded().getInfo()
-                except:
+                except Exception:
                     # Fallback: check for infinity in coordinates
                     coords_str = str(geom.get('coordinates', []))
                     is_unbounded = 'Infinity' in coords_str or '-Infinity' in coords_str
 
             if is_unbounded:
-                console.print(Panel(
+                console.print(rich.panel.Panel(
                     "[bold]Unbounded[/bold]",
                     title="Geometry",
                     border_style="blue",
-                    box=box.ROUNDED
+                    box=rich.box.ROUNDED
                 ))
                 console.print()
             else:
@@ -168,45 +183,16 @@ def display_asset_info(asset_id):
                 if coords:
                     geom_content += f"[dim]Coordinates available ({len(str(coords))} chars)[/dim]"
 
-                console.print(Panel(
+                console.print(rich.panel.Panel(
                     geom_content,
                     title="Geometry",
                     border_style="blue",
-                    box=box.ROUNDED
+                    box=rich.box.ROUNDED
                 ))
                 console.print()
-
-        # Raw JSON output (collapsible view)
-        # console.print(Panel(
-        #     "[dim]Use console.print(json.dumps(asset_info, indent=2)) to see raw JSON[/dim]",
-        #     title="Raw Data",
-        #     border_style="dim",
-        #     box=box.ROUNDED
-        # ))
 
         return asset_info
 
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {str(e)}")
         return None
-
-
-# Example usage
-if __name__ == "__main__":
-    # Initialize Earth Engine
-    try:
-        ee.Initialize()
-    except:
-        console.print("[yellow]Please authenticate with: ee.Authenticate()[/yellow]")
-
-    # Example assets to display
-    examples = [
-        #"TIGER/2020/TABBLOCK20",
-        "projects/sat-io/open-datasets/BU_LAI_FPAR/wgs_5km_8d/BU_LAI_FPAR_WGS_5km_8day_2023361",
-        # "projects/sat-io/open-datasets/BU_LAI_FPAR/wgs_5km_8d",
-        # "projects/sat-io/open-datasets/BU_LAI_FPAR"
-    ]
-
-    for asset_id in examples:
-        display_asset_info(asset_id)
-        console.print("\n" + "="*80 + "\n")

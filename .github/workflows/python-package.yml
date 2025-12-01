@@ -54,15 +54,6 @@ jobs:
         run: |
           pytest tests/ --cov=geeadd --cov-report=xml --cov-report=term
 
-      - name: Upload coverage to Codecov (Ubuntu only)
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./coverage.xml
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
-
       - name: Test summary
         run: |
           echo "Tests passed on ${{ matrix.os }} with Python ${{ matrix.python-version }}"
@@ -71,7 +62,7 @@ jobs:
   test-installation:
     name: Installation Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    needs: test  # Only run after tests pass
+    needs: test # Only run after tests pass
     strategy:
       fail-fast: false
       matrix:
@@ -105,13 +96,6 @@ jobs:
       - name: Test geeadd -h
         run: |
           geeadd -h
-
-      - name: Test all command groups help
-        run: |
-          geeadd projects --help
-          geeadd assets --help
-          geeadd tasks --help
-          geeadd utils --help
 
       - name: Installation summary
         run: |

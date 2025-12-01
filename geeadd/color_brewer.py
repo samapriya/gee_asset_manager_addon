@@ -1,11 +1,15 @@
 """
 ColorBrewer palette generator
 Inspired by https://colorbrewer2.org/
+
+SPDX-License-Identifier: Apache-2.0
 """
 
 import json
 import sys
 from pathlib import Path
+from typing import List, Optional
+
 from rich.console import Console
 from rich.table import Table
 
@@ -23,7 +27,7 @@ def load_palettes():
     """Load palette data from palettes.json"""
     palette_file = Path(__file__).parent / "palettes.json"
     try:
-        with open(palette_file) as f:
+        with open(palette_file, 'r') as f:
             return json.load(f)
     except FileNotFoundError:
         console.print(f"[red]Error: palettes.json not found in {palette_file.parent}[/red]")
@@ -45,7 +49,7 @@ def interpolate_color(c1: str, c2: str, factor: float) -> str:
     return f"{r:02x}{g:02x}{b:02x}"
 
 
-def interpolate_palette(colors: list[str], target: int) -> list[str]:
+def interpolate_palette(colors: List[str], target: int) -> List[str]:
     """Interpolate palette to target number of colors"""
     if target <= len(colors):
         return colors[:target]
@@ -67,7 +71,7 @@ def interpolate_palette(colors: list[str], target: int) -> list[str]:
     return result
 
 
-def get_palette(name: str, classes: int, palettes: dict) -> list[str]:
+def get_palette(name: str, classes: int, palettes: dict) -> List[str]:
     """Get palette with specified number of classes"""
     if name not in palettes:
         available = sorted(palettes.keys())
@@ -99,7 +103,7 @@ def get_palette(name: str, classes: int, palettes: dict) -> list[str]:
     return interpolate_palette(palette[str(lower)], classes)
 
 
-def list_palettes(palettes: dict, palette_type: str | None = None):
+def list_palettes(palettes: dict, palette_type: Optional[str] = None):
     """List all available palettes using rich tables"""
     sequential = []
     diverging = []
