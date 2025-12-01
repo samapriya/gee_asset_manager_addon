@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Changelog | geeadd v2.0.0</title>
-    <meta name="description" content="Changelog for geeadd: Moving from v1 (argparse) to v2 (click & rich).">
+    <title>Changelog | geeadd</title>
+    <meta name="description" content="Changelog for geeadd: Tracking version history and updates.">
 
     <!-- Fonts & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -42,6 +42,13 @@
                             500: '#10b981',
                             600: '#059669',
                             900: '#064e3b',
+                        },
+                        amber: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            900: '#78350f',
                         },
                         dark: {
                             bg: '#0B1120',
@@ -109,16 +116,14 @@
             -webkit-backdrop-filter: blur(12px);
         }
 
-        .active-nav {
-            background-color: rgba(14, 165, 233, 0.1);
-            color: #0ea5e9;
-            border-right: 3px solid #0ea5e9;
-        }
-
-        .dark .active-nav {
-            background-color: rgba(14, 165, 233, 0.15);
-            color: #38bdf8;
-            border-right: 3px solid #38bdf8;
+        .version-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.125rem 0.625rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            line-height: 1rem;
         }
     </style>
 </head>
@@ -153,6 +158,7 @@
                             class="w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center shadow-lg">
                             <span class="font-mono font-bold text-xl">v2</span>
                         </div>
+                        <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-dark-surface"></div>
                     </div>
                     <div>
                         <h1 class="font-bold text-2xl text-slate-900 dark:text-white leading-none">geeadd</h1>
@@ -163,22 +169,35 @@
             </div>
 
             <!-- Accordion Navigation -->
-            <nav class="flex-1 overflow-y-auto px-3 py-6 space-y-1" id="nav-container">
-                <a href="#summary"
-                    class="nav-item block px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Executive
-                    Summary</a>
-                <a href="#architecture"
-                    class="nav-item block px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Core
-                    Architecture</a>
-                <a href="#structure"
-                    class="nav-item block px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Command
-                    Structure</a>
-                <a href="#ui-ux"
-                    class="nav-item block px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">UI
-                    & Rich Output</a>
-                <a href="#features"
-                    class="nav-item block px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">New
-                    Features</a>
+            <nav class="flex-1 overflow-y-auto px-3 py-6 space-y-6" id="nav-container">
+                
+                <!-- Version 2.1.0 -->
+                <div>
+                    <h3 class="px-3 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Latest Release</h3>
+                    <a href="#v2-1-0"
+                        class="nav-item flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
+                        <span class="flex items-center gap-2">
+                            <i data-lucide="zap" class="w-4 h-4 text-amber-500"></i>
+                            v2.1.0
+                        </span>
+                        <span class="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded font-mono">NEW</span>
+                    </a>
+                </div>
+
+                <!-- Version 2.0.0 -->
+                <div>
+                    <h3 class="px-3 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Previous Releases</h3>
+                    <a href="#v2-0-0"
+                        class="nav-item flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                        <i data-lucide="package" class="w-4 h-4 text-brand-500"></i>
+                        v2.0.0 <span class="text-slate-400 font-normal text-xs ml-auto">The Refactor</span>
+                    </a>
+                    <div class="pl-9 space-y-1 mt-1">
+                         <a href="#architecture" class="block px-3 py-1.5 rounded-md text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-300">Architecture</a>
+                         <a href="#structure" class="block px-3 py-1.5 rounded-md text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-300">Commands</a>
+                         <a href="#ui-ux" class="block px-3 py-1.5 rounded-md text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-300">Rich UI</a>
+                    </div>
+                </div>
 
                 <a href="https://geeadd.geetools.xyz"
                     class="nav-item block px-3 py-2 rounded-md text-sm font-medium text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/10 hover:bg-brand-100 dark:hover:bg-brand-900/20 transition-colors mt-8">
@@ -194,32 +213,120 @@
                     <i data-lucide="moon" class="block dark:hidden" size="18"></i>
                     <i data-lucide="sun" class="hidden dark:block" size="18"></i>
                 </button>
-                <div class="text-xs text-slate-400 font-mono">v1.0 &rarr; v2.0</div>
+                <div class="text-xs text-slate-400 font-mono">v2.1.0</div>
             </div>
         </aside>
 
         <!-- Main Content -->
         <main class="lg:ml-72 flex-1 max-w-5xl mx-auto px-6 py-12 lg:px-12 w-full">
 
-            <!-- Hero -->
-            <section id="summary" class="mb-16 relative">
+            <!-- v2.1.0 Update Section -->
+            <section id="v2-1-0" class="mb-24 scroll-mt-28">
+                <div class="flex items-center gap-3 mb-6">
+                    <span class="version-badge bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                        Current Release
+                    </span>
+                    <span class="text-sm text-slate-400 font-mono">Released: Dec 01 2025</span>
+                </div>
 
-                <div
-                    class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 text-xs font-bold mb-6 border border-emerald-100 dark:border-emerald-800">
-                    <i data-lucide="check-circle" size="14"></i>
-                    Stable Release: v2.0.0
+                <h1 class="text-4xl lg:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-8">
+                    v2.1.0 <span class="text-slate-400 font-light">Service Auth & Hardening</span>
+                </h1>
+
+                <p class="text-lg text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl mb-10">
+                    A significant minor release introducing Service Account authentication support via JSON keys, improved type safety across the codebase, and enhancements to the quota tools.
+                </p>
+
+                <!-- Highlights Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                    <div class="bg-white dark:bg-dark-surface p-6 rounded-xl border border-gray-200 dark:border-dark-border shadow-sm">
+                        <div class="flex items-start gap-4">
+                            <div class="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-amber-600 dark:text-amber-400 shrink-0">
+                                <i data-lucide="key"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-lg text-slate-900 dark:text-white mb-2">Service Account Auth</h3>
+                                <p class="text-sm text-slate-500 dark:text-slate-400 mb-3">
+                                    Authenticate natively using a Service Account JSON key, enabling headless operations and automated workflows.
+                                </p>
+                                <code class="text-xs bg-slate-100 dark:bg-black/30 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 font-mono text-slate-600 dark:text-slate-300">
+                                    geeadd auth --cred keys.json
+                                </code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-dark-surface p-6 rounded-xl border border-gray-200 dark:border-dark-border shadow-sm">
+                        <div class="flex items-start gap-4">
+                            <div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400 shrink-0">
+                                <i data-lucide="shield-check"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-lg text-slate-900 dark:text-white mb-2">Robustness & Types</h3>
+                                <p class="text-sm text-slate-500 dark:text-slate-400">
+                                    Comprehensive type annotations added across modules. Copyright headers replaced with SPDX identifiers. Enhanced error handling and concurrency logic.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Change List -->
+                <div class="bg-slate-50 dark:bg-black/20 rounded-xl p-6 border border-gray-100 dark:border-dark-border">
+                    <h4 class="text-sm font-bold uppercase tracking-wider text-slate-500 mb-4">Detailed Changelog</h4>
+                    <ul class="space-y-3">
+                        <li class="flex gap-3 text-sm text-slate-700 dark:text-slate-300">
+                            <i data-lucide="plus" class="w-5 h-5 text-green-500 shrink-0"></i>
+                            <span><strong>Added:</strong> <code>geeadd auth</code> support for service account JSON keys.</span>
+                        </li>
+                        <li class="flex gap-3 text-sm text-slate-700 dark:text-slate-300">
+                            <i data-lucide="git-commit" class="w-5 h-5 text-blue-500 shrink-0"></i>
+                            <span><strong>Refactor:</strong> Replaced copyright headers with standardized SPDX identifiers.</span>
+                        </li>
+                        <li class="flex gap-3 text-sm text-slate-700 dark:text-slate-300">
+                            <i data-lucide="git-commit" class="w-5 h-5 text-blue-500 shrink-0"></i>
+                            <span><strong>Refactor:</strong> Improved type annotations and expanded docstrings across multiple modules.</span>
+                        </li>
+                        <li class="flex gap-3 text-sm text-slate-700 dark:text-slate-300">
+                            <i data-lucide="wrench" class="w-5 h-5 text-purple-500 shrink-0"></i>
+                            <span><strong>Fix:</strong> Modified Quota estimate tool to work correctly with Service Accounts.</span>
+                        </li>
+                        <li class="flex gap-3 text-sm text-slate-700 dark:text-slate-300">
+                            <i data-lucide="wrench" class="w-5 h-5 text-purple-500 shrink-0"></i>
+                            <span><strong>Fix:</strong> Refined concurrency logic and enhanced general error handling/logging.</span>
+                        </li>
+                        <li class="flex gap-3 text-sm text-slate-700 dark:text-slate-300">
+                            <i data-lucide="trash-2" class="w-5 h-5 text-red-500 shrink-0"></i>
+                            <span><strong>Removed:</strong> Unused <code>concurrent_ee_assets.py</code> file.</span>
+                        </li>
+                        <li class="flex gap-3 text-sm text-slate-700 dark:text-slate-300">
+                            <i data-lucide="settings" class="w-5 h-5 text-slate-500 shrink-0"></i>
+                            <span><strong>CI/CD:</strong> Updated GitHub Actions workflow for improved test and installation steps.</span>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            <hr class="border-gray-200 dark:border-dark-border mb-24">
+
+            <!-- v2.0.0 Content (Original) -->
+            <section id="v2-0-0" class="mb-16 relative">
+
+                <div class="flex items-center gap-3 mb-6">
+                    <span class="version-badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                        Legacy Release
+                    </span>
+                    <span class="text-sm text-slate-400 font-mono">Released: Nov 24, 2025</span>
                 </div>
 
                 <div class="flex flex-col md:flex-row items-center gap-8 mb-6">
                     <div class="flex-1">
-                        <h1
-                            class="text-4xl lg:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-6">
-                            Refactored. <br class="hidden lg:block" />
-                            <span
-                                class="bg-clip-text text-transparent bg-gradient-to-r from-brand-500 via-brand-600 to-purple-600">Modernized.</span>
-                        </h1>
-                        <p class="text-lg lg:text-xl text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl mb-8">
-                            A complete rewrite of the core logic. We've moved from <code>argparse</code> to
+                        <h2
+                            class="text-3xl lg:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-6">
+                            v2.0.0: The Great Refactor
+                        </h2>
+                        <p class="text-lg text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl mb-8">
+                            A complete rewrite of the core logic. We moved from <code>argparse</code> to
                             <code>click</code>,
                             introduced <code>rich</code> for beautiful terminal output, and reorganized the command
                             structure for scalability.
@@ -263,11 +370,11 @@
 
             <!-- Architecture -->
             <section id="architecture" class="mb-24 scroll-mt-28">
-                <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
                     <div class="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg"><i data-lucide="cpu"
                             class="text-brand-500"></i></div>
-                    Core Architecture
-                </h2>
+                    Core Architecture (v2.0)
+                </h3>
 
                 <p class="mb-6 text-slate-600 dark:text-slate-400">
                     The underlying CLI framework has been completely swapped to improve maintainability and help
@@ -335,11 +442,11 @@ def projects_quota(project): ...</code><button class="copy-btn text-white text-x
 
             <!-- Structure Changes -->
             <section id="structure" class="mb-24 scroll-mt-28">
-                <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
                     <div class="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg"><i data-lucide="git-branch"
                             class="text-brand-500"></i></div>
-                    Command Restructuring
-                </h2>
+                    Command Restructuring (v2.0)
+                </h3>
 
                 <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -395,11 +502,11 @@ def projects_quota(project): ...</code><button class="copy-btn text-white text-x
 
             <!-- UI/UX -->
             <section id="ui-ux" class="mb-24 scroll-mt-28">
-                <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
                     <div class="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg"><i data-lucide="terminal"
                             class="text-brand-500"></i></div>
                     UI & Rich Output
-                </h2>
+                </h3>
                 <p class="mb-6 text-slate-600 dark:text-slate-400">
                     We removed <code>colorama</code> and basic <code>print()</code> statements in favor of the
                     <code>rich</code> library.
@@ -436,67 +543,11 @@ def projects_quota(project): ...</code><button class="copy-btn text-white text-x
                 </div>
             </section>
 
-            <!-- New Features -->
-            <section id="features" class="mb-24 scroll-mt-28">
-                <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
-                    <div class="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg"><i data-lucide="plus-circle"
-                            class="text-brand-500"></i></div>
-                    New Features
-                </h2>
-
-                <div class="grid gap-8">
-                    <!-- Feature 1 -->
-                    <div>
-                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
-                            <i data-lucide="palette" class="text-purple-500"></i> Palette Generator
-                        </h3>
-                        <p class="text-slate-600 dark:text-slate-400 mb-4 text-sm">
-                            A completely new tool based on ColorBrewer logic. It generates hex codes for data
-                            visualization and can output directly to CSS, Python lists, or JSON.
-                        </p>
-                        <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
-                            <div
-                                class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
-                                <span class="text-xs text-slate-500 font-mono">Terminal</span>
-                            </div>
-                            <div class="relative">
-                                <pre class="font-mono text-sm text-white"><code># Generate a 5-class sequential blue palette
-geeadd utils palette --name Blues --classes 5 --format hex
-
-# Output:
-# ['#eff3ff', '#bdd7e7', '#6baed6', '#3182bd', '#08519c']</code></pre>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Feature 2 -->
-                    <div>
-                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
-                            <i data-lucide="layout-dashboard" class="text-blue-500"></i> Project Dashboard
-                        </h3>
-                        <p class="text-slate-600 dark:text-slate-400 mb-4 text-sm">
-                            Generates an interactive HTML dashboard summarizing all your enabled Earth Engine projects,
-                            their types (Commercial/Non-Commercial), and states.
-                        </p>
-                        <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
-                            <div
-                                class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
-                                <span class="text-xs text-slate-500 font-mono">Terminal</span>
-                            </div>
-                            <div class="relative">
-                                <pre class="font-mono text-sm text-white"><code># Create dashboard
-geeadd projects dashboard --outdir ./reports</code></pre>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
             <!-- Footer -->
             <footer class="border-t border-gray-200 dark:border-dark-border py-12 text-center">
                 <div class="flex items-center justify-center gap-2 mb-4">
                     <span class="font-bold text-slate-900 dark:text-white">geeadd</span>
-                    <span class="text-slate-400">v2.0.0</span>
+                    <span class="text-slate-400">v2.1.0</span>
                 </div>
                 <p class="text-sm text-gray-500 mb-2">&copy; 2025 Samapriya Roy. Apache 2.0 License.</p>
             </footer>

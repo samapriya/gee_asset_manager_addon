@@ -276,6 +276,23 @@
                     <i data-lucide="alert-circle" class="inline w-3 h-3 mr-1"></i> Migration Guide
                 </a>
 
+                <!-- Auth Group (New) -->
+                <div class="sidebar-group">
+                    <details class="group">
+                        <summary
+                            class="flex items-center justify-between px-3 py-2 rounded-md cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm font-bold text-gray-500 uppercase tracking-wider">
+                            <span class="flex items-center gap-2"><i data-lucide="key" size="14"></i>
+                                Auth</span>
+                            <i data-lucide="chevron-down" size="14" class="rotate-icon"></i>
+                        </summary>
+                        <div class="pl-2 space-y-1 mt-1">
+                            <a href="#auth-service"
+                                class="nav-item block px-3 py-2 rounded-md text-sm text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-l-2 border-transparent hover:border-brand-500">Service
+                                Account</a>
+                        </div>
+                    </details>
+                </div>
+
                 <!-- Projects Group -->
                 <div class="sidebar-group">
                     <details class="group">
@@ -403,7 +420,7 @@
                             class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
                         <span class="relative inline-flex rounded-full h-2 w-2 bg-brand-500"></span>
                     </span>
-                    New in v2.0.0: Nested Commands
+                    New in v2.1.0: Service Account Auth
                 </div>
 
                 <div class="flex flex-col md:flex-row items-center gap-8 mb-6">
@@ -417,7 +434,8 @@
                         </h1>
                         <p class="text-lg lg:text-xl text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl mb-8">
                             <b>geeadd</b> extends the Google Earth Engine CLI with powerful batch operations.
-                            Recursively copy, move, and delete assets, manage permissions, and query quotas with a
+                            Recursively copy, move, and delete assets, manage permissions, authentication, and query
+                            quotas with a
                             modern,
                             structured interface.
                         </p>
@@ -496,6 +514,7 @@ Options:
   -h, --help  Show this message and exit.
 
 Commands:
+  auth      Configure service account authentication
   readme    Open the geeadd documentation webpage
   projects  Manage Earth Engine projects
   assets    Manage Earth Engine assets
@@ -820,8 +839,73 @@ pip install .</code><button class="copy-btn text-white text-xs px-2.5 py-1.5 rou
 
             <hr class="border-gray-100 dark:border-gray-800 mb-16">
 
-            <!-- PROJECTS GROUP -->
+            <!-- AUTH GROUP -->
             <div class="mb-10"><span class="text-sm font-bold text-brand-500 uppercase tracking-wider">Group:
+                    Auth</span></div>
+
+            <section id="auth-service" class="mb-20 scroll-mt-28">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Service Account Authentication</h3>
+                <p class="mb-4 text-slate-600 dark:text-slate-400">
+                    Configure and manage authentication using Service Account JSON keys. This enables headless operations
+                    and automated workflows.
+                </p>
+
+                <div class="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-800 mb-6">
+                    <h4 class="text-sm font-bold text-amber-800 dark:text-amber-200 mb-2 flex items-center gap-2">
+                        <i data-lucide="shield-alert" size="16"></i> Important Prerequisites
+                    </h4>
+                    <p class="text-xs text-amber-700 dark:text-amber-300 mb-3">
+                        The Service Account must be in a Google Cloud Project with the <strong>Earth Engine API
+                            enabled</strong> and the project registered. Ensure the Service Account has the following
+                        roles (or higher):
+                    </p>
+                    <ul class="list-disc list-inside text-xs text-amber-700 dark:text-amber-300 space-y-1 ml-1">
+                        <li><strong>Earth Engine Resource Viewer (beta):</strong> Viewer of all Earth Engine resources.
+                        </li>
+                        <li><strong>Service Usage Consumer:</strong> Ability to inspect service states and consume quota.
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group mb-6">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                    </div>
+                    <div class="relative">
+                        <span class="text-xs text-slate-500 block font-mono px-4 pt-4"># Check help for flags</span>
+                        <pre class="font-mono text-sm text-white"><code>geeadd auth -h
+
+--cred    Path to service account JSON credentials file
+--remove  Remove stored service account credentials
+--status  Show current authentication status</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800 group">
+                    <div class="bg-slate-950 px-4 py-2 flex justify-between items-center border-b border-slate-800">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">Terminal</span>
+                    </div>
+                    <div class="relative">
+                        <span class="text-xs text-slate-500 block font-mono px-4 pt-4"># Authenticate with key</span>
+                        <pre class="font-mono text-sm text-white"><code>geeadd auth --cred "/path/to/service-account-key.json"
+</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PROJECTS GROUP -->
+            <div class="mb-10 border-t border-gray-100 dark:border-gray-800 pt-10"><span
+                    class="text-sm font-bold text-brand-500 uppercase tracking-wider">Group:
                     Projects</span></div>
 
             <section id="projects-quota" class="mb-20 scroll-mt-28">
@@ -1192,7 +1276,7 @@ Enabled Earth Engine Projects
                         <span class="text-xs text-slate-500 font-mono">Terminal</span>
                     </div>
                     <div class="relative">
-                        <pre class="font-mono text-sm text-white"><code>geeadd assets delete-meta --asset "users/me/image" --property "description"
+                        <pre class="font-mono text-sm text-white"><code>geeadd assets delete-meta --id "users/me/image" --property "description"
 </code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
                     </div>
                 </div>
@@ -1215,7 +1299,7 @@ Enabled Earth Engine Projects
                         </div>
                         <div class="relative">
                             <span class="text-xs text-slate-500 block font-mono px-4 pt-4"># Grant Read Access</span>
-                            <pre class="font-mono text-sm text-white"><code>geeadd assets access --user "email@gmail.com" --role "reader" --asset "users/me/asset"
+                            <pre class="font-mono text-sm text-white"><code>geeadd assets access --user "email@gmail.com" --role "reader" --id "users/me/asset"
 </code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
                         </div>
                     </div>
@@ -1577,7 +1661,7 @@ geeadd assets copy \
 
 # 3. Share with collaborators
 geeadd assets access \
-  --asset projects/my-project/assets/shared-data \
+  --id projects/my-project/assets/shared-data \
   --user colleague@university.edu \
   --role reader</code><button class="copy-btn text-white text-xs px-2 py-1 rounded" onclick="copyCode(this)">Copy</button></pre>
                         </div>
