@@ -8,18 +8,65 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Run tests first
   test:
-    name: Run Tests on ${{ matrix.os }} - Python 3.11
+    name: Run Tests on ${{ matrix.os }} - Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.11"]
+        exclude:
+          # Optional: reduce matrix size if needed
+          - os: macos-latest
+            python-version: "3.9"
+          - os: windows-latest
+            python-version: "3.9"
 
-    env:
-      GEE_AUTH: ${{ secrets.GEE_AUTH }}
-      CLOUD_SA: ${{ secrets.CLOUD_SA }}
-      ADC_PATH: ${{ github.workspace }}/gcloud-credentials.json
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Display Python version
+        run: python --version
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov pytest-mock python-box click
+
+      - name: Install package in development mode
+        run: |
+          pip install -e .
+
+      - name: Run tests with pytest
+        run: |
+          pytest tests/ -v --tb=short --color=yes
+
+      - name: Run tests with coverage (Ubuntu only)
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        run: |
+          pytest tests/ --cov=geeadd --cov-report=xml --cov-report=term
+
+      - name: Test summary
+        run: |
+          echo "Tests passed on ${{ matrix.os }} with Python ${{ matrix.python-version }}"
+
+  # Installation verification (keeps your existing checks)
+  test-installation:
+    name: Installation Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    needs: test # Only run after tests pass
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
       - name: Checkout code
@@ -30,70 +77,34 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Display Python version
+        run: python --version
+
+      - name: Install package
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-cov pytest-mock python-box click earthengine-api google-auth
+          pip install .
 
-      - name: Install package in development mode
-        run: pip install -e .
-
-      # -------------------------------------------------------
-      # Setup Google Cloud CLI and ADC
-      # -------------------------------------------------------
-      - name: Setup Google Cloud CLI
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          version: 'latest'
-          
-      - name: Create service account key file
+      - name: Verify geeadd installation
         run: |
-          echo '${{ secrets.CLOUD_SA }}' > /tmp/gcp-key.json
-          
-      - name: Authenticate to Google Cloud
+          geeadd --version
+
+      - name: Test geeadd help
         run: |
-          gcloud auth activate-service-account --key-file=/tmp/gcp-key.json
-          gcloud config set project $(cat /tmp/gcp-key.json | jq -r '.project_id')
+          geeadd --help
 
-      - name: Save service account key file
+      - name: Test geeadd -h
         run: |
-          echo "${{ secrets.CLOUD_SA }}" > ~/.config/gcloud/application_default_credentials.json
+          geeadd -h
 
-      # -------------------------------------------------------
-      # Run tests
-      # -------------------------------------------------------
-      - name: Run all tests
-        run: pytest tests/ -v --tb=short --color=yes
-
-      # -------------------------------------------------------
-      # Coverage (Ubuntu only)
-      # -------------------------------------------------------
-      - name: Run tests with coverage (Ubuntu only)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Test all command groups help
         run: |
-          mkdir -p tests/results
-          pytest tests/ --cov=geeadd \
-            --cov-report=xml:tests/results/coverage.xml \
-            --cov-report=html:tests/results/htmlcov
+          geeadd projects --help
+          geeadd assets --help
+          geeadd tasks --help
+          geeadd utils --help
 
-      - name: Upload coverage report
-        if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: |
-            tests/results/coverage.xml
-            tests/results/htmlcov
-          retention-days: 30
-
-      - name: Upload coverage to Codecov (optional)
-        if: matrix.os == 'ubuntu-latest'
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./tests/results/coverage.xml
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
-
-      - name: Summary
-        run: echo "Tests completed on ${{ matrix.os }} with Python 3.11"
+      - name: Installation summary
+        run: |
+          echo "Installation successful on ${{ matrix.os }}"
+          echo "All help commands working correctly"

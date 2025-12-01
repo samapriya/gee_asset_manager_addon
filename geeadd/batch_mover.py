@@ -1,23 +1,7 @@
-"""Optimized batch asset moving module for Google Earth Engine."""
+"""Optimized batch asset moving module for Google Earth Engine.
 
-__copyright__ = """
-
-    Copyright 2025 Samapriya Roy
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-
+SPDX-License-Identifier: Apache-2.0
 """
-__license__ = "Apache 2.0"
 
 import concurrent.futures
 import logging
@@ -26,10 +10,10 @@ import signal
 import sys
 import time
 from functools import wraps
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 import ee
-from tqdm import tqdm
+import tqdm as tqdm_module
 
 # Configure logging
 logging.basicConfig(
@@ -46,7 +30,20 @@ folder_list = []
 
 
 def retry_on_ee_error(max_retries: int = 3, backoff_factor: float = 2):
-    """Decorator for retrying EE operations with exponential backoff."""
+    """Decorator for retrying EE operations with exponential backoff.
+
+    Args:
+        max_retries: Maximum number of retry attempts
+        backoff_factor: Multiplier for exponential backoff delay
+
+    Returns:
+        Decorated function with retry logic
+
+    Example:
+        @retry_on_ee_error(max_retries=3)
+        def my_ee_operation():
+            return ee.data.getAsset('path/to/asset')
+    """
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -68,7 +65,12 @@ def retry_on_ee_error(max_retries: int = 3, backoff_factor: float = 2):
 
 
 def handle_interrupt(sig, frame):
-    """Handle interrupt signals gracefully."""
+    """Handle interrupt signals gracefully.
+
+    Args:
+        sig: Signal number
+        frame: Current stack frame
+    """
     global interrupt_received
     if not interrupt_received:
         logger.warning("Interrupt received! Gracefully shutting down... (This may take a moment)")
@@ -80,17 +82,31 @@ def handle_interrupt(sig, frame):
 
 
 def camel_case(s: str) -> str:
-    """Convert string to camel case (Title Case)."""
+    """Convert string to camel case (Title Case).
+
+    Args:
+        s: Input string to convert
+
+    Returns:
+        Title-cased string
+    """
     words = s.split()
     return " ".join(word.title() for word in words)
 
 
-def get_asset_safe(asset_path: str) -> dict[str, Any] | None:
-    """Safely get asset with proper error handling."""
+def get_asset_safe(asset_path: str) -> Optional[Dict[str, Any]]:
+    """Safely get asset with proper error handling.
+
+    Args:
+        asset_path: Path to the Earth Engine asset
+
+    Returns:
+        Asset metadata dictionary or None if not found
+    """
     try:
         return ee.data.getAsset(asset_path)
     except ee.EEException as e:
-        if 'not found' in str(e).lower():
+        if 'not found' in str(e).lower() or 'does not exist' in str(e).lower():
             return None
         raise
     except Exception:
@@ -98,7 +114,13 @@ def get_asset_safe(asset_path: str) -> dict[str, Any] | None:
 
 
 def create_folder(folder_path: str, replace_string: str, replaced_string: str) -> None:
-    """Create a folder if it doesn't exist, handling both cloud and legacy folders."""
+    """Create a folder if it doesn't exist, handling both cloud and legacy folders.
+
+    Args:
+        folder_path: Path where the folder should be created
+        replace_string: String to replace in the path
+        replaced_string: Replacement string for the path
+    """
     folder_path = folder_path.replace(replace_string, replaced_string)
 
     try:
@@ -124,12 +146,23 @@ def create_folder(folder_path: str, replace_string: str, replaced_string: str) -
 @retry_on_ee_error(max_retries=3)
 def move_asset(
     source: str,
-    replace_string: str | None,
+    replace_string: Optional[str],
     replaced_string: str,
     fpath: str,
     ftype: str = "asset"
 ) -> bool:
-    """Move a single asset with appropriate error handling and messaging."""
+    """Move a single asset with appropriate error handling and messaging.
+
+    Args:
+        source: Source asset path
+        replace_string: String to replace in the path (optional)
+        replaced_string: Replacement string for the path
+        fpath: Destination path
+        ftype: Type of asset being moved (for logging)
+
+    Returns:
+        True if asset was moved, False if it already exists or on error
+    """
     if replace_string == replaced_string or replace_string is None:
         final = fpath
     else:
@@ -154,12 +187,20 @@ def move_asset(
 
 def move_image_collection(
     source: str,
-    replace_string: str | None,
+    replace_string: Optional[str],
     replaced_string: str,
     fpath: str,
     max_workers: int = 10
 ) -> None:
-    """Move an image collection with parallel execution for speed."""
+    """Move an image collection with parallel execution for speed.
+
+    Args:
+        source: Source image collection path
+        replace_string: String to replace in the path (optional)
+        replaced_string: Replacement string for the path
+        fpath: Destination path
+        max_workers: Maximum number of parallel worker threads
+    """
     global interrupt_received
 
     if replace_string == replaced_string or replace_string is None:
@@ -191,7 +232,7 @@ def move_image_collection(
             os.path.basename(asset["name"]) for asset in source_list.get("assets", [])
         ]
 
-        # Get list of destination images
+        # Get list of destination images - fetch asset again after potential creation
         collection_asset = get_asset_safe(collection_path)
         if not collection_asset:
             logger.error(f"Could not access destination collection {collection_path}")
@@ -230,7 +271,7 @@ def move_image_collection(
                 futures[future] = item
 
             # Process results with progress bar
-            with tqdm(total=total_images, desc="Moving images", unit="image") as pbar:
+            with tqdm_module.tqdm(total=total_images, desc="Moving images", unit="image") as pbar:
                 for future in concurrent.futures.as_completed(futures):
                     item = futures[future]
 
@@ -268,10 +309,19 @@ def move_image_collection(
 
     except Exception as e:
         logger.error(f"Error in collection move: {e}", exc_info=True)
+        raise
 
 
 def move_asset_wrapper(source: str, destination: str) -> bool:
-    """Wrapper for moving assets in thread pool."""
+    """Wrapper for moving assets in thread pool.
+
+    Args:
+        source: Source asset path
+        destination: Destination asset path
+
+    Returns:
+        True if move succeeded, False otherwise
+    """
     try:
         ee.data.renameAsset(source, destination)
         return True
@@ -281,7 +331,14 @@ def move_asset_wrapper(source: str, destination: str) -> bool:
 
 
 def delete_asset_safe(asset_path: str) -> bool:
-    """Safely delete an asset with proper error handling."""
+    """Safely delete an asset with proper error handling.
+
+    Args:
+        asset_path: Path to the asset to delete
+
+    Returns:
+        True if deletion succeeded, False otherwise
+    """
     try:
         ee.data.deleteAsset(asset_path)
         logger.info(f"Deleted: {asset_path}")
@@ -295,8 +352,7 @@ def delete_asset_safe(asset_path: str) -> bool:
 
 
 def cleanup_empty_structure(path: str, skip_root: bool = False) -> None:
-    """
-    Recursively remove empty folders and collections from a path.
+    """Recursively remove empty folders and collections from a path.
 
     Args:
         path: Root path to clean up
@@ -352,7 +408,11 @@ def cleanup_empty_structure(path: str, skip_root: bool = False) -> None:
 
 
 def get_folder(path: str) -> None:
-    """Get folder information and add to folder_list."""
+    """Get folder information and add to folder_list.
+
+    Args:
+        path: Path to the folder
+    """
     asset = get_asset_safe(path)
     if not asset:
         return
@@ -362,8 +422,15 @@ def get_folder(path: str) -> None:
         recursive(asset["name"])
 
 
-def recursive(path: str) -> list[str]:
-    """Recursively gather all folders under a path."""
+def recursive(path: str) -> List[str]:
+    """Recursively gather all folders under a path.
+
+    Args:
+        path: Root path to scan for folders
+
+    Returns:
+        List of folder paths
+    """
     path_info = get_asset_safe(path)
     if not path_info:
         return folder_list
@@ -381,11 +448,28 @@ def recursive(path: str) -> list[str]:
 def mover(path: str, fpath: str, max_workers: int = 10, cleanup: bool = True) -> None:
     """Move Earth Engine assets from path to fpath.
 
+    This function handles moving of individual assets (images, tables, feature views)
+    as well as entire folders and image collections. For image collections, moving
+    is performed in parallel for improved performance. After moving, empty source
+    folders and collections are automatically cleaned up unless disabled.
+
     Args:
-        path: Source asset path
-        fpath: Destination asset path
-        max_workers: Maximum number of parallel workers for collection moving
+        path: Source asset path (e.g., 'projects/my-project/assets/source-folder')
+        fpath: Destination asset path (e.g., 'projects/my-project/assets/dest-folder')
+        max_workers: Maximum number of parallel workers for collection moving (default: 10)
         cleanup: If True, remove empty source folders/collections after moving (default: True)
+
+    Example:
+        # Move a single image
+        mover('projects/my-project/assets/image1', 'projects/my-project/assets/image2')
+
+        # Move an entire folder structure
+        mover('projects/my-project/assets/folder1', 'projects/my-project/assets/folder2')
+
+        # Move an image collection without cleanup
+        mover('projects/my-project/assets/collection1',
+              'projects/my-project/assets/collection2',
+              cleanup=False)
     """
     global interrupt_received
     global folder_list
@@ -397,14 +481,9 @@ def mover(path: str, fpath: str, max_workers: int = 10, cleanup: bool = True) ->
     original_sigint_handler = signal.getsignal(signal.SIGINT)
     signal.signal(signal.SIGINT, handle_interrupt)
 
-    try:
-        # Initialize EE if not already initialized
-        try:
-            ee.data.getAssetRoots()
-        except:
-            logger.info("Initializing Earth Engine...")
-            ee.Initialize()
+    operation_successful = False
 
+    try:
         logger.info(f"Starting move operation from {path} to {fpath}")
 
         asset_info = get_asset_safe(path)
@@ -548,8 +627,22 @@ def mover(path: str, fpath: str, max_workers: int = 10, cleanup: bool = True) ->
             replace_string = (
                 "/".join(path.split("/")[:-1]) + "/" + initial_path_suffix
             )
+            
+            # FIX: Calculate replaced_string properly instead of passing None
+            final_path_suffix = fpath.split("/")[-1]
+            parent_path = "/".join(fpath.split("/")[:-1])
+            if parent_path:  # Only if there's a parent path
+                parent_path += "/"
+                parent_asset = get_asset_safe(parent_path)
+                if not parent_asset:
+                    logger.error(f"Cannot access destination parent: {parent_path}")
+                    return
+                replaced_string = parent_asset["name"] + "/" + final_path_suffix
+            else:
+                # If no parent path, use fpath directly
+                replaced_string = fpath
 
-            move_image_collection(path, replace_string, None, fpath, max_workers)
+            move_image_collection(path, replace_string, replaced_string, fpath, max_workers)
 
         elif asset_type == "TABLE":
             # Move table
@@ -587,12 +680,16 @@ def mover(path: str, fpath: str, max_workers: int = 10, cleanup: bool = True) ->
 
         else:
             logger.error(f"Unsupported asset type: {asset_type}")
+            return
 
         # CLEANUP PHASE - only if not interrupted and cleanup is enabled
         if cleanup and not interrupt_received:
             logger.info("Starting cleanup of source structure...")
             cleanup_empty_structure(original_source_path)
             logger.info("Cleanup completed.")
+
+        # If we got here without raising an exception, operation was successful
+        operation_successful = True
 
     except Exception as e:
         if not interrupt_received:
@@ -606,5 +703,7 @@ def mover(path: str, fpath: str, max_workers: int = 10, cleanup: bool = True) ->
             logger.warning("Some assets may have been moved while others were not.")
             if cleanup:
                 logger.warning("Cleanup was skipped due to interruption. You may need to manually remove empty folders.")
-        else:
+        elif operation_successful:
             logger.info("Move operation completed successfully.")
+        else:
+            logger.error("Move operation failed. Check the error messages above for details.")

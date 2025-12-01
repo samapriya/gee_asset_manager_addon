@@ -23,8 +23,9 @@ __license__ = "Apache 2.0"
 
 import json
 import logging
-from pathlib import Path
 import unicodedata
+from pathlib import Path
+from typing import Optional
 from urllib.parse import urlparse
 
 import jsbeautifier
@@ -106,7 +107,7 @@ def validate_ee_url(url: str) -> tuple[str, str]:
         )
 
 
-def fetch_js_code(url: str, session: requests.Session | None = None) -> str:
+def fetch_js_code(url: str, session: Optional[requests.Session] = None) -> str:
     """
     Fetch JavaScript code from Earth Engine app.
 
@@ -256,13 +257,13 @@ def copy_to_clipboard(text: str) -> bool:
 
 def jsext(
     url: str,
-    outfile: str | None = None,
+    outfile: Optional[str] = None,
     clipboard: bool = True,
     beautify: bool = True,
     indent_size: int = 2,
     normalize_unicode: bool = False,
     sanitize: bool = True
-) -> str | None:
+) -> Optional[str]:
     """
     Extract and optionally save JavaScript code from an Earth Engine app.
 
@@ -334,7 +335,7 @@ def jsext(
 
     except EarthEngineJSExtractorError:
         raise
-    except OSError as e:
+    except IOError as e:
         raise EarthEngineJSExtractorError(
             f"Error writing to file '{outfile}': {e}"
         )

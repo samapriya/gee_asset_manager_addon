@@ -1,37 +1,19 @@
+"""Google Earth Engine Batch Asset Deletion Module.
+
+SPDX-License-Identifier: Apache-2.0
 """
-Google Earth Engine Batch Asset Deletion Module
-Efficiently delete assets with recursive traversal, concurrent processing, and graceful interruption.
-"""
 
-__copyright__ = """
-
-    Copyright 2025 Samapriya Roy
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-
-"""
-__license__ = "Apache 2.0"
-
-from datetime import datetime
 import concurrent.futures
 import json
 import logging
 import signal
 import sys
 import time
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
 import ee
-from tqdm import tqdm
+import tqdm as tqdm_module
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -43,8 +25,14 @@ interrupt_received = False
 asset_list = []
 
 
-def handle_interrupt(sig, frame):
-    """Handle interrupt signals gracefully."""
+def handle_interrupt(sig: int, frame: Any) -> None:
+    """
+    Handle interrupt signals gracefully.
+
+    Args:
+        sig: Signal number
+        frame: Current stack frame
+    """
     global interrupt_received
     if not interrupt_received:
         print("\nInterrupt received! Gracefully shutting down... (This may take a moment)")
@@ -55,7 +43,7 @@ def handle_interrupt(sig, frame):
         sys.exit(1)
 
 
-def get_asset(path: str) -> tuple[str | None, str | None]:
+def get_asset(path: str) -> Tuple[Optional[str], Optional[str]]:
     """
     Get asset information and add to asset_list.
 
@@ -75,7 +63,7 @@ def get_asset(path: str) -> tuple[str | None, str | None]:
         return None, None
 
 
-def recursive_parallel(path: str, max_workers: int = 10) -> list[dict]:
+def recursive_parallel(path: str, max_workers: int = 10) -> List[Dict[str, str]]:
     """
     Recursively gather all assets under a path using parallel execution.
 
@@ -109,7 +97,7 @@ def recursive_parallel(path: str, max_workers: int = 10) -> list[dict]:
     return asset_list
 
 
-def delete_with_retry(asset_path: str, max_retries: int = 3) -> dict[str, any]:
+def delete_with_retry(asset_path: str, max_retries: int = 3) -> Dict[str, Any]:
     """
     Delete a single asset with retry logic and specific error handling.
 
@@ -193,7 +181,7 @@ def delete_with_retry(asset_path: str, max_retries: int = 3) -> dict[str, any]:
     }
 
 
-def save_failed_assets(failed_assets: list[dict], filename: str | None = None) -> None:
+def save_failed_assets(failed_assets: List[Dict[str, Any]], filename: Optional[str] = None) -> None:
     """
     Save list of failed assets to a JSON file.
 
@@ -218,11 +206,11 @@ def save_failed_assets(failed_assets: list[dict], filename: str | None = None) -
 
 
 def delete(ids: str, max_workers: int = 10, max_retries: int = 3,
-           verbose: bool = False) -> dict[str, any] | None:
+           verbose: bool = False) -> Optional[Dict[str, Any]]:
     """
     Delete assets recursively with concurrent processing.
 
-    This is the main function called by geeadd.py. It maintains backward compatibility
+    This is the main function for batch deletion. It maintains backward compatibility
     while adding enhanced features like better error handling and statistics.
 
     Args:
@@ -241,7 +229,7 @@ def delete(ids: str, max_workers: int = 10, max_retries: int = 3,
     global interrupt_received, asset_list
     interrupt_received = False
     asset_list = []
-    failed_assets = []
+    failed_assets: List[Dict[str, Any]] = []
     start_time = time.time()
 
     # Configure logging level
@@ -282,7 +270,7 @@ def delete(ids: str, max_workers: int = 10, max_retries: int = 3,
         # Perform deletion
         successful_deletions = 0
 
-        with tqdm(total=len(asset_list), desc="Deleting assets", unit="asset") as pbar:
+        with tqdm_module.tqdm(total=len(asset_list), desc="Deleting assets", unit="asset") as pbar:
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                 future_to_asset = {
                     executor.submit(delete_with_retry, asset["path"], max_retries): asset

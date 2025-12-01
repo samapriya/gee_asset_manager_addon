@@ -1,24 +1,8 @@
-__copyright__ = """
-
-    Copyright 2025 Samapriya Roy
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-
-"""
-__license__ = "Apache 2.0"
+# SPDX-License-Identifier: Apache-2.0
 
 import itertools
 import logging
+import typing
 
 import ee
 
@@ -40,25 +24,25 @@ ASSET_TYPE_FEATURE_VIEW = "feature_view"
 class AssetCollector:
     """Helper class to collect and organize Earth Engine assets."""
 
-    def __init__(self):
-        self.images = []
-        self.collections = []
-        self.tables = []
-        self.folders = []
+    def __init__(self) -> None:
+        self.images: typing.List[str] = []
+        self.collections: typing.List[str] = []
+        self.tables: typing.List[str] = []
+        self.folders: typing.List[str] = []
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear all collected assets."""
         self.images.clear()
         self.collections.clear()
         self.tables.clear()
         self.folders.clear()
 
-    def get_all_assets(self) -> list[str]:
+    def get_all_assets(self) -> typing.List[str]:
         """Get a flat list of all collected assets."""
         return list(set(itertools.chain(self.collections, self.tables, self.images)))
 
 
-def get_folder_recursive(path: str, folder_list: list[str]) -> None:
+def get_folder_recursive(path: str, folder_list: typing.List[str]) -> None:
     """
     Recursively collect all folder paths.
 
@@ -81,7 +65,7 @@ def get_folder_recursive(path: str, folder_list: list[str]) -> None:
         logger.error(f"Error accessing folder {path}: {e}")
 
 
-def parse_asset_path(path: str) -> tuple[list[str], list[str], list[str], list[str]]:
+def parse_asset_path(path: str) -> typing.Tuple[typing.List[str], typing.List[str], typing.List[str], typing.List[str]]:
     """
     Parse an asset path and collect all assets within it.
 
@@ -148,6 +132,14 @@ def format_user_identifier(user: str) -> str:
 
     Returns:
         Properly formatted user identifier
+
+    Examples:
+        >>> format_user_identifier("user@example.com")
+        'user:user@example.com'
+        >>> format_user_identifier("allUsers")
+        'allUsers'
+        >>> format_user_identifier("group@googlegroups.com")
+        'group:group@googlegroups.com'
     """
     user = user.strip()
 
@@ -173,7 +165,72 @@ def format_user_identifier(user: str) -> str:
         return f"user:{user}"
 
 
-def set_asset_permissions(asset_path: str, user: str, role: str, project: str = None) -> None:
+def get_asset_acl(asset_path: str) -> typing.Optional[typing.Dict]:
+    """
+    Get the Access Control List (ACL) for an Earth Engine asset.
+
+    Args:
+        asset_path: Path to the asset
+
+    Returns:
+        Dictionary containing ACL information with keys like 'readers', 'writers', 'owners',
+        or None if the asset cannot be accessed
+
+    Examples:
+        >>> acl = get_asset_acl("projects/your-project/assets/your-collection")
+        >>> print(acl.get('readers', []))
+        ['user:reader@example.com']
+    """
+    try:
+        acl = ee.data.getAssetAcl(asset_path)
+        return acl
+    except Exception as e:
+        logger.error(f"Error getting ACL for {asset_path}: {e}")
+        return None
+
+
+def check_user_permission(asset_path: str, user: str) -> typing.Optional[str]:
+    """
+    Check what permission level a user has for a specific asset.
+
+    Args:
+        asset_path: Path to the asset
+        user: User email or identifier
+
+    Returns:
+        Permission level ('owner', 'writer', 'reader', or None if no permission)
+
+    Examples:
+        >>> perm = check_user_permission("projects/your-project/assets/collection", "user@example.com")
+        >>> print(f"User has {perm} permission")
+        User has reader permission
+    """
+    acl = get_asset_acl(asset_path)
+    if not acl:
+        return None
+
+    user_formatted = format_user_identifier(user)
+
+    # Check for allUsers special case
+    if user_formatted == "allUsers" and acl.get("all_users_can_read", False):
+        return "reader"
+
+    # Check each permission level
+    if user_formatted in acl.get("owners", []):
+        return "owner"
+    if user_formatted in acl.get("writers", []):
+        return "writer"
+    if user_formatted in acl.get("readers", []):
+        return "reader"
+
+    return None
+
+
+def set_asset_permissions(
+    asset_path: str,
+    user: str,
+    role: str
+) -> None:
     """
     Set permissions for Earth Engine assets.
 
@@ -181,22 +238,26 @@ def set_asset_permissions(asset_path: str, user: str, role: str, project: str = 
         asset_path: Path to the asset or folder
         user: User email or identifier
         role: Permission role ('reader', 'writer', 'owner', or 'delete')
-        project: Optional GCP project name for initialization
+
+    Examples:
+        Grant reader access:
+        >>> set_asset_permissions(
+        ...     asset_path="projects/your-project/assets/your-folder",
+        ...     user="user@example.com",
+        ...     role="reader"
+        ... )
+
+        Remove all permissions:
+        >>> set_asset_permissions(
+        ...     asset_path="projects/your-project/assets/your-folder",
+        ...     user="user@example.com",
+        ...     role="delete"
+        ... )
     """
-    # Initialize Earth Engine
-    try:
-        if project:
-            ee.Initialize(project=project)
-        else:
-            ee.Initialize()
-    except Exception as e:
-        logger.error(f"Error initializing Earth Engine: {e}")
-        logger.info("Attempting to authenticate...")
-        ee.Authenticate()
-        if project:
-            ee.Initialize(project=project)
-        else:
-            ee.Initialize()
+    # Validate role
+    if role not in ["reader", "writer", "owner", "delete"]:
+        logger.error(f"Invalid role: {role}. Use 'reader', 'writer', 'owner', or 'delete'")
+        return
 
     # Format user identifier
     user_formatted = format_user_identifier(user)
@@ -242,47 +303,75 @@ def set_asset_permissions(asset_path: str, user: str, role: str, project: str = 
                     logger.debug(f"[{count}/{len(asset_list)}] {user_formatted} not found in ACL for {asset_id}: SKIPPING")
                     skip_count += 1
 
-            elif role in ["reader", "writer", "owner"]:
+            else:  # role in ["reader", "writer", "owner"]
+                # Special handling for allUsers as reader
+                if user_formatted == "allUsers" and role == "reader":
+                    if acl.get("all_users_can_read", False):
+                        logger.info(f"[{count}/{len(asset_list)}] Asset is already public (readable by all users): {asset_id}")
+                        skip_count += 1
+                        continue
+                    else:
+                        # Set all_users_can_read flag
+                        acl["all_users_can_read"] = True
+                        ee.data.setAssetAcl(asset_id, acl)
+                        logger.info(f"[{count}/{len(asset_list)}] Added {user_formatted} as reader for {asset_id}")
+                        success_count += 1
+                        continue
+
                 # Map role to permission list
                 perm_map = {"reader": "readers", "writer": "writers", "owner": "owners"}
                 target_list = perm_map[role]
 
-                # Check if user already has this permission
+                # Check if user already has this exact permission
                 if user_formatted in acl.get(target_list, []):
-                    logger.debug(f"[{count}/{len(asset_list)}] {user_formatted} already has {role} access to {asset_id}: SKIPPING")
+                    logger.info(f"[{count}/{len(asset_list)}] User already has {role} permission: {asset_id}")
                     skip_count += 1
-                else:
-                    # Add user to permission list
-                    if target_list not in acl:
-                        acl[target_list] = []
-                    acl[target_list].append(user_formatted)
+                    continue
 
-                    # Set the updated ACL
-                    ee.data.setAssetAcl(asset_id, acl)
-                    logger.info(f"[{count}/{len(asset_list)}] Added {user_formatted} as {role} for {asset_id}")
-                    success_count += 1
+                # Check if user has a higher permission level
+                current_perm = None
+                if user_formatted in acl.get("owners", []):
+                    current_perm = "owner"
+                elif user_formatted in acl.get("writers", []):
+                    current_perm = "writer"
+                elif user_formatted in acl.get("readers", []):
+                    current_perm = "reader"
 
-            else:
-                logger.error(f"Invalid role: {role}. Use 'reader', 'writer', 'owner', or 'delete'")
-                return
+                if current_perm:
+                    logger.info(f"[{count}/{len(asset_list)}] User already has {current_perm} permission (requested {role}): {asset_id}")
+                    skip_count += 1
+                    continue
+
+                # Add user to permission list
+                if target_list not in acl:
+                    acl[target_list] = []
+                acl[target_list].append(user_formatted)
+
+                # Set the updated ACL
+                ee.data.setAssetAcl(asset_id, acl)
+                logger.info(f"[{count}/{len(asset_list)}] Added {user_formatted} as {role} for {asset_id}")
+                success_count += 1
 
         except Exception as e:
             logger.error(f"[{count}/{len(asset_list)}] Error updating {asset_id}: {e}")
             error_count += 1
 
     # Print summary
-    logger.info(f"\n{'='*60}")
+    logger.info(f"{'='*60}")
     logger.info(f"Summary:")
     logger.info(f"  Total assets: {len(asset_list)} with total of {success_count} successful changes.")
-    if not skip_count==0:
+    if skip_count != 0:
         logger.info(f"  Skipped: {skip_count}")
-    if not error_count==0:
+    if error_count != 0:
         logger.info(f"  Errors: {error_count}")
     logger.info(f"{'='*60}")
 
 
-# Convenience function for backwards compatibility
-def access(collection_path: str, user: str, role: str, project: str = None) -> None:
+def access(
+    collection_path: str,
+    user: str,
+    role: str
+) -> None:
     """
     Legacy function name for setting asset permissions.
 
@@ -290,27 +379,5 @@ def access(collection_path: str, user: str, role: str, project: str = None) -> N
         collection_path: Path to the asset or folder
         user: User email or identifier
         role: Permission role ('reader', 'writer', 'owner', or 'delete')
-        project: Optional GCP project name for initialization
     """
-    set_asset_permissions(collection_path, user, role, project)
-
-
-# Example usage
-if __name__ == "__main__":
-    # Example: Grant reader access to a user
-    # set_asset_permissions(
-    #     asset_path="projects/your-project/assets/your-folder",
-    #     user="user@example.com",
-    #     role="reader",
-    #     project="your-cloud-project"
-    # )
-
-    # Example: Remove all permissions
-    # set_asset_permissions(
-    #     asset_path="projects/your-project/assets/your-folder",
-    #     user="user@example.com",
-    #     role="delete",
-    #     project="your-cloud-project"
-    # )
-
-    pass
+    set_asset_permissions(collection_path, user, role)

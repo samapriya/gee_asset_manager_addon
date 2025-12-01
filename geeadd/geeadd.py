@@ -17,18 +17,6 @@ from .ee_projects_dash import get_projects_with_dashboard
 from .ee_report import ee_report
 from .search_fast import EnhancedGEESearch
 
-__copyright__ = """
-    Copyright 2025 Samapriya Roy
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-       http://www.apache.org/licenses/LICENSE-2.0
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-"""
 __license__ = "Apache 2.0"
 
 import importlib.metadata
@@ -36,9 +24,9 @@ import json
 import os
 import subprocess
 import sys
-import time
 import webbrowser
 from datetime import datetime
+from pathlib import Path
 
 import click
 import ee
@@ -50,33 +38,14 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 from rich.table import Table
-from rich.tree import Tree
-from tqdm import tqdm
 
 
 class OrderedGroup(Group):
     def list_commands(self, ctx):
         return list(self.commands)
 
-console = Console()
 
-# Deprecated command mapping
-DEPRECATED_COMMANDS = {
-    'quota': 'projects quota',
-    'projects': 'projects enabled',
-    'projects_dash': 'projects dashboard',
-    'tasks': 'tasks list',
-    'cancel': 'tasks cancel',
-    'copy': 'assets copy',
-    'move': 'assets move',
-    'access': 'assets access',
-    'delete': 'assets delete',
-    'delete_metadata': 'assets delete-meta',
-    'app2script': 'utils app2script',
-    'search': 'utils search',
-    'ee_report': 'utils report',
-    'assetsize': 'assets size',
-}
+console = Console()
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 lpath = os.path.dirname(os.path.realpath(__file__))
@@ -84,9 +53,40 @@ sys.path.append(lpath)
 
 now = datetime.now()
 
-# Initialize Earth Engine for all commands except help
-if len(sys.argv) > 1 and sys.argv[1] not in ['-h', '--help', '--version']:
-    # Handle deprecated 'projects' command by checking if it's being used without subcommands
+
+def get_sa_credentials_path():
+    """Get the path to service account credentials file."""
+    home = Path.home()
+    sa_dir = home / ".config" / "sa_earthengine"
+    sa_file = sa_dir / "sa_credentials.json"
+    return sa_dir, sa_file
+
+
+def initialize_ee():
+    """Initialize Earth Engine with service account if available, otherwise use default."""
+    sa_dir, sa_file = get_sa_credentials_path()
+
+    if sa_file.exists():
+        try:
+            with open(sa_file, 'r') as f:
+                sa_data = json.load(f)
+                service_account = sa_data.get('client_email')
+
+            if service_account:
+                credentials = ee.ServiceAccountCredentials(service_account, str(sa_file))
+                ee.Initialize(credentials, opt_url='https://earthengine-highvolume.googleapis.com')
+                console.print("[bold green]Service account authentication enabled[/bold green]")
+                return
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not use service account credentials: {e}[/yellow]")
+            console.print("[yellow]Falling back to default authentication...[/yellow]")
+
+    # Fallback to default authentication
+    ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com')
+
+
+# Initialize Earth Engine for all commands except help and auth
+if len(sys.argv) > 1 and sys.argv[1] not in ['-h', '--help', '--version', 'auth']:
     if sys.argv[1] == 'projects' and len(sys.argv) == 2:
         console.print(Panel(
             "[yellow]Command[/yellow] [bold red]'geeadd projects'[/bold red] [yellow]is deprecated![/yellow]\n\n"
@@ -95,7 +95,7 @@ if len(sys.argv) > 1 and sys.argv[1] not in ['-h', '--help', '--version']:
             title="[bold red]Deprecated Usage[/bold red]",
             border_style="red"
         ))
-    ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com')
+    initialize_ee()
 
 
 def compare_version(version1, version2):
@@ -116,7 +116,7 @@ def get_latest_version(package):
         response = requests.get(f"https://pypi.org/pypi/{package}/json", timeout=5)
         response.raise_for_status()
         return response.json()["info"]["version"]
-    except (requests.RequestException, KeyError) as e:
+    except (requests.RequestException, KeyError):
         return None
 
 
@@ -167,7 +167,7 @@ def humansize(nbytes):
         nbytes /= 1024.0
         i += 1
     f = ("%.2f" % nbytes).rstrip("0").rstrip(".")
-    return f"{f} {suffixes[i]}"
+    return "%s %s" % (f, suffixes[i])
 
 
 def epoch_convert_time(epoch_timestamp):
@@ -190,7 +190,97 @@ def cli():
     pass
 
 
-# 1. README command (first)
+# 1. Auth command
+@cli.command('auth', help="Configure service account authentication")
+@click.option('--cred', 'cred_path', help='Path to service account JSON credentials file')
+@click.option('--remove', is_flag=True, help='Remove stored service account credentials')
+@click.option('--status', is_flag=True, help='Show current authentication status')
+def auth(cred_path, remove, status):
+    """Manage service account authentication."""
+    sa_dir, sa_file = get_sa_credentials_path()
+
+    # Show status
+    if status:
+        if sa_file.exists():
+            try:
+                with open(sa_file, 'r') as f:
+                    sa_data = json.load(f)
+                    service_account = sa_data.get('client_email', 'Unknown')
+
+                table = Table(show_header=False, box=None)
+                table.add_row("[cyan]Status:[/cyan]", "[green]Service account configured[/green]")
+                table.add_row("[cyan]Email:[/cyan]", service_account)
+                table.add_row("[cyan]Credentials:[/cyan]", str(sa_file))
+                console.print(table)
+            except Exception as e:
+                console.print(f"[red]Error reading credentials: {e}[/red]")
+        else:
+            console.print("[yellow]No service account configured[/yellow]")
+            console.print("[dim]Using default Earth Engine authentication[/dim]")
+        return
+
+    # Remove credentials
+    if remove:
+        if sa_file.exists():
+            try:
+                sa_file.unlink()
+                console.print("[green]Service account credentials removed successfully[/green]")
+                console.print("[dim]Will use default Earth Engine authentication[/dim]")
+            except Exception as e:
+                console.print(f"[red]Error removing credentials: {e}[/red]")
+        else:
+            console.print("[yellow]No service account credentials found to remove[/yellow]")
+        return
+
+    # Store credentials
+    if cred_path:
+        cred_path = Path(cred_path)
+
+        if not cred_path.exists():
+            console.print(f"[red]Error: Credentials file not found: {cred_path}[/red]")
+            return
+
+        try:
+            # Read and validate the credentials file
+            with open(cred_path, 'r') as f:
+                sa_data = json.load(f)
+
+            # Validate required fields
+            if 'client_email' not in sa_data:
+                console.print("[red]Error: Invalid service account file - missing 'client_email' field[/red]")
+                return
+
+            if 'private_key' not in sa_data:
+                console.print("[red]Error: Invalid service account file - missing 'private_key' field[/red]")
+                return
+
+            service_account = sa_data['client_email']
+
+            # Create directory if it doesn't exist
+            sa_dir.mkdir(parents=True, exist_ok=True)
+
+            # Copy credentials to the standard location
+            with open(sa_file, 'w') as f:
+                json.dump(sa_data, f, indent=2)
+
+            console.print("[green]✓ Service account credentials stored successfully[/green]")
+            console.print(f"[cyan]Service account:[/cyan] {service_account}")
+            console.print(f"[cyan]Credentials saved to:[/cyan] {sa_file}")
+            console.print("\n[dim]Future geeadd commands will use this service account automatically[/dim]")
+
+        except json.JSONDecodeError:
+            console.print("[red]Error: Invalid JSON file[/red]")
+        except Exception as e:
+            console.print(f"[red]Error storing credentials: {e}[/red]")
+    else:
+        console.print("[yellow]Please specify a credentials file path with --cred[/yellow]")
+        console.print("\n[cyan]Examples:[/cyan]")
+        console.print("  geeadd auth --cred /path/to/service-account.json")
+        console.print("  geeadd auth --status")
+        console.print("  geeadd auth --remove")
+
+
+# 2. README command
 @cli.command('readme', help="Open the geeadd documentation webpage")
 def readme():
     """Open documentation in browser."""
@@ -206,7 +296,7 @@ def readme():
         console.print("[cyan]Visit: https://geeadd.geetools.xyz/[/cyan]")
 
 
-# 2. Projects group (second)
+# 3. Projects group
 @cli.group(help="Manage Earth Engine projects", context_settings=dict(help_option_names=['-h', '--help']))
 def projects():
     """Project management commands."""
@@ -265,6 +355,22 @@ def projects_quota(project):
             console.print(table)
             console.print()
             return True
+        elif "sizeBytes" in info:
+            # Direct API response format (for cloud projects)
+            table = Table(title=f"[bold cyan]{project_type}: {project_name}[/bold cyan]",
+                         show_header=False, box=None)
+
+            used_size = int(info.get("sizeBytes", 0))
+            table.add_row("[cyan]Storage:[/cyan]", humansize(used_size))
+
+            if "featureCount" in info:
+                table.add_row("[cyan]Features:[/cyan]", f"{info['featureCount']:,}")
+            if "imageCount" in info:
+                table.add_row("[cyan]Images:[/cyan]", f"{info['imageCount']:,}")
+
+            console.print(table)
+            console.print()
+            return True
         elif "asset_size" in info:
             # Legacy format
             table = Table(title=f"[bold cyan]{project_type}: {project_name}[/bold cyan]",
@@ -289,23 +395,99 @@ def projects_quota(project):
         else:
             return False
 
+    def get_cloud_project_from_credentials():
+        """Extract cloud project ID from credentials"""
+        try:
+            creds = ee.data.get_persistent_credentials()
+
+            # Check for service account credentials
+            if hasattr(creds, 'service_account_email'):
+                # Extract project from service account email
+                # Format: name@project-id.iam.gserviceaccount.com
+                email = creds.service_account_email
+                project_id = email.split('@')[1].split('.')[0]
+                return project_id
+
+            # Check for default credentials (user credentials)
+            if hasattr(creds, 'project_id') and creds.project_id:
+                return creds.project_id
+
+            # Try to get from quota_project_id
+            if hasattr(creds, 'quota_project_id') and creds.quota_project_id:
+                return creds.quota_project_id
+
+            # Try getting project from ee.data
+            try:
+                # This may return the default project
+                project = ee.data.getProject()
+                if project:
+                    # Remove 'projects/' prefix if present
+                    if project.startswith('projects/'):
+                        return project.split('projects/')[1]
+                    return project
+            except:
+                pass
+
+        except Exception as e:
+            pass
+        return None
+
+    def get_cloud_project_quota(project_id):
+        """Get quota for a cloud project using direct API"""
+        try:
+            url = f'https://earthengine.googleapis.com/v1/projects/{project_id}/assets'
+            response = session.get(url=url)
+            if response.status_code == 200:
+                return response.json()
+        except Exception as e:
+            pass
+        return None
+
     def get_legacy_roots():
-        """Get all legacy root assets"""
+        """Get all legacy root assets using direct API"""
         legacy_roots = []
         try:
             url = 'https://earthengine.googleapis.com/v1/projects/earthengine-legacy:listAssets'
             response = session.get(url=url)
-            for asset in response.json().get('assets', []):
-                legacy_roots.append(asset['id'])
+            if response.status_code == 200:
+                for asset in response.json().get('assets', []):
+                    legacy_roots.append(asset['id'])
         except Exception as e:
             console.print(f"[yellow]Warning: Could not retrieve legacy roots: {str(e)}[/yellow]")
         return legacy_roots
 
+    def get_legacy_project_quota(project_path):
+        """Get quota for a legacy project using direct API"""
+        try:
+            # Convert project path to API format
+            if project_path.startswith('users/'):
+                api_path = f'projects/earthengine-legacy/assets/{project_path}'
+            elif project_path.startswith('projects/') and 'earthengine-legacy' not in project_path:
+                api_path = f'projects/earthengine-legacy/assets/{project_path}'
+            else:
+                api_path = project_path
+
+            url = f'https://earthengine.googleapis.com/v1/{api_path}'
+            response = session.get(url=url)
+
+            if response.status_code == 200:
+                return response.json()
+        except Exception as e:
+            pass
+        return None
+
     def try_get_quota(path, is_legacy=False):
         """Try multiple methods to get quota for a given path"""
+        # Try the direct API approach first if it's a legacy project
+        if is_legacy:
+            quota_info = get_legacy_project_quota(path)
+            if quota_info:
+                return quota_info
+
+        # Try standard EE API methods
         try:
             asset_info = ee.data.getInfo(path)
-            if asset_info and "quota" in asset_info:
+            if asset_info and ("quota" in asset_info or "sizeBytes" in asset_info):
                 return asset_info
         except:
             pass
@@ -318,11 +500,12 @@ def projects_quota(project):
             except:
                 pass
 
+        # For cloud projects, try with /assets suffix
         if path.startswith("projects/") and "/assets" not in path:
             for suffix in ["/assets", "/assets/"]:
                 try:
                     asset_info = ee.data.getAsset(path + suffix)
-                    if asset_info and "quota" in asset_info:
+                    if asset_info and ("quota" in asset_info or "sizeBytes" in asset_info):
                         return asset_info
                 except:
                     pass
@@ -337,9 +520,18 @@ def projects_quota(project):
         found_any = False
 
         with console.status("[bold cyan]Fetching quota information...", spinner="dots"):
+            # Try to get cloud project from credentials
+            cloud_project_id = get_cloud_project_from_credentials()
+            if cloud_project_id:
+                cloud_quota = get_cloud_project_quota(cloud_project_id)
+                if cloud_quota:
+                    display_quota_info(f"projects/{cloud_project_id}", cloud_quota, "Cloud Project")
+                    displayed_projects.add(f"projects/{cloud_project_id}")
+                    found_any = True
+
+            # Try using getAssetRoots (may not work for service accounts)
             try:
                 roots = ee.data.getAssetRoots()
-
                 for root in roots:
                     root_path = root["id"]
                     parent_project = root_path.split("/assets/")[0] if "/assets/" in root_path else root_path
@@ -355,20 +547,20 @@ def projects_quota(project):
                         display_quota_info(parent_project, quota_info, project_type)
                         displayed_projects.add(parent_project)
                         found_any = True
-
             except Exception as e:
-                console.print(f"[yellow]Warning: Could not list asset roots: {str(e)}[/yellow]")
+                # getAssetRoots may fail for service accounts, continue with legacy approach
+                pass
 
+            # Get legacy projects using direct API
             legacy_roots = get_legacy_roots()
-
             for legacy_path in legacy_roots:
                 if legacy_path in displayed_projects:
                     continue
 
-                quota_info = try_get_quota(legacy_path, is_legacy=True)
-
+                quota_info = get_legacy_project_quota(legacy_path)
                 if quota_info:
-                    display_quota_info(legacy_path, quota_info, "Legacy Root")
+                    project_type = "Legacy User" if legacy_path.startswith("users/") else "Legacy Project"
+                    display_quota_info(legacy_path, quota_info, project_type)
                     displayed_projects.add(legacy_path)
                     found_any = True
 
@@ -378,22 +570,35 @@ def projects_quota(project):
         return
 
     # Handle specific project path
+    # Normalize the project path
+    original_project = project
     if not project.startswith("projects/") and not project.startswith("users/"):
-        try:
-            cloud_path = f"projects/{project}"
-            test_info = ee.data.getInfo(cloud_path)
-            if test_info:
-                project = cloud_path
-        except:
-            try:
-                legacy_path = f"users/{project}"
-                test_info = ee.data.getAssetRootQuota(legacy_path)
-                if test_info:
-                    project = legacy_path
-            except:
-                pass
+        # Could be just the project ID or username
+        # Try cloud project first
+        cloud_quota = get_cloud_project_quota(project)
+        if cloud_quota:
+            project = f"projects/{project}"
+        else:
+            # Try as legacy user
+            legacy_quota = get_legacy_project_quota(f"users/{project}")
+            if legacy_quota:
+                project = f"users/{project}"
 
-    is_legacy = project.startswith("users/")
+    # Determine if it's a legacy project
+    is_legacy = project.startswith("users/") or (
+        project.startswith("projects/") and
+        not project.startswith("projects/earthengine-") and
+        original_project in [root.replace("projects/", "") for root in get_legacy_roots()]
+    )
+
+    # For projects that start with "projects/" but aren't the current cloud project
+    # and aren't explicitly legacy, check if they're in the legacy roots
+    if project.startswith("projects/") and not project.startswith("projects/earthengine-"):
+        # Check if this project is in legacy roots
+        legacy_roots = get_legacy_roots()
+        if project in legacy_roots:
+            is_legacy = True
+
     quota_info = try_get_quota(project, is_legacy=is_legacy)
 
     if quota_info:
@@ -401,9 +606,10 @@ def projects_quota(project):
         display_quota_info(project, quota_info, project_type)
     else:
         console.print(f"[red]Could not retrieve quota information for {project}[/red]")
+        console.print(f"[dim]Tried as {'legacy' if is_legacy else 'cloud'} project[/dim]")
 
 
-# 3. Assets group (third)
+# 4. Assets group
 @cli.group(help="Manage Earth Engine assets", context_settings=dict(help_option_names=['-h', '--help']))
 def assets():
     """Asset management commands."""
@@ -436,13 +642,13 @@ def assets_move(initial, final, cleanup):
 
 
 @assets.command('access', help="Set permissions for assets")
-@click.option('--asset', required=True, help='Path to the Earth Engine asset')
+@click.option('--id', required=True, help='Path to the Earth Engine asset')
 @click.option('--user', required=True, help='User email, service account, group, or "allUsers"')
 @click.option('--role', required=True, type=click.Choice(['reader', 'writer', 'delete']),
               help='Permission role')
-def assets_access(asset, user, role):
+def assets_access(id, user, role):
     """Set asset permissions."""
-    access(collection_path=asset, user=user, role=role)
+    access(collection_path=id, user=user, role=role)
 
 
 @assets.command('delete', help="Delete folders or collections recursively")
@@ -452,15 +658,15 @@ def assets_access(asset, user, role):
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose debug logging')
 def assets_delete(asset_id, workers, retries, verbose):
     """Delete assets recursively."""
-    delete(ids=asset_id, max_workers=workers, max_retries=retries, verbose=verbose)
+    delete(asset_id=asset_id, max_workers=workers, max_retries=retries, verbose=verbose)
 
 
 @assets.command('delete-meta', help="Delete metadata from collection or image")
-@click.option('--asset', required=True, help='Path to the Earth Engine asset')
+@click.option('--id', required=True, help='Path to the Earth Engine asset')
 @click.option('--property', required=True, help='Metadata property name to delete')
-def assets_delete_meta(asset, property):
+def assets_delete_meta(id, property):
     """Delete asset metadata."""
-    delprop(collection_path=asset, property=property)
+    delprop(collection_path=id, property=property)
 
 
 @assets.command('size', help="Display asset size and item count")
@@ -510,7 +716,7 @@ def assets_size(asset):
         console.print(table)
 
 
-# 4. Tasks group (fourth)
+# 5. Tasks group
 @cli.group(help="Manage Earth Engine tasks", context_settings=dict(help_option_names=['-h', '--help']))
 def tasks():
     """Task management commands."""
@@ -705,7 +911,7 @@ def tasks_cancel(target):
         console.print(f"[red]Error in cancel_tasks: {e}[/red]")
 
 
-# 5. Utils group (fifth)
+# 6. Utils group
 @cli.group(help="Utility commands", context_settings=dict(help_option_names=['-h', '--help']))
 def utils():
     """Utility commands."""
@@ -779,52 +985,11 @@ def utils_palette(name, classes, show_list, palette_type, output_format, auto_co
     Generate ColorBrewer color palettes for data visualization.
 
     Inspired by https://colorbrewer2.org/
-
-    \b
-    Output Formats:
-      json   - JSON array (default)
-      hex    - Hex codes, one per line
-      list   - Comma-separated hex codes
-      css    - CSS custom properties
-      python - Python list variable
-      js     - JavaScript array constant
-
-    \b
-    Examples:
-
-    \b
-      # List all available palettes
-      geeadd utils palette --list
-
-    \b
-      # List only sequential palettes
-      geeadd utils palette --list --type sequential
-
-    \b
-      # Generate 5 colors from Blues palette
-      geeadd utils palette --name Blues --classes 5
-
-    \b
-      # Generate colors in hex format and copy to clipboard
-      geeadd utils palette --name RdYlGn --classes 9 --format hex --copy
-
-    \b
-      # Generate CSS custom properties
-      geeadd utils palette --name Set1 --classes 8 --format css
-
-    \b
-      # Generate Python list
-      geeadd utils palette --name Spectral --classes 11 --format python --copy
-
-    \b
-      # Generate JavaScript array
-      geeadd utils palette --name Blues --classes 7 --format js --copy
     """
     if show_list:
         palettes = load_palettes()
         list_color_palettes(palettes, palette_type)
 
-        # Show clipboard availability info
         if not PYPERCLIP_AVAILABLE:
             console.print("\n[dim]💡 Tip: Install pyperclip for clipboard support: pip install pyperclip[/dim]")
 
@@ -840,7 +1005,7 @@ def utils_palette(name, classes, show_list, palette_type, output_format, auto_co
 
 
 # ============================================================================
-# DEPRECATED COMMAND HANDLERS - Show migration messages
+# DEPRECATED COMMAND HANDLERS
 # ============================================================================
 
 @cli.command('quota', hidden=True)
@@ -936,11 +1101,11 @@ def deprecated_move(ctx, initial, final, cleanup):
 
 
 @cli.command('access', hidden=True)
-@click.option('--asset', required=True)
+@click.option('--id', required=True)
 @click.option('--user', required=True)
 @click.option('--role', required=True)
 @click.pass_context
-def deprecated_access(ctx, asset, user, role):
+def deprecated_access(ctx, id, user, role):
     """Deprecated: Use 'geeadd assets access' instead."""
     console.print(Panel(
         "[yellow]Command[/yellow] [bold red]'geeadd access'[/bold red] [yellow]is deprecated![/yellow]\n\n"
@@ -949,7 +1114,7 @@ def deprecated_access(ctx, asset, user, role):
         title="[bold red]Deprecated Command[/bold red]",
         border_style="red"
     ))
-    ctx.invoke(assets_access, asset=asset, user=user, role=role)
+    ctx.invoke(assets_access, id=id, user=user, role=role)
 
 
 @cli.command('delete', hidden=True)
@@ -971,10 +1136,10 @@ def deprecated_delete(ctx, asset_id, workers, retries, verbose):
 
 
 @cli.command('delete_metadata', hidden=True)
-@click.option('--asset', required=True)
+@click.option('--id', required=True)
 @click.option('--property', required=True)
 @click.pass_context
-def deprecated_delete_metadata(ctx, asset, property):
+def deprecated_delete_metadata(ctx, id, property):
     """Deprecated: Use 'geeadd assets delete-meta' instead."""
     console.print(Panel(
         "[yellow]Command[/yellow] [bold red]'geeadd delete_metadata'[/bold red] [yellow]is deprecated![/yellow]\n\n"
@@ -983,7 +1148,7 @@ def deprecated_delete_metadata(ctx, asset, property):
         title="[bold red]Deprecated Command[/bold red]",
         border_style="red"
     ))
-    ctx.invoke(assets_delete_meta, asset=asset, property=property)
+    ctx.invoke(assets_delete_meta, id=id, property=property)
 
 
 @cli.command('app2script', hidden=True)

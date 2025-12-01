@@ -1,23 +1,7 @@
-"""Optimized batch asset copying module for Google Earth Engine."""
+"""Optimized batch asset copying module for Google Earth Engine.
 
-__copyright__ = """
-
-    Copyright 2025 Samapriya Roy
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-
+SPDX-License-Identifier: Apache-2.0
 """
-__license__ = "Apache 2.0"
 
 import concurrent.futures
 import logging
@@ -26,10 +10,10 @@ import signal
 import sys
 import time
 from functools import wraps
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 import ee
-from tqdm import tqdm
+import tqdm as tqdm_module
 
 # Configure logging
 logging.basicConfig(
@@ -40,7 +24,20 @@ logger = logging.getLogger(__name__)
 
 
 def retry_on_ee_error(max_retries: int = 3, backoff_factor: float = 2):
-    """Decorator for retrying EE operations with exponential backoff."""
+    """Decorator for retrying EE operations with exponential backoff.
+
+    Args:
+        max_retries: Maximum number of retry attempts
+        backoff_factor: Multiplier for exponential backoff delay
+
+    Returns:
+        Decorated function with retry logic
+
+    Example:
+        @retry_on_ee_error(max_retries=3)
+        def my_ee_operation():
+            return ee.data.getAsset('path/to/asset')
+    """
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -62,17 +59,31 @@ def retry_on_ee_error(max_retries: int = 3, backoff_factor: float = 2):
 
 
 def camel_case(s: str) -> str:
-    """Convert string to camel case (Title Case)."""
+    """Convert string to camel case (Title Case).
+
+    Args:
+        s: Input string to convert
+
+    Returns:
+        Title-cased string
+    """
     words = s.split()
     return ' '.join(word.title() for word in words)
 
 
-def get_asset_safe(asset_path: str) -> dict[str, Any] | None:
-    """Safely get asset with proper error handling."""
+def get_asset_safe(asset_path: str) -> Optional[Dict[str, Any]]:
+    """Safely get asset with proper error handling.
+
+    Args:
+        asset_path: Path to the Earth Engine asset
+
+    Returns:
+        Asset metadata dictionary or None if not found
+    """
     try:
         return ee.data.getAsset(asset_path)
     except ee.EEException as e:
-        if 'not found' in str(e).lower():
+        if 'not found' in str(e).lower() or 'does not exist' in str(e).lower():
             return None
         raise
     except Exception:
@@ -80,7 +91,14 @@ def get_asset_safe(asset_path: str) -> dict[str, Any] | None:
 
 
 def create_folder(folder_path: str) -> bool:
-    """Create a folder if it doesn't exist, handling both cloud and legacy folders."""
+    """Create a folder if it doesn't exist, handling both cloud and legacy folders.
+
+    Args:
+        folder_path: Path where the folder should be created
+
+    Returns:
+        True if folder was created or already exists, False on error
+    """
     try:
         if get_asset_safe(folder_path):
             logger.debug(f"Folder already exists: {folder_path}")
@@ -105,7 +123,16 @@ def create_folder(folder_path: str) -> bool:
 
 @retry_on_ee_error(max_retries=3)
 def copy_asset(source: str, destination: str, asset_type: str) -> bool:
-    """Copy a single asset with appropriate error handling and messaging."""
+    """Copy a single asset with appropriate error handling and messaging.
+
+    Args:
+        source: Source asset path
+        destination: Destination asset path
+        asset_type: Type of asset being copied (for logging)
+
+    Returns:
+        True if asset was copied, False if it already exists or on error
+    """
     try:
         # Check if destination already exists
         if get_asset_safe(destination):
@@ -124,11 +151,17 @@ def copy_asset(source: str, destination: str, asset_type: str) -> bool:
 
 
 def copy_image_collection(source: str, destination: str, max_workers: int = 10) -> None:
-    """Copy an image collection with parallel execution for speed."""
+    """Copy an image collection with parallel execution for speed.
+
+    Args:
+        source: Source image collection path
+        destination: Destination image collection path
+        max_workers: Maximum number of parallel worker threads
+    """
     global interrupt_received
 
     try:
-        # Create the collection if it doesn't exist
+        # Check if destination collection exists, create if not
         dest_asset = get_asset_safe(destination)
         if dest_asset:
             logger.info(f"Collection exists: {dest_asset['id']}")
@@ -149,7 +182,7 @@ def copy_image_collection(source: str, destination: str, max_workers: int = 10) 
         source_list = ee.data.listAssets({"parent": source})
         source_names = [os.path.basename(asset["name"]) for asset in source_list.get("assets", [])]
 
-        # Get list of destination images
+        # Get list of destination images - fetch asset again after potential creation
         collection_asset = get_asset_safe(destination)
         if not collection_asset:
             logger.error(f"Could not access destination collection {destination}")
@@ -186,7 +219,7 @@ def copy_image_collection(source: str, destination: str, max_workers: int = 10) 
                 futures[future] = item
 
             # Process results with progress bar
-            with tqdm(total=total_images, desc="Copying images", unit="image") as pbar:
+            with tqdm_module.tqdm(total=total_images, desc="Copying images", unit="image") as pbar:
                 for future in concurrent.futures.as_completed(futures):
                     item = futures[future]
 
@@ -224,10 +257,19 @@ def copy_image_collection(source: str, destination: str, max_workers: int = 10) 
 
     except Exception as e:
         logger.error(f"Error in collection copy: {e}", exc_info=True)
+        raise
 
 
 def copy_asset_wrapper(source: str, destination: str) -> bool:
-    """Wrapper for copying assets in thread pool."""
+    """Wrapper for copying assets in thread pool.
+
+    Args:
+        source: Source asset path
+        destination: Destination asset path
+
+    Returns:
+        True if copy succeeded, False otherwise
+    """
     try:
         ee.data.copyAsset(source, destination)
         return True
@@ -236,8 +278,15 @@ def copy_asset_wrapper(source: str, destination: str) -> bool:
         return False
 
 
-def get_folder_structure(path: str) -> list[str]:
-    """Recursively gather all folders under a path."""
+def get_folder_structure(path: str) -> List[str]:
+    """Recursively gather all folders under a path.
+
+    Args:
+        path: Root path to scan for folders
+
+    Returns:
+        Sorted list of folder paths
+    """
     folder_list = []
 
     def recursive_get_folders(current_path: str) -> None:
@@ -265,7 +314,12 @@ interrupt_received = False
 
 
 def handle_interrupt(sig, frame):
-    """Handle interrupt signals gracefully."""
+    """Handle interrupt signals gracefully.
+
+    Args:
+        sig: Signal number
+        frame: Current stack frame
+    """
     global interrupt_received
     if not interrupt_received:
         logger.warning("Interrupt received! Gracefully shutting down... (This may take a moment)")
@@ -279,10 +333,26 @@ def handle_interrupt(sig, frame):
 def copy(path: str, fpath: str, max_workers: int = 10) -> None:
     """Copy Earth Engine assets from path to fpath.
 
+    This function handles copying of individual assets (images, tables, feature views)
+    as well as entire folders and image collections. For image collections, copying
+    is performed in parallel for improved performance.
+
     Args:
-        path: Source asset path
-        fpath: Destination asset path
-        max_workers: Maximum number of parallel workers for collection copying
+        path: Source asset path (e.g., 'projects/my-project/assets/source-folder')
+        fpath: Destination asset path (e.g., 'projects/my-project/assets/dest-folder')
+        max_workers: Maximum number of parallel workers for collection copying (default: 10)
+
+    Example:
+        # Copy a single image
+        copy('projects/my-project/assets/image1', 'projects/my-project/assets/image2')
+
+        # Copy an entire folder structure
+        copy('projects/my-project/assets/folder1', 'projects/my-project/assets/folder2')
+
+        # Copy an image collection with custom parallelism
+        copy('projects/my-project/assets/collection1',
+             'projects/my-project/assets/collection2',
+             max_workers=20)
     """
     global interrupt_received
     interrupt_received = False
@@ -291,14 +361,9 @@ def copy(path: str, fpath: str, max_workers: int = 10) -> None:
     original_sigint_handler = signal.getsignal(signal.SIGINT)
     signal.signal(signal.SIGINT, handle_interrupt)
 
-    try:
-        # Initialize EE if not already initialized
-        try:
-            ee.data.getAssetRoots()
-        except:
-            logger.info("Initializing Earth Engine...")
-            ee.Initialize()
+    operation_successful = False
 
+    try:
         logger.info(f"Starting copy operation from {path} to {fpath}")
 
         asset_info = get_asset_safe(path)
@@ -383,6 +448,10 @@ def copy(path: str, fpath: str, max_workers: int = 10) -> None:
 
         else:
             logger.error(f"Unsupported asset type: {asset_type}")
+            return
+
+        # If we got here without raising an exception, operation was successful
+        operation_successful = True
 
     except Exception as e:
         if not interrupt_received:
@@ -394,5 +463,7 @@ def copy(path: str, fpath: str, max_workers: int = 10) -> None:
         if interrupt_received:
             logger.warning("Copy operation was interrupted and has been stopped.")
             logger.warning("Some assets may have been copied while others were not.")
-        else:
+        elif operation_successful:
             logger.info("Copy operation completed successfully.")
+        else:
+            logger.error("Copy operation failed. Check the error messages above for details.")
