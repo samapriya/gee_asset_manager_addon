@@ -3,14 +3,16 @@
 SPDX-License-Identifier: Apache-2.0
 """
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import enum
 import json
 import subprocess
 import sys
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any
 
 
 # ANSI color codes - works natively across all major terminals and OSes
-class Colors:
+class Colors(str, enum.Enum):
     GREEN = '\033[92m'
     YELLOW = '\033[93m'
     RED = '\033[91m'
@@ -20,7 +22,7 @@ class Colors:
     RESET = '\033[0m'
 
 
-def is_gcloud_installed():
+def is_gcloud_installed() -> bool:
     """Check if gcloud is installed (optimized)."""
     try:
         # Use shell=True on Windows, False on Unix for best compatibility
@@ -37,7 +39,7 @@ def is_gcloud_installed():
         return False
 
 
-def is_gcloud_authenticated():
+def is_gcloud_authenticated() -> bool:
     """Check if gcloud is authenticated (optimized)."""
     try:
         is_windows = sys.platform.startswith('win')
@@ -56,12 +58,12 @@ def is_gcloud_authenticated():
         return False
 
 
-def check_gcloud():
+def check_gcloud() -> bool:
     """Verify gcloud installation and authentication."""
     return is_gcloud_installed() and is_gcloud_authenticated()
 
 
-def list_enabled_services(pname):
+def list_enabled_services(pname: str) -> list[dict[str, Any]] | None:
     """Lists enabled services for a given project.
 
     Args:
@@ -89,7 +91,7 @@ def list_enabled_services(pname):
         return None
 
 
-def project_permissions(pname):
+def project_permissions(pname: str) -> tuple[str, str, bool] | None:
     """Checks if Earth Engine API is enabled for a project.
 
     Args:
@@ -99,9 +101,6 @@ def project_permissions(pname):
         Tuple of (project_name, project_number, has_ee) or None if error.
     """
     enabled_services = list_enabled_services(pname)
-
-    if enabled_services is None:
-        return None
 
     if not enabled_services:
         return None
@@ -117,7 +116,7 @@ def project_permissions(pname):
     return None
 
 
-def display_projects_table(ee_projects):
+def display_projects_table(ee_projects: list[tuple[str, str, bool]]) -> None:
     """Display projects in a 2-column table format.
 
     Args:
@@ -154,7 +153,7 @@ def display_projects_table(ee_projects):
     print(f"\n{Colors.BOLD}Total: {len(ee_projects)} project(s){Colors.RESET}")
 
 
-def get_projects():
+def get_projects() -> None:
     """Retrieves project list and checks Earth Engine permissions (parallelized)."""
     if not check_gcloud():
         print(f"{Colors.RED}✗ gcloud is either not installed or not authenticated.{Colors.RESET}")
@@ -209,5 +208,5 @@ def get_projects():
         print(f"{Colors.RED}Error: Failed to parse JSON output{Colors.RESET}")
 
 
-# Uncomment to run:
-# get_projects()
+if __name__ == '__main__':
+    get_projects()
