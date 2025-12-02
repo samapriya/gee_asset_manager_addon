@@ -3,12 +3,14 @@
 SPDX-License-Identifier: Apache-2.0
 """
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
+import os
+from pathlib import Path
 import subprocess
 import sys
+from typing import Any
 import webbrowser
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from pathlib import Path
 
 import ee
 from google.auth.transport.requests import AuthorizedSession
@@ -25,7 +27,7 @@ class Colors:
     RESET = '\033[0m'
 
 
-def is_gcloud_installed():
+def is_gcloud_installed() -> bool:
     """Check if gcloud is installed (optimized)."""
     try:
         # Use shell=True on Windows, False on Unix for best compatibility
@@ -42,7 +44,7 @@ def is_gcloud_installed():
         return False
 
 
-def is_gcloud_authenticated():
+def is_gcloud_authenticated() -> bool:
     """Check if gcloud is authenticated (optimized)."""
     try:
         is_windows = sys.platform.startswith('win')
@@ -61,12 +63,12 @@ def is_gcloud_authenticated():
         return False
 
 
-def check_gcloud():
+def check_gcloud() -> bool:
     """Verify gcloud installation and authentication."""
     return is_gcloud_installed() and is_gcloud_authenticated()
 
 
-def list_enabled_services(pname):
+def list_enabled_services(pname: str) -> list[dict[str, Any]] | None:
     """Lists enabled services for a given project.
 
     Args:
@@ -94,7 +96,7 @@ def list_enabled_services(pname):
         return None
 
 
-def get_registration_status(project_id, session):
+def get_registration_status(project_id: str, session: AuthorizedSession) -> str:
     """Get Earth Engine registration status for a project.
 
     Args:
@@ -118,7 +120,7 @@ def get_registration_status(project_id, session):
         return 'UNKNOWN'
 
 
-def project_permissions_with_registration(pname, session):
+def project_permissions_with_registration(pname: str, session: AuthorizedSession) -> dict[str, Any] | None:
     """Checks if Earth Engine API is enabled and gets registration status.
 
     Args:
@@ -152,7 +154,7 @@ def project_permissions_with_registration(pname, session):
     return None
 
 
-def display_projects_table(ee_projects):
+def display_projects_table(ee_projects: list[dict[str, Any]]) -> None:
     """Display projects in a formatted table.
 
     Args:
@@ -183,12 +185,11 @@ def display_projects_table(ee_projects):
     print(f"\n{Colors.BOLD}Total: {len(ee_projects)} project(s){Colors.RESET}")
 
 
-def is_headless():
+def is_headless() -> bool:
     """Check if the system is running in a headless environment."""
     try:
         # Check for display on Unix-like systems
         if sys.platform != 'win32':
-            import os
             return os.environ.get('DISPLAY') is None
         # Windows always has a display in interactive sessions
         return False
@@ -197,9 +198,6 @@ def is_headless():
 
 
 def create_html_dashboard(projects_data, output_path="ee_projects_dashboard.html"):
-    import json
-    from pathlib import Path
-
     script_dir = Path(__file__).parent.resolve()
     output_file = script_dir / output_path
     html_content = """<!DOCTYPE html>
