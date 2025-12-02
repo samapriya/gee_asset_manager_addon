@@ -1,5 +1,6 @@
-"""
-Google Earth Engine Batch Asset Manager with Addons
+"""Google Earth Engine Batch Asset Manager with Addons
+
+SPDX-License-Identifier: Apache-2.0
 """
 
 from .acl_changer import access
@@ -33,6 +34,7 @@ import ee
 import requests
 from click import Group
 from google.auth.transport.requests import AuthorizedSession
+from google.oauth2 import service_account
 from packaging import version as pkg_version
 from rich.console import Console
 from rich.panel import Panel
@@ -97,6 +99,38 @@ if len(sys.argv) > 1 and sys.argv[1] not in ['-h', '--help', '--version', 'auth'
         ))
     initialize_ee()
 
+
+def get_authenticated_session():
+    """
+    Get an authenticated session without re-initializing Earth Engine.
+
+    Returns:
+        tuple: (session, project_name) where session is an AuthorizedSession
+               and project_name is the project ID (or None for default auth)
+    """
+    sa_dir, sa_file = get_sa_credentials_path()
+
+    if sa_file.exists():
+        try:
+            with open(sa_file, 'r') as f:
+                sa_data = json.load(f)
+                service_account_email = sa_data.get('client_email')
+
+            if service_account_email:
+                # Create session from service account credentials
+                credentials = ee.ServiceAccountCredentials(service_account_email, str(sa_file))
+                session = AuthorizedSession(credentials)
+
+                # Extract project name from service account email
+                project_name = service_account_email.split('@')[1].split('.')[0]
+
+                return session, project_name
+        except Exception as e:
+            pass
+
+    # Fallback to default authentication
+    session = AuthorizedSession(ee.data.get_persistent_credentials())
+    return session, None
 
 def compare_version(version1, version2):
     """Compare two version strings using the packaging.version module."""
@@ -320,8 +354,60 @@ def projects_dashboard(outdir):
 @click.option('--project', default=None, help='Specific project path (e.g., projects/my-project or users/username)')
 def projects_quota(project):
     """Display quota information."""
-    session = AuthorizedSession(ee.data.get_persistent_credentials())
+    session, project_name = get_authenticated_session()
 
+    # If using service account and no specific project requested, show service account project quota
+    if project_name and project is None:
+        url = f'https://earthengine.googleapis.com/v1/projects/{project_name}/assets'
+        try:
+            response = session.get(url=url)
+            if response.status_code == 200:
+                data = response.json()
+
+                # Format the output in the same style as other quota displays
+                table = Table(title=f"[bold cyan]Cloud Project: projects/{project_name}[/bold cyan]",
+                            show_header=False, box=None)
+
+                if "quota" in data:
+                    quota_info = data["quota"]
+
+                    # Size quota
+                    used_size = int(quota_info.get("sizeBytes", 0))
+                    max_size = int(quota_info.get("maxSizeBytes", 1))
+                    percent = (used_size / max_size * 100) if max_size > 0 else 0
+
+                    def draw_bar(percent, width=30):
+                        filled = int(width * percent / 100)
+                        bar = "█" * filled + "░" * (width - filled)
+                        return f"[{bar}] {percent:.1f}%"
+
+                    table.add_row("[cyan]Storage:[/cyan]", f"{humansize(used_size)} of {humansize(max_size)}")
+                    table.add_row("", draw_bar(percent))
+
+                    # Asset count quota
+                    used_assets = int(quota_info.get("assetCount", 0))
+                    max_assets = int(quota_info.get("maxAssets", 1))
+                    percent = (used_assets / max_assets * 100) if max_assets > 0 else 0
+
+                    table.add_row("[cyan]Assets:[/cyan]", f"{used_assets:,} of {max_assets:,}")
+                    table.add_row("", draw_bar(percent))
+                elif "sizeBytes" in data:
+                    # Direct size info without quota wrapper
+                    used_size = int(data.get("sizeBytes", 0))
+                    table.add_row("[cyan]Storage:[/cyan]", humansize(used_size))
+
+                    if "featureCount" in data:
+                        table.add_row("[cyan]Features:[/cyan]", f"{data['featureCount']:,}")
+                    if "imageCount" in data:
+                        table.add_row("[cyan]Images:[/cyan]", f"{data['imageCount']:,}")
+
+                console.print(table)
+                return
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not fetch service account project quota: {e}[/yellow]")
+            console.print("[dim]Falling back to standard quota retrieval...[/dim]\n")
+
+    # Original quota logic for all other cases
     def draw_bar(percent, width=30):
         """Draw a simple progress bar"""
         filled = int(width * percent / 100)
@@ -334,7 +420,7 @@ def projects_quota(project):
             quota_info = info["quota"]
 
             table = Table(title=f"[bold cyan]{project_type}: {project_name}[/bold cyan]",
-                         show_header=False, box=None)
+                        show_header=False, box=None)
 
             # Size quota
             used_size = int(quota_info.get("sizeBytes", 0))
@@ -358,7 +444,7 @@ def projects_quota(project):
         elif "sizeBytes" in info:
             # Direct API response format (for cloud projects)
             table = Table(title=f"[bold cyan]{project_type}: {project_name}[/bold cyan]",
-                         show_header=False, box=None)
+                        show_header=False, box=None)
 
             used_size = int(info.get("sizeBytes", 0))
             table.add_row("[cyan]Storage:[/cyan]", humansize(used_size))
@@ -374,7 +460,7 @@ def projects_quota(project):
         elif "asset_size" in info:
             # Legacy format
             table = Table(title=f"[bold cyan]{project_type}: {project_name}[/bold cyan]",
-                         show_header=False, box=None)
+                        show_header=False, box=None)
 
             size_usage = info["asset_size"]["usage"]
             size_limit = info["asset_size"]["limit"]

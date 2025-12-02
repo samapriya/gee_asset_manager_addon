@@ -1,6 +1,6 @@
-"""
-Copyright 2025 Samapriya Roy
-Licensed under the Apache License, Version 2.0
+"""Reporting tool for Google Earth Engine.
+
+SPDX-License-Identifier: Apache-2.0
 """
 
 import csv
@@ -11,7 +11,8 @@ import sys
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
-from typing import Dict, List, Optional
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 import ee
 from google.auth.transport.requests import AuthorizedSession
@@ -48,6 +49,53 @@ class AssetInfo:
     writers: str
 
 
+def get_sa_credentials_path() -> Tuple[Path, Path]:
+    """
+    Get the service account credentials directory and file path.
+
+    Returns:
+        tuple: (sa_dir, sa_file) where both are Path objects
+    """
+    home_dir = Path.home()
+    sa_dir = home_dir / '.config' / 'earthengine'
+    sa_file = sa_dir / 'credentials'
+
+    return sa_dir, sa_file
+
+
+def get_authenticated_session() -> Tuple[AuthorizedSession, Optional[str]]:
+    """
+    Get an authenticated session without re-initializing Earth Engine.
+
+    Returns:
+        tuple: (session, project_name) where session is an AuthorizedSession
+               and project_name is the project ID (or None for default auth)
+    """
+    sa_dir, sa_file = get_sa_credentials_path()
+
+    if sa_file.exists():
+        try:
+            with open(sa_file, 'r') as f:
+                sa_data = json.load(f)
+                service_account_email = sa_data.get('client_email')
+
+            if service_account_email:
+                # Create session from service account credentials
+                credentials = ee.ServiceAccountCredentials(service_account_email, str(sa_file))
+                session = AuthorizedSession(credentials)
+
+                # Extract project name from service account email
+                project_name = service_account_email.split('@')[1].split('.')[0]
+
+                return session, project_name
+        except Exception as e:
+            logger.warning(f"Could not load service account credentials: {e}")
+
+    # Fallback to default authentication
+    session = AuthorizedSession(ee.data.get_persistent_credentials())
+    return session, None
+
+
 def legacy_roots(session: AuthorizedSession) -> List[str]:
     """Get all legacy root asset paths"""
     legacy_root_list = []
@@ -82,7 +130,7 @@ def is_legacy_path(path: str, legacy_root_list: List[str]) -> bool:
 
 
 def list_assets_legacy(parent: str, session: AuthorizedSession) -> List[Dict]:
-    """List assets using legacy API"""
+    """List assets using legacy API - excludes images inside collections"""
     # Extract the path after 'projects/'
     if parent.startswith('projects/'):
         parent_path = parent
@@ -95,14 +143,20 @@ def list_assets_legacy(parent: str, session: AuthorizedSession) -> List[Dict]:
 
     try:
         response = session.get(url=url)
-        return response.json().get('assets', [])
+        assets = response.json().get('assets', [])
+
+        # Filter out IMAGE assets - they're inside IMAGE_COLLECTIONs
+        # We want: FOLDER, IMAGE_COLLECTION, TABLE, FEATURE_VIEW
+        filtered = [a for a in assets if a.get('type') != 'IMAGE']
+
+        return filtered
     except Exception as e:
         logger.error(f"Error listing legacy assets in {parent}: {e}")
         return []
 
 
 def list_assets_modern(parent: str, session: AuthorizedSession) -> List[Dict]:
-    """List assets using modern API"""
+    """List assets using modern API - excludes images inside collections"""
     # Extract project ID - parent could be:
     # - "space-geographer" (just project ID)
     # - "projects/space-geographer" (with projects/ prefix)
@@ -117,7 +171,14 @@ def list_assets_modern(parent: str, session: AuthorizedSession) -> List[Dict]:
 
     try:
         response = session.get(url=url)
-        return response.json().get('assets', [])
+        assets = response.json().get('assets', [])
+
+        # Filter out IMAGE assets - they're either inside IMAGE_COLLECTIONs or standalone
+        # We want: FOLDER, IMAGE_COLLECTION, TABLE, FEATURE_VIEW
+        # We DON'T want: Individual IMAGE assets (they're inside collections)
+        filtered = [a for a in assets if a.get('type') != 'IMAGE']
+
+        return filtered
     except Exception as e:
         logger.error(f"Error listing modern assets in {parent}: {e}")
         return []
@@ -201,7 +262,8 @@ def list_assets_recursive(
                   f"FEATURE_VIEW: {stats.get('FEATURE_VIEW', 0)}",
                   end='', flush=True)
 
-            # Recurse into folders
+            # ONLY recurse into FOLDER type assets
+            # Explicitly DO NOT recurse into IMAGE_COLLECTION, TABLE, IMAGE, or FEATURE_VIEW
             if asset_type == 'FOLDER':
                 list_assets_recursive(asset_id, session, is_legacy, asset_list, stats)
 
@@ -275,10 +337,13 @@ def ee_report(output_path: str, asset_path: Optional[str] = None, max_workers: i
 
     ee.Initialize()
 
-    # Create authorized session
-    session = AuthorizedSession(ee.data.get_persistent_credentials())
+    # Get authenticated session and project name
+    session, project_name = get_authenticated_session()
 
     logger.info("Starting Earth Engine asset report generation...")
+
+    if project_name:
+        logger.info(f"Using service account with project: {project_name}")
 
     # Get legacy roots
     legacy_root_list = legacy_roots(session)
@@ -293,13 +358,20 @@ def ee_report(output_path: str, asset_path: Optional[str] = None, max_workers: i
         paths_to_process.append((asset_path, is_legacy))
         logger.info(f"Processing {'legacy' if is_legacy else 'modern'} asset path: {asset_path}")
     else:
-        # Process all root assets
-        roots = ee.data.getAssetRoots()
-        for root in roots:
-            root_id = root['id']
-            is_legacy = is_legacy_path(root_id, legacy_root_list)
-            paths_to_process.append((root_id, is_legacy))
-        logger.info(f"Discovering assets in {len(paths_to_process)} root location(s)...")
+        # If using service account and no path specified, use the project name
+        if project_name:
+            asset_path = f"projects/{project_name}"
+            is_legacy = is_legacy_path(asset_path, legacy_root_list)
+            paths_to_process.append((asset_path, is_legacy))
+            logger.info(f"Processing service account project: {asset_path}")
+        else:
+            # Process all root assets
+            roots = ee.data.getAssetRoots()
+            for root in roots:
+                root_id = root['id']
+                is_legacy = is_legacy_path(root_id, legacy_root_list)
+                paths_to_process.append((root_id, is_legacy))
+            logger.info(f"Discovering assets in {len(paths_to_process)} root location(s)...")
 
     # Collect all assets
     print()  # New line for dynamic updates
@@ -311,20 +383,24 @@ def ee_report(output_path: str, asset_path: Optional[str] = None, max_workers: i
             break
 
         try:
-            # For modern projects, we need to get asset info differently
+            # Get asset info to determine type
             if is_legacy:
                 asset_info = ee.data.getAsset(path)
                 asset_type = asset_info['type']
             else:
-                # For modern projects, just treat the root as a folder
-                # and start listing directly
-                asset_type = 'FOLDER'
+                # For modern projects, try to get asset info first
+                try:
+                    asset_info = ee.data.getAsset(path)
+                    asset_type = asset_info['type']
+                except:
+                    # If that fails, treat it as a folder and list directly
+                    asset_type = 'FOLDER'
 
             all_assets.append({'type': asset_type, 'path': path})
             stats[asset_type] += 1
             stats['total'] += 1
 
-            # If it's a folder, get all children
+            # Only recurse into actual folders, not image collections or other types
             if asset_type == 'FOLDER':
                 children = list_assets_recursive(path, session, is_legacy, [], stats)
                 all_assets.extend(children)
