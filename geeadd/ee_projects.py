@@ -4,7 +4,6 @@ SPDX-License-Identifier: Apache-2.0
 """
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import enum
 import json
 import subprocess
 import sys
@@ -12,7 +11,7 @@ from typing import Any
 
 
 # ANSI color codes - works natively across all major terminals and OSes
-class Colors(str, enum.Enum):
+class Colors(str):
     GREEN = '\033[92m'
     YELLOW = '\033[93m'
     RED = '\033[91m'
