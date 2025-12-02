@@ -2,7 +2,7 @@
 
 import itertools
 import logging
-import typing
+from typing import Any
 
 import ee
 
@@ -23,12 +23,16 @@ ASSET_TYPE_FEATURE_VIEW = "feature_view"
 
 class AssetCollector:
     """Helper class to collect and organize Earth Engine assets."""
+    images: list[str]
+    collections: list[str]
+    tables: list[str]
+    folders: list[str]
 
     def __init__(self) -> None:
-        self.images: typing.List[str] = []
-        self.collections: typing.List[str] = []
-        self.tables: typing.List[str] = []
-        self.folders: typing.List[str] = []
+        self.images = []
+        self.collections = []
+        self.tables = []
+        self.folders = []
 
     def clear(self) -> None:
         """Clear all collected assets."""
@@ -37,12 +41,12 @@ class AssetCollector:
         self.tables.clear()
         self.folders.clear()
 
-    def get_all_assets(self) -> typing.List[str]:
+    def get_all_assets(self) -> list[str]:
         """Get a flat list of all collected assets."""
         return list(set(itertools.chain(self.collections, self.tables, self.images)))
 
 
-def get_folder_recursive(path: str, folder_list: typing.List[str]) -> None:
+def get_folder_recursive(path: str, folder_list: list[str]) -> None:
     """
     Recursively collect all folder paths.
 
@@ -65,7 +69,7 @@ def get_folder_recursive(path: str, folder_list: typing.List[str]) -> None:
         logger.error(f"Error accessing folder {path}: {e}")
 
 
-def parse_asset_path(path: str) -> typing.Tuple[typing.List[str], typing.List[str], typing.List[str], typing.List[str]]:
+def parse_asset_path(path: str) -> tuple[list[str], list[str], list[str], list[str]]:
     """
     Parse an asset path and collect all assets within it.
 
@@ -165,7 +169,7 @@ def format_user_identifier(user: str) -> str:
         return f"user:{user}"
 
 
-def get_asset_acl(asset_path: str) -> typing.Optional[typing.Dict]:
+def get_asset_acl(asset_path: str) -> dict[str, Any] | None:
     """
     Get the Access Control List (ACL) for an Earth Engine asset.
 
@@ -189,7 +193,7 @@ def get_asset_acl(asset_path: str) -> typing.Optional[typing.Dict]:
         return None
 
 
-def check_user_permission(asset_path: str, user: str) -> typing.Optional[str]:
+def check_user_permission(asset_path: str, user: str) -> str | None:
     """
     Check what permission level a user has for a specific asset.
 
@@ -259,7 +263,6 @@ def set_asset_permissions(
         logger.error(f"Invalid role: {role}. Use 'reader', 'writer', 'owner', or 'delete'")
         return
 
-    # Format user identifier
     user_formatted = format_user_identifier(user)
 
     # Parse asset path to get all assets
