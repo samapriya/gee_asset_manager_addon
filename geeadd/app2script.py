@@ -25,7 +25,6 @@ import json
 import logging
 import unicodedata
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
 import jsbeautifier
@@ -107,7 +106,7 @@ def validate_ee_url(url: str) -> tuple[str, str]:
         )
 
 
-def fetch_js_code(url: str, session: Optional[requests.Session] = None) -> str:
+def fetch_js_code(url: str, session: requests.Session | None = None) -> str:
     """
     Fetch JavaScript code from Earth Engine app.
 
@@ -257,13 +256,13 @@ def copy_to_clipboard(text: str) -> bool:
 
 def jsext(
     url: str,
-    outfile: Optional[str] = None,
+    outfile: str | None = None,
     clipboard: bool = True,
     beautify: bool = True,
     indent_size: int = 2,
     normalize_unicode: bool = False,
     sanitize: bool = True
-) -> Optional[str]:
+) -> str | None:
     """
     Extract and optionally save JavaScript code from an Earth Engine app.
 
@@ -335,7 +334,7 @@ def jsext(
 
     except EarthEngineJSExtractorError:
         raise
-    except IOError as e:
+    except OSError as e:
         raise EarthEngineJSExtractorError(
             f"Error writing to file '{outfile}': {e}"
         )

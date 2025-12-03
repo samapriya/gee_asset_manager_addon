@@ -10,7 +10,7 @@ import signal
 import sys
 import time
 from functools import wraps
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import ee
 import tqdm as tqdm_module
@@ -94,7 +94,7 @@ def camel_case(s: str) -> str:
     return " ".join(word.title() for word in words)
 
 
-def get_asset_safe(asset_path: str) -> Optional[Dict[str, Any]]:
+def get_asset_safe(asset_path: str) -> dict[str, Any] | None:
     """Safely get asset with proper error handling.
 
     Args:
@@ -146,7 +146,7 @@ def create_folder(folder_path: str, replace_string: str, replaced_string: str) -
 @retry_on_ee_error(max_retries=3)
 def move_asset(
     source: str,
-    replace_string: Optional[str],
+    replace_string: str | None,
     replaced_string: str,
     fpath: str,
     ftype: str = "asset"
@@ -187,7 +187,7 @@ def move_asset(
 
 def move_image_collection(
     source: str,
-    replace_string: Optional[str],
+    replace_string: str | None,
     replaced_string: str,
     fpath: str,
     max_workers: int = 10
@@ -422,7 +422,7 @@ def get_folder(path: str) -> None:
         recursive(asset["name"])
 
 
-def recursive(path: str) -> List[str]:
+def recursive(path: str) -> list[str]:
     """Recursively gather all folders under a path.
 
     Args:
