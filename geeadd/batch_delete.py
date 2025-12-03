@@ -10,7 +10,7 @@ import signal
 import sys
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import ee
 import tqdm as tqdm_module
@@ -43,7 +43,7 @@ def handle_interrupt(sig: int, frame: Any) -> None:
         sys.exit(1)
 
 
-def get_asset(path: str) -> Tuple[Optional[str], Optional[str]]:
+def get_asset(path: str) -> tuple[str | None, str | None]:
     """
     Get asset information and add to asset_list.
 
@@ -63,7 +63,7 @@ def get_asset(path: str) -> Tuple[Optional[str], Optional[str]]:
         return None, None
 
 
-def recursive_parallel(path: str, max_workers: int = 10) -> List[Dict[str, str]]:
+def recursive_parallel(path: str, max_workers: int = 10) -> list[dict[str, str]]:
     """
     Recursively gather all assets under a path using parallel execution.
 
@@ -97,7 +97,7 @@ def recursive_parallel(path: str, max_workers: int = 10) -> List[Dict[str, str]]
     return asset_list
 
 
-def delete_with_retry(asset_path: str, max_retries: int = 3) -> Dict[str, Any]:
+def delete_with_retry(asset_path: str, max_retries: int = 3) -> dict[str, Any]:
     """
     Delete a single asset with retry logic and specific error handling.
 
@@ -181,7 +181,7 @@ def delete_with_retry(asset_path: str, max_retries: int = 3) -> Dict[str, Any]:
     }
 
 
-def save_failed_assets(failed_assets: List[Dict[str, Any]], filename: Optional[str] = None) -> None:
+def save_failed_assets(failed_assets: list[dict[str, Any]], filename: str | None = None) -> None:
     """
     Save list of failed assets to a JSON file.
 
@@ -206,7 +206,7 @@ def save_failed_assets(failed_assets: List[Dict[str, Any]], filename: Optional[s
 
 
 def delete(ids: str, max_workers: int = 10, max_retries: int = 3,
-           verbose: bool = False) -> Optional[Dict[str, Any]]:
+           verbose: bool = False) -> dict[str, Any] | None:
     """
     Delete assets recursively with concurrent processing.
 
@@ -229,7 +229,7 @@ def delete(ids: str, max_workers: int = 10, max_retries: int = 3,
     global interrupt_received, asset_list
     interrupt_received = False
     asset_list = []
-    failed_assets: List[Dict[str, Any]] = []
+    failed_assets: list[dict[str, Any]] = []
     start_time = time.time()
 
     # Configure logging level

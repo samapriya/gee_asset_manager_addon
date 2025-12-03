@@ -5,7 +5,6 @@ SPDX-License-Identifier: Apache-2.0
 
 import logging
 import os
-from typing import Optional
 
 import ee
 import tqdm as tqdm_module
@@ -18,7 +17,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def get_asset_safe(asset_path: str) -> Optional[dict]:
+def get_asset_safe(asset_path: str) -> dict | None:
     """Safely get asset with proper error handling.
 
     Args:

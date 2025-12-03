@@ -10,7 +10,7 @@ import signal
 import sys
 import time
 from functools import wraps
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import ee
 import tqdm as tqdm_module
@@ -71,7 +71,7 @@ def camel_case(s: str) -> str:
     return ' '.join(word.title() for word in words)
 
 
-def get_asset_safe(asset_path: str) -> Optional[Dict[str, Any]]:
+def get_asset_safe(asset_path: str) -> dict[str, Any] | None:
     """Safely get asset with proper error handling.
 
     Args:
@@ -278,7 +278,7 @@ def copy_asset_wrapper(source: str, destination: str) -> bool:
         return False
 
 
-def get_folder_structure(path: str) -> List[str]:
+def get_folder_structure(path: str) -> list[str]:
     """Recursively gather all folders under a path.
 
     Args:

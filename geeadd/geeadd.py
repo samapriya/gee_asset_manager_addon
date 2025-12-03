@@ -70,7 +70,7 @@ def initialize_ee():
 
     if sa_file.exists():
         try:
-            with open(sa_file, 'r') as f:
+            with open(sa_file) as f:
                 sa_data = json.load(f)
                 service_account = sa_data.get('client_email')
 
@@ -112,7 +112,7 @@ def get_authenticated_session():
 
     if sa_file.exists():
         try:
-            with open(sa_file, 'r') as f:
+            with open(sa_file) as f:
                 sa_data = json.load(f)
                 service_account_email = sa_data.get('client_email')
 
@@ -201,7 +201,7 @@ def humansize(nbytes):
         nbytes /= 1024.0
         i += 1
     f = ("%.2f" % nbytes).rstrip("0").rstrip(".")
-    return "%s %s" % (f, suffixes[i])
+    return f"{f} {suffixes[i]}"
 
 
 def epoch_convert_time(epoch_timestamp):
@@ -237,7 +237,7 @@ def auth(cred_path, remove, status):
     if status:
         if sa_file.exists():
             try:
-                with open(sa_file, 'r') as f:
+                with open(sa_file) as f:
                     sa_data = json.load(f)
                     service_account = sa_data.get('client_email', 'Unknown')
 
@@ -276,7 +276,7 @@ def auth(cred_path, remove, status):
 
         try:
             # Read and validate the credentials file
-            with open(cred_path, 'r') as f:
+            with open(cred_path) as f:
                 sa_data = json.load(f)
 
             # Validate required fields
