@@ -744,7 +744,7 @@ def assets_access(id, user, role):
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose debug logging')
 def assets_delete(asset_id, workers, retries, verbose):
     """Delete assets recursively."""
-    delete(asset_id=asset_id, max_workers=workers, max_retries=retries, verbose=verbose)
+    delete(ids=asset_id, max_workers=workers, max_retries=retries, verbose=verbose)
 
 
 @assets.command('delete-meta', help="Delete metadata from collection or image")
