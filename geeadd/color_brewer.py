@@ -7,7 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 
 import json
 import sys
-from pathlib import Path
+import pathlib
+from typing import Any
 
 from rich.console import Console
 from rich.table import Table
@@ -22,9 +23,9 @@ except ImportError:
     PYPERCLIP_AVAILABLE = False
 
 
-def load_palettes():
-    """Load palette data from palettes.json"""
-    palette_file = Path(__file__).parent / "palettes.json"
+def load_palettes() -> dict[str, Any]:
+    """Load palette data from palettes.json."""
+    palette_file = pathlib.Path(__file__).parent / "palettes.json"
     try:
         with open(palette_file) as f:
             return json.load(f)
@@ -37,7 +38,7 @@ def load_palettes():
 
 
 def interpolate_color(c1: str, c2: str, factor: float) -> str:
-    """Interpolate between two hex colors (without # prefix)"""
+    """Interpolate between two hex colors (without # prefix)."""
     r1, g1, b1 = int(c1[0:2], 16), int(c1[2:4], 16), int(c1[4:6], 16)
     r2, g2, b2 = int(c2[0:2], 16), int(c2[2:4], 16), int(c2[4:6], 16)
 
@@ -49,7 +50,7 @@ def interpolate_color(c1: str, c2: str, factor: float) -> str:
 
 
 def interpolate_palette(colors: list[str], target: int) -> list[str]:
-    """Interpolate palette to target number of colors"""
+    """Interpolate palette to target number of colors."""
     if target <= len(colors):
         return colors[:target]
 
@@ -71,7 +72,7 @@ def interpolate_palette(colors: list[str], target: int) -> list[str]:
 
 
 def get_palette(name: str, classes: int, palettes: dict) -> list[str]:
-    """Get palette with specified number of classes"""
+    """Get palette with specified number of classes."""
     if name not in palettes:
         available = sorted(palettes.keys())
         console.print(f"[red]Error: Palette '{name}' not found[/red]")
