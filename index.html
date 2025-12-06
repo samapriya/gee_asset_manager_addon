@@ -15,7 +15,7 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Montserrat:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -1972,6 +1972,79 @@ geeadd tasks cancel pending</code><button class="copy-btn text-white text-xs px-
             // Add active class to clicked element
             element.classList.add('active');
         }
+    // 1. Define the Action Buttons HTML
+    const buttonsHTML = `
+        <div class="action-buttons absolute top-2 right-2 flex gap-2 opacity-0 transition-opacity duration-200 z-10">
+            <button class="bg-white/10 backdrop-blur-sm border border-white/20 text-white px-2 py-1 rounded text-xs hover:bg-white/20 flex items-center gap-1" onclick="copyCode(this)">
+                <i data-lucide="copy" class="w-3 h-3"></i> Copy
+            </button>
+            <button class="bg-white/10 backdrop-blur-sm border border-white/20 text-white px-2 py-1 rounded text-xs hover:bg-white/20 flex items-center gap-1" onclick="downloadTerminal(this)">
+                <i data-lucide="download" class="w-3 h-3"></i> PNG
+            </button>
+        </div>
+    `;
+
+    // 2. CSS Injection for the hover effect
+    const style = document.createElement('style');
+    style.innerHTML = `
+        .group:hover .action-buttons, .action-buttons:focus-within { opacity: 1; }
+    `;
+    document.head.appendChild(style);
+
+    // 3. Find all Terminal blocks and Inject
+    document.addEventListener('DOMContentLoaded', () => {
+        // Select all relative containers inside terminal groups
+        // We look for divs that have <pre> inside them
+        const terminalContainers = document.querySelectorAll('.group .relative');
+
+        terminalContainers.forEach(container => {
+            // Remove the old manual copy button if it exists
+            const oldBtn = container.querySelector('.copy-btn');
+            if (oldBtn) oldBtn.remove();
+
+            // Insert new button group
+            container.insertAdjacentHTML('beforeend', buttonsHTML);
+        });
+
+        // Re-initialize icons for the newly added buttons
+        lucide.createIcons();
+    });
+
+    // 4. The Download Function
+    function downloadTerminal(button) {
+        const terminalNode = button.closest('.group');
+        const btnContainer = button.closest('.action-buttons');
+
+        // Hide buttons for screenshot
+        btnContainer.classList.add('hidden');
+
+        html2canvas(terminalNode, {
+            scale: 2,
+            backgroundColor: null
+        }).then(canvas => {
+            btnContainer.classList.remove('hidden');
+            const link = document.createElement('a');
+            link.download = 'terminal-output.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+    }
+
+    // 5. The Copy Function (Updated to work with new structure)
+    function copyCode(button) {
+        const container = button.closest('.relative');
+        const code = container.querySelector('code').innerText;
+        navigator.clipboard.writeText(code).then(() => {
+            const originalText = button.innerHTML;
+            button.innerText = 'Copied!';
+            button.classList.add('text-green-400');
+            setTimeout(() => {
+                button.innerHTML = originalText;
+                button.classList.remove('text-green-400');
+                lucide.createIcons();
+            }, 2000);
+        });
+    }
     </script>
 </body>
 
