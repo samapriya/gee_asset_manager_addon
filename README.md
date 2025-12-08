@@ -15,7 +15,7 @@
 
 **geeadd** (Google Earth Engine Asset Manager with Addons) is a comprehensive command-line tool that extends the official Earth Engine CLI with powerful batch operations and asset management capabilities. Whether you're managing quotas, organizing assets, or performing bulk operations, geeadd streamlines your Earth Engine workflows.
 
-![geeadd_main](https://i.imgur.com/SERUqBL.gif)
+![main](https://i.imgur.com/d1U98oq.png)
 
 ## Features
 
