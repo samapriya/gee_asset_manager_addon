@@ -53,8 +53,7 @@ class EarthEngineJSExtractorError(Exception):
 
 
 def create_session() -> requests.Session:
-    """
-    Create a requests session with retry logic.
+    """Create a requests session with retry logic.
 
     Returns:
         requests.Session: Configured session with retry strategy.
@@ -73,8 +72,7 @@ def create_session() -> requests.Session:
 
 
 def validate_ee_url(url: str) -> tuple[str, str]:
-    """
-    Validate and parse Earth Engine app URL.
+    """Validate and parse Earth Engine app URL.
 
     Args:
         url: The Earth Engine app URL to validate.
@@ -107,8 +105,7 @@ def validate_ee_url(url: str) -> tuple[str, str]:
 
 
 def fetch_js_code(url: str, session: requests.Session | None = None) -> str:
-    """
-    Fetch JavaScript code from Earth Engine app.
+    """Fetch JavaScript code from Earth Engine app.
 
     Args:
         url: The Earth Engine app URL.
@@ -160,7 +157,6 @@ def fetch_js_code(url: str, session: requests.Session | None = None) -> str:
         except UnicodeDecodeError:
             # Fallback: try to decode with error handling
             content = response.content.decode('utf-8', errors='replace')
-            import json
             json_data = json.loads(content)
 
         dependencies = json_data.get("dependencies")
@@ -191,8 +187,7 @@ def fetch_js_code(url: str, session: requests.Session | None = None) -> str:
 
 
 def sanitize_code(code: str, normalize_unicode: bool = False) -> str:
-    """
-    Sanitize JavaScript code to handle special characters and text issues.
+    """Sanitize JavaScript code to handle special characters and text issues.
 
     Args:
         code: The JavaScript code to sanitize.
@@ -214,6 +209,7 @@ def sanitize_code(code: str, normalize_unicode: bool = False) -> str:
     # Optionally normalize Unicode characters (e.g., different dash types)
     if normalize_unicode:
         code = unicodedata.normalize('NFKC', code)
+        code = code.replace('\u2212', '-')
 
     # Remove or replace common problematic characters while preserving code
     # This is conservative - only handling truly problematic chars
@@ -231,8 +227,7 @@ def sanitize_code(code: str, normalize_unicode: bool = False) -> str:
 
 
 def copy_to_clipboard(text: str) -> bool:
-    """
-    Copy text to clipboard.
+    """Copy text to clipboard.
 
     Args:
         text: The text to copy to clipboard.
@@ -263,8 +258,7 @@ def jsext(
     normalize_unicode: bool = False,
     sanitize: bool = True
 ) -> str | None:
-    """
-    Extract and optionally save JavaScript code from an Earth Engine app.
+    """Extract and optionally save JavaScript code from an Earth Engine app.
 
     Args:
         url: URL of the Earth Engine app.
