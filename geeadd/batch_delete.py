@@ -4,12 +4,12 @@ SPDX-License-Identifier: Apache-2.0
 """
 
 import concurrent.futures
+import datetime
 import json
 import logging
 import signal
 import sys
 import time
-from datetime import datetime
 from typing import Any
 
 import ee
@@ -26,13 +26,13 @@ asset_list = []
 
 
 def handle_interrupt(sig: int, frame: Any) -> None:
-    """
-    Handle interrupt signals gracefully.
+    """Handle interrupt signals gracefully.
 
     Args:
         sig: Signal number
         frame: Current stack frame
     """
+    del sig, frame  # Unused.
     global interrupt_received
     if not interrupt_received:
         print("\nInterrupt received! Gracefully shutting down... (This may take a moment)")
@@ -44,8 +44,7 @@ def handle_interrupt(sig: int, frame: Any) -> None:
 
 
 def get_asset(path: str) -> tuple[str | None, str | None]:
-    """
-    Get asset information and add to asset_list.
+    """Get asset information and add to asset_list.
 
     Args:
         path: Asset path to retrieve
@@ -64,8 +63,7 @@ def get_asset(path: str) -> tuple[str | None, str | None]:
 
 
 def recursive_parallel(path: str, max_workers: int = 10) -> list[dict[str, str]]:
-    """
-    Recursively gather all assets under a path using parallel execution.
+    """Recursively gather all assets under a path using parallel execution.
 
     Args:
         path: Root path to start recursive search
@@ -98,8 +96,7 @@ def recursive_parallel(path: str, max_workers: int = 10) -> list[dict[str, str]]
 
 
 def delete_with_retry(asset_path: str, max_retries: int = 3) -> dict[str, Any]:
-    """
-    Delete a single asset with retry logic and specific error handling.
+    """Delete a single asset with retry logic and specific error handling.
 
     Args:
         asset_path: Full path to the asset
@@ -115,7 +112,7 @@ def delete_with_retry(asset_path: str, max_retries: int = 3) -> dict[str, Any]:
                 'asset_id': asset_path,
                 'status': 'success',
                 'attempt': attempt + 1,
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.datetime.now().isoformat()
             }
         except ee.EEException as e:
             error_msg = str(e).lower()
@@ -182,8 +179,7 @@ def delete_with_retry(asset_path: str, max_retries: int = 3) -> dict[str, Any]:
 
 
 def save_failed_assets(failed_assets: list[dict[str, Any]], filename: str | None = None) -> None:
-    """
-    Save list of failed assets to a JSON file.
+    """Save list of failed assets to a JSON file.
 
     Args:
         failed_assets: List of failed asset dictionaries
@@ -194,7 +190,8 @@ def save_failed_assets(failed_assets: list[dict[str, Any]], filename: str | None
         return
 
     if filename is None:
-        filename = f'failed_deletions_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+        now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f'failed_deletions_{now}.json'
 
     try:
         with open(filename, 'w') as f:
@@ -207,8 +204,7 @@ def save_failed_assets(failed_assets: list[dict[str, Any]], filename: str | None
 
 def delete(ids: str, max_workers: int = 10, max_retries: int = 3,
            verbose: bool = False) -> dict[str, Any] | None:
-    """
-    Delete assets recursively with concurrent processing.
+    """Delete assets recursively with concurrent processing.
 
     This is the main function for batch deletion. It maintains backward compatibility
     while adding enhanced features like better error handling and statistics.
