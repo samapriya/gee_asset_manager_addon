@@ -50,7 +50,7 @@ def get_folder_recursive(path: str, folder_list: list[str]) -> None:
 
     Args:
         path: Asset path to start from.
-        folder_list: List to append discovered folders to,
+        folder_list: List to append discovered folders to.
     """
     try:
         asset = ee.data.getAsset(path)
@@ -181,8 +181,7 @@ def get_asset_acl(asset_path: str) -> dict[str, Any] | None:
         or None if the asset cannot be accessed.
     """
     try:
-        acl = ee.data.getAssetAcl(asset_path)
-        return acl
+        return ee.data.getAssetAcl(asset_path)
     except Exception as e:
         logger.error(f"Error getting ACL for {asset_path}: {e}")
         return None
